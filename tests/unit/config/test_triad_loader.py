@@ -218,3 +218,46 @@ def test_rejects_missing_required_fields():
         assert "name" in str(exc_info.value).lower()
     finally:
         config_path.unlink()
+
+
+def test_load_actual_triads_config():
+    """Successfully loads the 3 example triads from config/triads.yaml."""
+    from src.config.triad_loader import load_triad_config
+
+    # Arrange: Path to actual config file
+    config_path = Path("config/triads.yaml")
+
+    # Act: Load the real config
+    config = load_triad_config(config_path)
+
+    # Assert: Config has correct structure
+    assert config.version == "1.0"
+    assert config.context == "internal_tooling"
+    assert len(config.triads) == 3
+
+    # Check first triad (workflow_nature)
+    workflow = config.triads[0]
+    assert workflow.id == "workflow_nature"
+    assert workflow.name == "Work Flow Nature"
+    assert len(workflow.vertices) == 3
+    assert workflow.vertices[0].id == "streamlined"
+    assert workflow.vertices[1].id == "creative"
+    assert workflow.vertices[2].id == "collaborative"
+
+    # Check second triad (understanding_quality)
+    understanding = config.triads[1]
+    assert understanding.id == "understanding_quality"
+    assert understanding.name == "Understanding Quality"
+    assert len(understanding.vertices) == 3
+    assert understanding.vertices[0].id == "intuitive"
+    assert understanding.vertices[1].id == "systematic"
+    assert understanding.vertices[2].id == "exploratory"
+
+    # Check third triad (value_character)
+    value = config.triads[2]
+    assert value.id == "value_character"
+    assert value.name == "Value Character"
+    assert len(value.vertices) == 3
+    assert value.vertices[0].id == "foundational"
+    assert value.vertices[1].id == "amplifying"
+    assert value.vertices[2].id == "enabling"

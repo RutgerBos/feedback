@@ -1,0 +1,69 @@
+# Triad Definitions for SenseMaker Feedback Application
+#
+# This file defines the triangular signifiers (triads) that users place their stories on.
+# Each triad has three vertices with positive descriptors. Users place their story somewhere
+# within the triangle based on how their experience relates to these three dimensions.
+#
+# Configuration format:
+# - version: Config file format version
+# - context: The domain/context for which these triads are designed
+# - triads: List of triad definitions
+#   - id: Unique identifier for the triad
+#   - name: Display name for the triad
+#   - description: What aspect of the experience this triad captures
+#   - vertices: Exactly 3 vertices, each with:
+#     - id: Unique identifier within the triad
+#     - label: Short display label
+#     - description: Longer explanation of what this vertex represents
+
+version: "1.0"
+context: "internal_tooling"
+
+triads:
+  - id: workflow_nature
+    name: Work Flow Nature
+    description: How does work flow through this experience?
+    vertices:
+      - id: streamlined
+        label: Streamlined
+        description: Efficient, smooth, direct
+
+      - id: creative
+        label: Creative
+        description: Requires ingenuity, flexible approach
+
+      - id: collaborative
+        label: Collaborative
+        description: Involves coordination, teamwork
+
+  - id: understanding_quality
+    name: Understanding Quality
+    description: How do you come to understand this?
+    vertices:
+      - id: intuitive
+        label: Intuitive
+        description: Immediately clear, natural
+
+      - id: systematic
+        label: Systematic
+        description: Understandable through structured approach
+
+      - id: exploratory
+        label: Exploratory
+        description: Discovered through experimentation
+
+  - id: value_character
+    name: Value Character
+    description: What kind of value does this provide?
+    vertices:
+      - id: foundational
+        label: Foundational
+        description: Enables other work, essential infrastructure
+
+      - id: amplifying
+        label: Amplifying
+        description: Multiplies effectiveness, force multiplier
+
+      - id: enabling
+        label: Enabling
+        description: Opens new possibilities, creates opportunities
