@@ -129,3 +129,42 @@ def test_submit_story_with_metadata(test_db):
     assert story["metadata"]["user_pseudonym"] == "user_abc123"
 
     app.dependency_overrides.clear()
+
+
+def test_submit_story_without_metadata(test_db):
+    """Can submit a story without metadata - metadata is optional."""
+    from src.api.main import app
+    from src.api.stories import get_storage
+    from src.adapters.mongodb_storage import MongoDBStorageAdapter
+
+    def override_get_storage():
+        return MongoDBStorageAdapter(test_db)
+
+    app.dependency_overrides[get_storage] = override_get_storage
+
+    client = TestClient(app)
+
+    # Submit story without metadata field at all
+    response = client.post(
+        "/api/stories",
+        json={
+            "story_text": "The new feature made my workflow much faster and more efficient today. " * 2,
+            "triads": [
+                {"triad_id": "workflow_nature", "x": 0.9, "y": 0.05},
+                {"triad_id": "understanding_quality", "x": 0.7, "y": 0.2},
+                {"triad_id": "value_character", "x": 0.8, "y": 0.1},
+            ],
+            # No metadata field
+        },
+    )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert "story_id" in data
+
+    # Verify story was saved without metadata
+    story = test_db.stories.find_one({"_id": data["story_id"]})
+    assert story is not None
+    assert story.get("metadata") is None or story.get("metadata") == {}
+
+    app.dependency_overrides.clear()
