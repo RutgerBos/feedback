@@ -2,6 +2,63 @@
 
 **Note**: This project uses [bd (beads)](https://github.com/steveyegge/beads) for issue tracking. Use `bd` commands instead of markdown TODOs. See AGENTS.md for workflow details.
 
+## Git Workflow
+
+**Branch Strategy**: Each user story is developed on its own feature branch.
+
+### Starting a New Story
+
+1. **Create a feature branch** from main:
+   ```bash
+   git checkout main
+   git pull origin main
+   git checkout -b story-X.Y-short-description
+   # Example: git checkout -b story-1.1-submit-story
+   ```
+
+2. **Work on the story** following TDD:
+   - Make commits as you progress (RED, GREEN, REFACTOR)
+   - Reference the beads issue in commit messages (e.g., `feedback-abc`)
+   - Keep commits focused and atomic
+
+3. **Create a Pull Request** when story is complete:
+   ```bash
+   # Push the branch
+   git push -u origin story-X.Y-short-description
+
+   # Create PR using GitHub CLI
+   gh pr create --title "Story X.Y: Description" --body "$(cat <<'EOF'
+   ## Summary
+   <Brief description of what was implemented>
+
+   ## Changes
+   - Change 1
+   - Change 2
+
+   ## Tests
+   All X tests passing
+
+   ## Beads Issue
+   Closes feedback-xyz
+
+   🤖 Generated with [Claude Code](https://claude.com/claude-code)
+   EOF
+   )"
+   ```
+
+4. **After PR is merged**:
+   - Close the beads issue: `bd close feedback-xyz`
+   - Delete the local branch: `git branch -d story-X.Y-short-description`
+   - Pull latest main: `git checkout main && git pull origin main`
+
+### Benefits of This Workflow
+
+- **Isolated development**: Each story is self-contained
+- **Easy code review**: PR contains all changes for one story
+- **Safe experimentation**: Can abandon branch if approach doesn't work
+- **Clean history**: Main branch only contains completed, reviewed work
+- **Parallel work**: Multiple stories can be developed simultaneously on different branches
+
 ## Philosophy
 
 This project follows **Kent Beck's pure Test-Driven Development** methodology and maintains strict separation between behavioral and structural changes. The goal is to build software incrementally, with confidence, through small safe steps.
