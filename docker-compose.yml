@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: sensemaker-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: sensemaker
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - sensemaker-network
+
+  neo4j:
+    image: neo4j:5.14-community
+    container_name: sensemaker-neo4j
+    ports:
+      - "7474:7474"  # HTTP
+      - "7687:7687"  # Bolt
+    environment:
+      NEO4J_AUTH: neo4j/password
+      NEO4J_dbms_memory_pagecache_size: 512M
+      NEO4J_dbms_memory_heap_max__size: 512M
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    networks:
+      - sensemaker-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: sensemaker-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - sensemaker-network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sensemaker-api
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGODB_URL=mongodb://admin:password@mongodb:27017
+      - NEO4J_URL=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=password
+      - REDIS_URL=redis://redis:6379
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./config:/app/config
+    depends_on:
+      - mongodb
+      - neo4j
+      - redis
+    networks:
+      - sensemaker-network
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  mongodb_data:
+  neo4j_data:
+  neo4j_logs:
+  redis_data:
+
+networks:
+  sensemaker-network:
+    driver: bridge
