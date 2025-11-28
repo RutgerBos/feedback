@@ -24,6 +24,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.config.triad_loader import load_triad_config
+from src.api.stories import router as stories_router
 
 
 @asynccontextmanager
@@ -67,6 +68,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register routers
+app.include_router(stories_router)
 
 
 @app.get("/health")
