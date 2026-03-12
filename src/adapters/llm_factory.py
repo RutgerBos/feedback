@@ -2,6 +2,7 @@
 Factory for creating LLM provider instances from configuration.
 """
 
+import anthropic
 from src.ports.llm import LLMPort
 
 
@@ -23,7 +24,6 @@ def create_llm_provider(config: dict) -> LLMPort:
     provider = config.get("provider", "").lower()
 
     if provider == "claude":
-        import anthropic
         from src.adapters.claude_llm import ClaudeLLMAdapter
         api_key = config.get("api_key")
         client = anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
