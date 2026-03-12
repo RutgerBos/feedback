@@ -14,7 +14,8 @@ from src.services.story_submission import (
     StorySubmissionResult,
 )
 from src.ports.storage import StoragePort
-from src.adapters.mongodb_storage import MongoDBStorageAdapter, NotFoundError
+from src.ports.errors import NotFoundError
+from src.adapters.mongodb_storage import MongoDBStorageAdapter
 from pymongo import MongoClient
 
 

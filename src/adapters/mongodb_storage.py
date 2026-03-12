@@ -7,19 +7,8 @@ This adapter provides concrete MongoDB implementation of the StoragePort interfa
 from typing import Dict, Any, List
 from pymongo.database import Database
 from src.ports.storage import StoragePort
+from src.ports.errors import NotFoundError, StorageError
 from src.domain.models import Story, TriadPlacement, TriadCoordinates, StoryMetadata
-
-
-class NotFoundError(Exception):
-    """Raised when a story is not found in storage."""
-
-    pass
-
-
-class StorageError(Exception):
-    """Raised when storage operations fail."""
-
-    pass
 
 
 class MongoDBStorageAdapter(StoragePort):

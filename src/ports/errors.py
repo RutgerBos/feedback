@@ -1,0 +1,17 @@
+"""
+Domain exceptions for the ports layer.
+
+These exceptions are raised by StoragePort implementations and caught
+by the application layer. Keeping them here ensures the API layer
+never needs to import from concrete adapters.
+"""
+
+
+class NotFoundError(Exception):
+    """Raised when a requested resource does not exist in storage."""
+    pass
+
+
+class StorageError(Exception):
+    """Raised when a storage operation fails due to infrastructure issues."""
+    pass

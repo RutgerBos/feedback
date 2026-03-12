@@ -84,7 +84,7 @@ def test_saved_story_can_be_retrieved(storage_adapter):
 
 def test_get_nonexistent_story_raises_error(storage_adapter):
     """Attempting to get a story that doesn't exist raises an error."""
-    from src.adapters.mongodb_storage import NotFoundError
+    from src.ports.errors import NotFoundError
 
     with pytest.raises(NotFoundError, match="Story not found"):
         storage_adapter.get_story("nonexistent-id-12345")
