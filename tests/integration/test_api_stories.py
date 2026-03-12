@@ -24,9 +24,11 @@ def api_client(test_db):
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
-    with TestClient(app) as client:
-        yield client
-    del app.dependency_overrides[get_storage]
+    try:
+        with TestClient(app) as client:
+            yield client
+    finally:
+        app.dependency_overrides.pop(get_storage, None)
 
 
 def test_submit_story_via_api(test_db, api_client):
