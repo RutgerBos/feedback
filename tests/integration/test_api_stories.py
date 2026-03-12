@@ -111,6 +111,46 @@ def test_submit_story_with_metadata(test_db, api_client):
     assert story["metadata"]["user_pseudonym"] == "user_abc123"
 
 
+def test_get_story_by_id(test_db, api_client):
+    """GET /api/stories/{id} returns a story with all fields."""
+    client = api_client
+
+    # First submit a story
+    submit_response = client.post(
+        "/api/stories",
+        json={
+            "story_text": "The deployment pipeline finally works smoothly after months of effort. " * 2,
+            "triads": [
+                {"triad_id": "workflow_nature", "x": 0.5, "y": 0.3},
+                {"triad_id": "understanding_quality", "x": 0.4, "y": 0.4},
+                {"triad_id": "value_character", "x": 0.3, "y": 0.5},
+            ],
+            "metadata": {"department": "engineering", "role": "developer"},
+        },
+    )
+    story_id = submit_response.json()["story_id"]
+
+    # Now retrieve it
+    response = client.get(f"/api/stories/{story_id}")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == story_id
+    assert "deployment pipeline" in data["story_text"]
+    assert len(data["triads"]) == 3
+    assert data["metadata"]["department"] == "engineering"
+    assert "timestamp" in data
+
+
+def test_get_story_returns_404_for_unknown_id(test_db, api_client):
+    """GET /api/stories/{id} returns 404 for a non-existent story."""
+    client = api_client
+
+    response = client.get("/api/stories/nonexistent-id-xyz")
+
+    assert response.status_code == 404
+
+
 def test_submit_story_without_metadata(test_db, api_client):
     """Can submit a story without metadata - metadata is optional."""
     client = api_client
