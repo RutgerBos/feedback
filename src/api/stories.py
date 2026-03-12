@@ -71,15 +71,34 @@ def get_storage() -> StoragePort:
     return MongoDBStorageAdapter(db)
 
 
+class _NoOpLLM(LLMPort):
+    """
+    Fallback LLM that performs no extraction.
+
+    Used when no LLM provider is configured. Stories are submitted and saved
+    normally; entity extraction is silently skipped (status remains 'pending').
+    Override get_llm via dependency_overrides to use a real LLM.
+    """
+
+    def extract_entities(self, story_text: str):
+        from src.ports.llm import EntityExtraction
+        return EntityExtraction(entities=[], themes=[])
+
+    def extract_themes(self, story_text: str) -> list:
+        return []
+
+    def extract_relationships(self, story_text: str) -> list:
+        return []
+
+
 def get_llm() -> LLMPort:
     """
     Dependency that provides LLM port.
 
-    Notes:
-        - Override in tests via app.dependency_overrides[get_llm]
-        - In production, configure via environment variables
+    Returns a no-op implementation by default. Override in tests or production
+    with a real provider via app.dependency_overrides[get_llm].
     """
-    raise RuntimeError("LLM not configured — override get_llm dependency")
+    return _NoOpLLM()
 
 
 def get_entity_extraction_service(
