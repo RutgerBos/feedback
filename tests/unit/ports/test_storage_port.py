@@ -41,6 +41,21 @@ def test_storage_port_has_get_story_method():
         IncompleteStorage()
 
 
+def test_storage_port_has_list_stories_method():
+    """StoragePort requires list_stories implementation."""
+    from src.ports.storage import StoragePort
+
+    class IncompleteStorage(StoragePort):
+        def save_story(self, story):
+            pass
+
+        def get_story(self, story_id: str):
+            pass
+
+    with pytest.raises(TypeError, match="abstract"):
+        IncompleteStorage()
+
+
 def test_can_implement_storage_port():
     """Can create a valid StoragePort implementation."""
     from src.ports.storage import StoragePort
@@ -51,8 +66,10 @@ def test_can_implement_storage_port():
             return "fake-id-123"
 
         def get_story(self, story_id: str) -> Story:
-            # Just a stub for testing
             raise NotImplementedError()
+
+        def list_stories(self, limit: int = 20, offset: int = 0) -> list[Story]:
+            return []
 
     # Should be able to instantiate
     storage = FakeStorage()
