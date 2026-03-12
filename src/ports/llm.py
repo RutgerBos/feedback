@@ -12,15 +12,16 @@ from typing import List, Dict, Any, Tuple
 class EntityExtraction:
     """
     Responsibilities:
-    - Hold extracted entities and themes from story text
-    - Provide structured output from LLM processing
+    - Hold extracted entities and rich theme objects from a combined extraction
 
     Collaborators:
     - None (value object)
 
     Notes:
-    - Simple data holder for LLM extraction results
-    - Structure will evolve as we understand extraction needs
+    - Used by extract_entities() for a combined extraction pass
+    - entities: [{"name": "...", "type": "..."}]
+    - themes: [{"name": "...", "description": "..."}]  (rich objects, not plain strings)
+    - For plain theme strings use extract_themes() instead
     """
 
     def __init__(self, entities: List[Dict[str, Any]], themes: List[Dict[str, Any]]):
@@ -58,8 +59,7 @@ class LLMPort(ABC):
             EntityExtraction: Structured extraction results
 
         Raises:
-            LLMError: If LLM API call fails
-            ValidationError: If LLM response cannot be parsed
+            LLMError: If LLM API call fails or response cannot be parsed
         """
         pass
 
