@@ -31,6 +31,15 @@ def api_client(test_db):
         app.dependency_overrides.pop(get_storage, None)
 
 
+def test_list_stories_rejects_invalid_pagination(test_db, api_client):
+    """GET /api/stories rejects negative offset and out-of-range limit."""
+    client = api_client
+
+    assert client.get("/api/stories?offset=-1").status_code == 422
+    assert client.get("/api/stories?limit=0").status_code == 422
+    assert client.get("/api/stories?limit=101").status_code == 422
+
+
 def test_submit_story_via_api(test_db, api_client):
     """Can submit a story via POST /api/stories."""
     client = api_client

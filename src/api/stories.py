@@ -6,7 +6,7 @@ Handles story submission and retrieval.
 
 from datetime import datetime
 from typing import Optional, List
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 from src.services.story_submission import (
     StorySubmissionService,
@@ -132,8 +132,8 @@ def _story_to_response(story) -> StoryResponse:
 
 @router.get("", response_model=StoryListResponse)
 async def list_stories(
-    limit: int = 20,
-    offset: int = 0,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     storage: StoragePort = Depends(get_storage),
 ) -> StoryListResponse:
     """
