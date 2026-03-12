@@ -70,6 +70,42 @@ def test_claude_adapter_extract_themes_returns_list_of_strings():
     assert result == ["automation friction", "tooling reliability", "developer experience"]
 
 
+def test_claude_adapter_extract_entities_raises_on_bad_shape():
+    """extract_entities raises LLMError when response has wrong shape."""
+    from src.adapters.claude_llm import ClaudeLLMAdapter
+    from src.ports.errors import LLMError
+
+    bad_response = json.dumps({"entities": "not-a-list", "themes": []})
+    adapter = ClaudeLLMAdapter(client=make_fake_anthropic_client(bad_response))
+
+    with pytest.raises(LLMError):
+        adapter.extract_entities("some story text here")
+
+
+def test_claude_adapter_extract_themes_raises_on_bad_shape():
+    """extract_themes raises LLMError when themes is not a list."""
+    from src.adapters.claude_llm import ClaudeLLMAdapter
+    from src.ports.errors import LLMError
+
+    bad_response = json.dumps({"themes": "not-a-list"})
+    adapter = ClaudeLLMAdapter(client=make_fake_anthropic_client(bad_response))
+
+    with pytest.raises(LLMError):
+        adapter.extract_themes("some story text here")
+
+
+def test_claude_adapter_extract_relationships_raises_on_bad_shape():
+    """extract_relationships raises LLMError when relationships is not a list."""
+    from src.adapters.claude_llm import ClaudeLLMAdapter
+    from src.ports.errors import LLMError
+
+    bad_response = json.dumps({"relationships": {"not": "a-list"}})
+    adapter = ClaudeLLMAdapter(client=make_fake_anthropic_client(bad_response))
+
+    with pytest.raises(LLMError):
+        adapter.extract_relationships("some story text here")
+
+
 def test_claude_adapter_extract_relationships_returns_list_of_dicts():
     """extract_relationships parses Anthropic JSON response into list of dicts."""
     from src.adapters.claude_llm import ClaudeLLMAdapter

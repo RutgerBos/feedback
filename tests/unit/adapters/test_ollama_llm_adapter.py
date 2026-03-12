@@ -57,6 +57,51 @@ def test_ollama_adapter_extract_themes_returns_list_of_strings():
     assert result == ["tooling reliability", "developer friction"]
 
 
+def test_ollama_adapter_raises_on_http_error():
+    """extract_entities raises LLMError when the HTTP response indicates an error."""
+    from src.adapters.ollama_llm import OllamaLLMAdapter
+    from src.ports.errors import LLMError
+
+    class ErrorResponse:
+        def raise_for_status(self):
+            raise Exception("500 Server Error")
+        def json(self):
+            return {"error": "model not found"}
+
+    class ErrorClient:
+        def post(self, url, **kwargs):
+            return ErrorResponse()
+
+    adapter = OllamaLLMAdapter(http_client=ErrorClient())
+
+    with pytest.raises(LLMError):
+        adapter.extract_entities("some story text here")
+
+
+def test_ollama_adapter_extract_entities_raises_on_bad_shape():
+    """extract_entities raises LLMError when response has wrong shape."""
+    from src.adapters.ollama_llm import OllamaLLMAdapter
+    from src.ports.errors import LLMError
+
+    bad_response = json.dumps({"entities": "not-a-list", "themes": []})
+    adapter = OllamaLLMAdapter(http_client=make_fake_http_client(bad_response))
+
+    with pytest.raises(LLMError):
+        adapter.extract_entities("some story text here")
+
+
+def test_ollama_adapter_extract_themes_raises_on_bad_shape():
+    """extract_themes raises LLMError when themes is not a list."""
+    from src.adapters.ollama_llm import OllamaLLMAdapter
+    from src.ports.errors import LLMError
+
+    bad_response = json.dumps({"themes": "not-a-list"})
+    adapter = OllamaLLMAdapter(http_client=make_fake_http_client(bad_response))
+
+    with pytest.raises(LLMError):
+        adapter.extract_themes("some story text here")
+
+
 def test_ollama_adapter_extract_relationships_returns_list_of_dicts():
     """extract_relationships parses ollama JSON response into list of dicts."""
     from src.adapters.ollama_llm import OllamaLLMAdapter
