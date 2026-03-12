@@ -4,18 +4,43 @@ Stories API endpoints.
 Handles story submission and retrieval.
 """
 
+from datetime import datetime
+from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
 from src.services.story_submission import (
     StorySubmissionService,
     StorySubmissionRequest,
     StorySubmissionResult,
 )
 from src.ports.storage import StoragePort
-from src.adapters.mongodb_storage import MongoDBStorageAdapter
+from src.adapters.mongodb_storage import MongoDBStorageAdapter, NotFoundError
 from pymongo import MongoClient
 
 
 router = APIRouter(prefix="/api/stories", tags=["stories"])
+
+
+class TriadResponse(BaseModel):
+    triad_id: str
+    x: float
+    y: float
+
+
+class MetadataResponse(BaseModel):
+    user_pseudonym: Optional[str] = None
+    department: Optional[str] = None
+    role: Optional[str] = None
+    tool_context: Optional[str] = None
+
+
+class StoryResponse(BaseModel):
+    id: str
+    story_text: str
+    triads: List[TriadResponse]
+    metadata: Optional[MetadataResponse] = None
+    timestamp: datetime
+    processing_status: str
 
 
 def get_storage() -> StoragePort:
@@ -76,3 +101,47 @@ async def submit_story(
     except Exception as e:
         # Log the error in production
         raise HTTPException(status_code=500, detail="Failed to submit story")
+
+
+@router.get("/{story_id}", response_model=StoryResponse)
+async def get_story(
+    story_id: str,
+    storage: StoragePort = Depends(get_storage),
+) -> StoryResponse:
+    """
+    Retrieve a story by ID.
+
+    Args:
+        story_id: Unique identifier of the story
+        storage: Injected storage port
+
+    Returns:
+        StoryResponse with all story fields
+
+    Raises:
+        HTTPException 404: If story not found
+    """
+    try:
+        story = storage.get_story(story_id)
+        return StoryResponse(
+            id=story.id,
+            story_text=story.story_text,
+            triads=[
+                TriadResponse(
+                    triad_id=p.triad_id,
+                    x=p.coordinates.x,
+                    y=p.coordinates.y,
+                )
+                for p in story.triads
+            ],
+            metadata=MetadataResponse(
+                user_pseudonym=story.metadata.user_pseudonym,
+                department=story.metadata.department,
+                role=story.metadata.role,
+                tool_context=story.metadata.tool_context,
+            ) if story.metadata else None,
+            timestamp=story.timestamp,
+            processing_status=story.processing_status,
+        )
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail=f"Story not found: {story_id}")
