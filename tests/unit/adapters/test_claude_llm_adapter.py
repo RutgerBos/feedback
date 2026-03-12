@@ -70,6 +70,17 @@ def test_claude_adapter_extract_themes_returns_list_of_strings():
     assert result == ["automation friction", "tooling reliability", "developer experience"]
 
 
+def test_claude_adapter_extract_entities_raises_on_missing_key():
+    """extract_entities raises LLMError when expected keys are absent."""
+    from src.adapters.claude_llm import ClaudeLLMAdapter
+    from src.ports.errors import LLMError
+
+    adapter = ClaudeLLMAdapter(client=make_fake_anthropic_client("{}"))
+
+    with pytest.raises(LLMError):
+        adapter.extract_entities("some story text here")
+
+
 def test_claude_adapter_extract_entities_raises_on_bad_shape():
     """extract_entities raises LLMError when response has wrong shape."""
     from src.adapters.claude_llm import ClaudeLLMAdapter

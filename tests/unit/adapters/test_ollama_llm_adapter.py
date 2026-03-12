@@ -82,6 +82,17 @@ def test_ollama_adapter_raises_on_http_error():
         adapter.extract_entities("some story text here")
 
 
+def test_ollama_adapter_extract_entities_raises_on_missing_key():
+    """extract_entities raises LLMError when expected keys are absent."""
+    from src.adapters.ollama_llm import OllamaLLMAdapter
+    from src.ports.errors import LLMError
+
+    adapter = OllamaLLMAdapter(http_client=make_fake_http_client("{}"))
+
+    with pytest.raises(LLMError):
+        adapter.extract_entities("some story text here")
+
+
 def test_ollama_adapter_extract_entities_raises_on_bad_shape():
     """extract_entities raises LLMError when response has wrong shape."""
     from src.adapters.ollama_llm import OllamaLLMAdapter
