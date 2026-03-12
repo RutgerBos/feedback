@@ -32,12 +32,14 @@ def api_client(test_db):
 
 
 def test_list_stories_rejects_invalid_pagination(test_db, api_client):
-    """GET /api/stories rejects negative offset and out-of-range limit."""
+    """GET /api/stories rejects negative offset and out-of-range limit (1-100)."""
     client = api_client
 
     assert client.get("/api/stories?offset=-1").status_code == 422
     assert client.get("/api/stories?limit=0").status_code == 422
     assert client.get("/api/stories?limit=101").status_code == 422
+    # offset has no upper bound — large page offsets are valid
+    assert client.get("/api/stories?offset=10000").status_code == 200
 
 
 def test_submit_story_via_api(test_db, api_client):
