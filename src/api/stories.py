@@ -6,14 +6,16 @@ Handles story submission and retrieval.
 
 from datetime import datetime
 from typing import Optional, List
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Depends, Query
 from pydantic import BaseModel
 from src.services.story_submission import (
     StorySubmissionService,
     StorySubmissionRequest,
     StorySubmissionResult,
 )
+from src.services.entity_extraction import EntityExtractionService
 from src.ports.storage import StoragePort
+from src.ports.llm import LLMPort
 from src.ports.errors import NotFoundError
 from src.adapters.mongodb_storage import MongoDBStorageAdapter
 from pymongo import MongoClient
@@ -69,6 +71,25 @@ def get_storage() -> StoragePort:
     return MongoDBStorageAdapter(db)
 
 
+def get_llm() -> LLMPort:
+    """
+    Dependency that provides LLM port.
+
+    Notes:
+        - Override in tests via app.dependency_overrides[get_llm]
+        - In production, configure via environment variables
+    """
+    raise RuntimeError("LLM not configured — override get_llm dependency")
+
+
+def get_entity_extraction_service(
+    storage: StoragePort = Depends(get_storage),
+    llm: LLMPort = Depends(get_llm),
+) -> EntityExtractionService:
+    """Dependency that provides entity extraction service."""
+    return EntityExtractionService(storage=storage, llm=llm)
+
+
 def get_submission_service(storage: StoragePort = Depends(get_storage)) -> StorySubmissionService:
     """
     Dependency that provides story submission service.
@@ -85,14 +106,18 @@ def get_submission_service(storage: StoragePort = Depends(get_storage)) -> Story
 @router.post("", response_model=StorySubmissionResult, status_code=201)
 async def submit_story(
     request: StorySubmissionRequest,
+    background_tasks: BackgroundTasks,
     service: StorySubmissionService = Depends(get_submission_service),
+    entity_service: EntityExtractionService = Depends(get_entity_extraction_service),
 ) -> StorySubmissionResult:
     """
     Submit a new story with triad placements.
 
     Args:
         request: Story submission data
+        background_tasks: FastAPI background task manager
         service: Injected story submission service
+        entity_service: Injected entity extraction service
 
     Returns:
         StorySubmissionResult with story ID
@@ -103,6 +128,7 @@ async def submit_story(
     """
     try:
         result = service.submit_story(request)
+        background_tasks.add_task(entity_service.extract_for_story, result.story_id)
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

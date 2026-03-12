@@ -20,15 +20,28 @@ def test_db():
 def api_client(test_db):
     """Provide a TestClient with storage overridden to use the test database."""
     from src.api.main import app
-    from src.api.stories import get_storage
+    from src.api.stories import get_storage, get_llm
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
+    from src.ports.llm import LLMPort, EntityExtraction
+
+    class NoOpLLM(LLMPort):
+        def extract_entities(self, story_text: str) -> EntityExtraction:
+            return EntityExtraction(entities=[], themes=[])
+
+        def extract_themes(self, story_text: str) -> list:
+            return []
+
+        def extract_relationships(self, story_text: str) -> list:
+            return []
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
+    app.dependency_overrides[get_llm] = lambda: NoOpLLM()
     try:
         with TestClient(app) as client:
             yield client
     finally:
         app.dependency_overrides.pop(get_storage, None)
+        app.dependency_overrides.pop(get_llm, None)
 
 
 def test_list_stories_rejects_invalid_pagination(test_db, api_client):
@@ -229,6 +242,53 @@ def test_get_story_returns_404_for_unknown_id(test_db, api_client):
     response = client.get("/api/stories/nonexistent-id-xyz")
 
     assert response.status_code == 404
+
+
+def test_submit_story_triggers_entity_extraction(test_db):
+    """Submitting a story triggers background entity extraction via FakeLLM."""
+    from src.api.main import app
+    from src.api.stories import get_storage, get_llm
+    from src.adapters.mongodb_storage import MongoDBStorageAdapter
+    from src.ports.llm import LLMPort, EntityExtraction
+
+    class FakeLLM(LLMPort):
+        def extract_entities(self, story_text: str) -> EntityExtraction:
+            return EntityExtraction(
+                entities=[{"name": "CI pipeline", "type": "tool"}],
+                themes=[],
+            )
+
+        def extract_themes(self, story_text: str) -> list:
+            return []
+
+        def extract_relationships(self, story_text: str) -> list:
+            return []
+
+    app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
+    app.dependency_overrides[get_llm] = lambda: FakeLLM()
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/stories",
+                json={
+                    "story_text": "CI failures blocked our deployment repeatedly this sprint. " * 2,
+                    "triads": [
+                        {"triad_id": "workflow_nature", "x": 0.3, "y": 0.6},
+                        {"triad_id": "understanding_quality", "x": 0.5, "y": 0.4},
+                        {"triad_id": "value_character", "x": 0.2, "y": 0.7},
+                    ],
+                },
+            )
+            assert response.status_code == 201
+            story_id = response.json()["story_id"]
+    finally:
+        app.dependency_overrides.pop(get_storage, None)
+        app.dependency_overrides.pop(get_llm, None)
+
+    # Background task should have run; verify extraction results in DB
+    doc = test_db.stories.find_one({"_id": story_id})
+    assert doc["processing_status"] == "processed"
+    assert doc["entities"] == [{"name": "CI pipeline", "type": "tool"}]
 
 
 def test_submit_story_without_metadata(test_db, api_client):
