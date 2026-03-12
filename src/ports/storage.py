@@ -6,6 +6,7 @@ independent of the actual storage implementation (MongoDB, PostgreSQL, etc).
 """
 
 from abc import ABC, abstractmethod
+from typing import List
 from src.domain.models import Story
 
 
@@ -24,8 +25,6 @@ class StoragePort(ABC):
     - Operations are atomic
     - May raise StorageError for infrastructure issues
     - May raise NotFoundError if story doesn't exist
-    - Interface designed for current needs (Story 1.1)
-    - Will expand with query methods as needed
     """
 
     @abstractmethod
@@ -57,6 +56,23 @@ class StoragePort(ABC):
 
         Raises:
             NotFoundError: If no story exists with the given ID
+            StorageError: If retrieval fails due to infrastructure issues
+        """
+        pass
+
+    @abstractmethod
+    def list_stories(self, limit: int = 20, offset: int = 0) -> List[Story]:
+        """
+        Retrieve a paginated list of stories, newest first.
+
+        Args:
+            limit: Maximum number of stories to return (default 20)
+            offset: Number of stories to skip (default 0)
+
+        Returns:
+            List[Story]: List of story domain objects
+
+        Raises:
             StorageError: If retrieval fails due to infrastructure issues
         """
         pass
