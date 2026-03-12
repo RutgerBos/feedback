@@ -6,7 +6,7 @@ independent of the actual LLM provider (Claude, OpenAI, local model, etc).
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 
 
 class EntityExtraction:
@@ -49,7 +49,7 @@ class LLMPort(ABC):
     @abstractmethod
     def extract_entities(self, story_text: str) -> EntityExtraction:
         """
-        Extract entities and themes from story text.
+        Extract entities from story text.
 
         Args:
             story_text: The narrative text to analyze
@@ -60,5 +60,37 @@ class LLMPort(ABC):
         Raises:
             LLMError: If LLM API call fails
             ValidationError: If LLM response cannot be parsed
+        """
+        pass
+
+    @abstractmethod
+    def extract_themes(self, story_text: str) -> List[str]:
+        """
+        Extract themes from story text.
+
+        Args:
+            story_text: The narrative text to analyze
+
+        Returns:
+            List[str]: List of theme descriptions (1-5 per story)
+
+        Raises:
+            LLMError: If LLM API call fails
+        """
+        pass
+
+    @abstractmethod
+    def extract_relationships(self, story_text: str) -> List[Dict[str, Any]]:
+        """
+        Extract relationships between entities in story text.
+
+        Args:
+            story_text: The narrative text to analyze
+
+        Returns:
+            List[Dict]: Each dict has 'source', 'target', 'relationship' keys
+
+        Raises:
+            LLMError: If LLM API call fails
         """
         pass
