@@ -78,6 +78,75 @@ def test_submit_story_with_invalid_data(test_db, api_client):
     assert response.status_code == 422  # Pydantic validation error
 
 
+def test_list_stories_returns_all_stories(test_db, api_client):
+    """GET /api/stories returns all submitted stories."""
+    client = api_client
+
+    story_text = "Working on the new feature was a great collaborative experience. " * 2
+
+    # Submit two stories
+    for i in range(2):
+        client.post(
+            "/api/stories",
+            json={
+                "story_text": story_text,
+                "triads": [
+                    {"triad_id": "workflow_nature", "x": 0.3, "y": 0.4},
+                    {"triad_id": "understanding_quality", "x": 0.4, "y": 0.3},
+                    {"triad_id": "value_character", "x": 0.5, "y": 0.2},
+                ],
+            },
+        )
+
+    response = client.get("/api/stories")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["stories"]) == 2
+    assert data["total"] == 2
+
+
+def test_list_stories_returns_empty_list_when_no_stories(test_db, api_client):
+    """GET /api/stories returns empty list when no stories exist."""
+    client = api_client
+
+    response = client.get("/api/stories")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["stories"] == []
+    assert data["total"] == 0
+
+
+def test_list_stories_supports_pagination(test_db, api_client):
+    """GET /api/stories supports limit and offset query params."""
+    client = api_client
+
+    story_text = "The CI system has improved significantly after the recent infrastructure changes. " * 2
+
+    # Submit 3 stories
+    for _ in range(3):
+        client.post(
+            "/api/stories",
+            json={
+                "story_text": story_text,
+                "triads": [
+                    {"triad_id": "workflow_nature", "x": 0.3, "y": 0.4},
+                    {"triad_id": "understanding_quality", "x": 0.4, "y": 0.3},
+                    {"triad_id": "value_character", "x": 0.5, "y": 0.2},
+                ],
+            },
+        )
+
+    response = client.get("/api/stories?limit=2&offset=0")
+    assert response.status_code == 200
+    assert len(response.json()["stories"]) == 2
+
+    response = client.get("/api/stories?limit=2&offset=2")
+    assert response.status_code == 200
+    assert len(response.json()["stories"]) == 1
+
+
 def test_submit_story_with_metadata(test_db, api_client):
     """Can submit a story with optional metadata (department, role, user_pseudonym)."""
     client = api_client
