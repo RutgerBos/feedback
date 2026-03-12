@@ -15,8 +15,8 @@ from src.services.story_submission import (
 )
 from src.services.entity_extraction import EntityExtractionService
 from src.ports.storage import StoragePort
-from src.ports.llm import LLMPort
-from src.ports.errors import NotFoundError
+from src.ports.llm import LLMPort, EntityExtraction
+from src.ports.errors import NotFoundError, LLMError
 from src.adapters.mongodb_storage import MongoDBStorageAdapter
 from pymongo import MongoClient
 
@@ -73,22 +73,22 @@ def get_storage() -> StoragePort:
 
 class _NoOpLLM(LLMPort):
     """
-    Fallback LLM that performs no extraction.
+    Fallback LLM used when no provider is configured.
 
-    Used when no LLM provider is configured. Stories are submitted and saved
-    normally; entity extraction is silently skipped (status remains 'pending').
-    Override get_llm via dependency_overrides to use a real LLM.
+    Raises LLMError on all calls so EntityExtractionService sets
+    processing_status='failed' rather than silently marking stories as
+    'processed' with empty entities. This keeps 'pending' reserved for
+    stories that have not yet been attempted.
     """
 
-    def extract_entities(self, story_text: str):
-        from src.ports.llm import EntityExtraction
-        return EntityExtraction(entities=[], themes=[])
+    def extract_entities(self, story_text: str) -> EntityExtraction:
+        raise LLMError("No LLM provider configured — override get_llm dependency")
 
     def extract_themes(self, story_text: str) -> list:
-        return []
+        raise LLMError("No LLM provider configured")
 
     def extract_relationships(self, story_text: str) -> list:
-        return []
+        raise LLMError("No LLM provider configured")
 
 
 def get_llm() -> LLMPort:
