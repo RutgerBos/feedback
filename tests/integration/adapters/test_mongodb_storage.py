@@ -200,6 +200,78 @@ def test_list_stories_respects_limit_and_offset(storage_adapter):
     assert len(page_two) == 2
 
 
+def test_update_story_entities_persists_and_round_trips(storage_adapter):
+    """update_story_entities persists entities/themes and they survive a save/get cycle."""
+    from src.ports.errors import NotFoundError
+
+    story = Story(
+        id=str(uuid4()),
+        story_text="CI failures blocked our deployment repeatedly this sprint. " * 3,
+        triads=[
+            TriadPlacement(triad_id="t1", coordinates=TriadCoordinates(x=0.3, y=0.6)),
+            TriadPlacement(triad_id="t2", coordinates=TriadCoordinates(x=0.5, y=0.4)),
+            TriadPlacement(triad_id="t3", coordinates=TriadCoordinates(x=0.2, y=0.7)),
+        ],
+    )
+    storage_adapter.save_story(story)
+
+    entities = [{"name": "CI pipeline", "type": "tool"}, {"name": "deployment", "type": "process"}]
+    themes = ["automation friction"]
+
+    storage_adapter.update_story_entities(
+        story_id=story.id,
+        entities=entities,
+        themes=themes,
+        processing_status="processed",
+    )
+
+    retrieved = storage_adapter.get_story(story.id)
+    assert retrieved.entities == entities
+    assert retrieved.themes == themes
+    assert retrieved.processing_status == "processed"
+
+
+def test_update_story_entities_not_found_raises(storage_adapter):
+    """update_story_entities raises NotFoundError for a missing story."""
+    from src.ports.errors import NotFoundError
+
+    with pytest.raises(NotFoundError):
+        storage_adapter.update_story_entities(
+            story_id="does-not-exist",
+            entities=[],
+            themes=[],
+            processing_status="processed",
+        )
+
+
+def test_entities_survive_save_after_update(storage_adapter):
+    """Extracted entities are not erased by a subsequent save_story call."""
+    story = Story(
+        id=str(uuid4()),
+        story_text="CI failures blocked our deployment repeatedly this sprint. " * 3,
+        triads=[
+            TriadPlacement(triad_id="t1", coordinates=TriadCoordinates(x=0.3, y=0.6)),
+            TriadPlacement(triad_id="t2", coordinates=TriadCoordinates(x=0.5, y=0.4)),
+            TriadPlacement(triad_id="t3", coordinates=TriadCoordinates(x=0.2, y=0.7)),
+        ],
+    )
+    storage_adapter.save_story(story)
+
+    entities = [{"name": "CI pipeline", "type": "tool"}]
+    storage_adapter.update_story_entities(
+        story_id=story.id, entities=entities, themes=[], processing_status="processed"
+    )
+
+    # Reload and re-save (simulates any system that re-saves a retrieved story)
+    retrieved = storage_adapter.get_story(story.id)
+    storage_adapter.save_story(retrieved)
+
+    # Entities must survive the re-save
+    after_resave = storage_adapter.get_story(story.id)
+    assert after_resave.entities == entities
+    assert after_resave.processing_status == "processed"
+
+
 def test_save_multiple_stories(storage_adapter):
     """Can save multiple stories."""
     story1 = Story(
