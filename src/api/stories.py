@@ -43,6 +43,13 @@ class StoryResponse(BaseModel):
     processing_status: str
 
 
+class StoryListResponse(BaseModel):
+    stories: List[StoryResponse]
+    total: int
+    limit: int
+    offset: int
+
+
 def get_storage() -> StoragePort:
     """
     Dependency that provides storage port.
@@ -103,6 +110,52 @@ async def submit_story(
         raise HTTPException(status_code=500, detail="Failed to submit story")
 
 
+def _story_to_response(story) -> StoryResponse:
+    return StoryResponse(
+        id=story.id,
+        story_text=story.story_text,
+        triads=[
+            TriadResponse(triad_id=p.triad_id, x=p.coordinates.x, y=p.coordinates.y)
+            for p in story.triads
+        ],
+        metadata=MetadataResponse(
+            user_pseudonym=story.metadata.user_pseudonym,
+            department=story.metadata.department,
+            role=story.metadata.role,
+            tool_context=story.metadata.tool_context,
+        ) if story.metadata else None,
+        timestamp=story.timestamp,
+        processing_status=story.processing_status,
+    )
+
+
+@router.get("", response_model=StoryListResponse)
+async def list_stories(
+    limit: int = 20,
+    offset: int = 0,
+    storage: StoragePort = Depends(get_storage),
+) -> StoryListResponse:
+    """
+    List all stories with pagination.
+
+    Args:
+        limit: Maximum number of stories to return (default 20)
+        offset: Number of stories to skip (default 0)
+        storage: Injected storage port
+
+    Returns:
+        StoryListResponse with stories and pagination info
+    """
+    stories = storage.list_stories(limit=limit, offset=offset)
+    total = storage.list_stories(limit=10000, offset=0)
+    return StoryListResponse(
+        stories=[_story_to_response(s) for s in stories],
+        total=len(total),
+        limit=limit,
+        offset=offset,
+    )
+
+
 @router.get("/{story_id}", response_model=StoryResponse)
 async def get_story(
     story_id: str,
@@ -123,25 +176,6 @@ async def get_story(
     """
     try:
         story = storage.get_story(story_id)
-        return StoryResponse(
-            id=story.id,
-            story_text=story.story_text,
-            triads=[
-                TriadResponse(
-                    triad_id=p.triad_id,
-                    x=p.coordinates.x,
-                    y=p.coordinates.y,
-                )
-                for p in story.triads
-            ],
-            metadata=MetadataResponse(
-                user_pseudonym=story.metadata.user_pseudonym,
-                department=story.metadata.department,
-                role=story.metadata.role,
-                tool_context=story.metadata.tool_context,
-            ) if story.metadata else None,
-            timestamp=story.timestamp,
-            processing_status=story.processing_status,
-        )
+        return _story_to_response(story)
     except NotFoundError:
         raise HTTPException(status_code=404, detail=f"Story not found: {story_id}")
