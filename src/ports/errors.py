@@ -15,3 +15,8 @@ class NotFoundError(Exception):
 class StorageError(Exception):
     """Raised when a storage operation fails due to infrastructure issues."""
     pass
+
+
+class LLMError(Exception):
+    """Raised when an LLM API call fails or its response cannot be parsed."""
+    pass
