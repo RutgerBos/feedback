@@ -47,10 +47,9 @@ class ClaudeLLMAdapter(LLMPort):
         raw = self._call(prompt)
         try:
             data = json.loads(raw)
-            return EntityExtraction(
-                entities=data.get("entities", []),
-                themes=data.get("themes", []),
-            )
+            entities = self._require_list(data, "entities")
+            themes = self._require_list(data, "themes")
+            return EntityExtraction(entities=entities, themes=themes)
         except (json.JSONDecodeError, KeyError) as e:
             raise LLMError(f"Failed to parse entity extraction response: {e}") from e
 
@@ -64,7 +63,7 @@ class ClaudeLLMAdapter(LLMPort):
         raw = self._call(prompt)
         try:
             data = json.loads(raw)
-            return data.get("themes", [])
+            return self._require_list(data, "themes")
         except (json.JSONDecodeError, KeyError) as e:
             raise LLMError(f"Failed to parse theme extraction response: {e}") from e
 
@@ -79,9 +78,16 @@ class ClaudeLLMAdapter(LLMPort):
         raw = self._call(prompt)
         try:
             data = json.loads(raw)
-            return data.get("relationships", [])
+            return self._require_list(data, "relationships")
         except (json.JSONDecodeError, KeyError) as e:
             raise LLMError(f"Failed to parse relationship extraction response: {e}") from e
+
+    def _require_list(self, data: dict, key: str) -> list:
+        """Extract a list value from parsed JSON, raising LLMError if it's not a list."""
+        value = data.get(key, [])
+        if not isinstance(value, list):
+            raise LLMError(f"Expected '{key}' to be a list, got {type(value).__name__}")
+        return value
 
     def _call(self, prompt: str) -> str:
         """Make a single call to the Claude API and return the text response."""

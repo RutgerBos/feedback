@@ -1,6 +1,7 @@
 """Tests for OllamaLLMAdapter."""
 
 import json
+import pytest
 from src.ports.llm import LLMPort, EntityExtraction
 
 
@@ -8,6 +9,9 @@ def make_fake_http_client(response_text: str):
     """Create a fake HTTP client that returns a canned JSON response."""
 
     class FakeResponse:
+        def raise_for_status(self):
+            pass  # success — no-op
+
         def json(self):
             return {"response": response_text}
 
