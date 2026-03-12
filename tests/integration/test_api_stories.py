@@ -16,20 +16,21 @@ def test_db():
     client.close()
 
 
-def test_submit_story_via_api(test_db):
-    """Can submit a story via POST /api/stories."""
+@pytest.fixture
+def api_client(test_db):
+    """Provide a TestClient with storage overridden to use the test database."""
     from src.api.main import app
-
-    # Override the storage dependency to use test database
     from src.api.stories import get_storage
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
 
-    def override_get_storage():
-        return MongoDBStorageAdapter(test_db)
+    app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
+    yield TestClient(app)
+    app.dependency_overrides.clear()
 
-    app.dependency_overrides[get_storage] = override_get_storage
 
-    client = TestClient(app)
+def test_submit_story_via_api(test_db, api_client):
+    """Can submit a story via POST /api/stories."""
+    client = api_client
 
     response = client.post(
         "/api/stories",
@@ -53,21 +54,10 @@ def test_submit_story_via_api(test_db):
     assert story is not None
     assert "CI pipeline" in story["story_text"]
 
-    app.dependency_overrides.clear()
 
-
-def test_submit_story_with_invalid_data(test_db):
+def test_submit_story_with_invalid_data(test_db, api_client):
     """Submitting invalid data returns 400."""
-    from src.api.main import app
-    from src.api.stories import get_storage
-    from src.adapters.mongodb_storage import MongoDBStorageAdapter
-
-    def override_get_storage():
-        return MongoDBStorageAdapter(test_db)
-
-    app.dependency_overrides[get_storage] = override_get_storage
-
-    client = TestClient(app)
+    client = api_client
 
     # Too short story
     response = client.post(
@@ -84,21 +74,10 @@ def test_submit_story_with_invalid_data(test_db):
 
     assert response.status_code == 422  # Pydantic validation error
 
-    app.dependency_overrides.clear()
 
-
-def test_submit_story_with_metadata(test_db):
+def test_submit_story_with_metadata(test_db, api_client):
     """Can submit a story with optional metadata (department, role, user_pseudonym)."""
-    from src.api.main import app
-    from src.api.stories import get_storage
-    from src.adapters.mongodb_storage import MongoDBStorageAdapter
-
-    def override_get_storage():
-        return MongoDBStorageAdapter(test_db)
-
-    app.dependency_overrides[get_storage] = override_get_storage
-
-    client = TestClient(app)
+    client = api_client
 
     response = client.post(
         "/api/stories",
@@ -128,21 +107,10 @@ def test_submit_story_with_metadata(test_db):
     assert story["metadata"]["role"] == "senior_developer"
     assert story["metadata"]["user_pseudonym"] == "user_abc123"
 
-    app.dependency_overrides.clear()
 
-
-def test_submit_story_without_metadata(test_db):
+def test_submit_story_without_metadata(test_db, api_client):
     """Can submit a story without metadata - metadata is optional."""
-    from src.api.main import app
-    from src.api.stories import get_storage
-    from src.adapters.mongodb_storage import MongoDBStorageAdapter
-
-    def override_get_storage():
-        return MongoDBStorageAdapter(test_db)
-
-    app.dependency_overrides[get_storage] = override_get_storage
-
-    client = TestClient(app)
+    client = api_client
 
     # Submit story without metadata field at all
     response = client.post(
@@ -165,6 +133,4 @@ def test_submit_story_without_metadata(test_db):
     # Verify story was saved without metadata
     story = test_db.stories.find_one({"_id": data["story_id"]})
     assert story is not None
-    assert story.get("metadata") is None or story.get("metadata") == {}
-
-    app.dependency_overrides.clear()
+    assert story["metadata"] is None
