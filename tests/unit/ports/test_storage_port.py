@@ -68,6 +68,9 @@ def test_can_implement_storage_port():
         def get_story(self, story_id: str) -> Story:
             raise NotImplementedError()
 
+        def count_stories(self) -> int:
+            return 0
+
         def list_stories(self, limit: int = 20, offset: int = 0) -> list[Story]:
             return []
 

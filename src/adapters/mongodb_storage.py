@@ -107,6 +107,13 @@ class MongoDBStorageAdapter(StoragePort):
         except Exception as e:
             raise StorageError(f"Failed to retrieve story: {e}") from e
 
+    def count_stories(self) -> int:
+        """Return the total number of stories in the collection."""
+        try:
+            return self.collection.count_documents({})
+        except Exception as e:
+            raise StorageError(f"Failed to count stories: {e}") from e
+
     def list_stories(self, limit: int = 20, offset: int = 0) -> List[Story]:
         """
         Retrieve a paginated list of stories from MongoDB, newest first.

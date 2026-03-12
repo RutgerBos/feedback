@@ -61,6 +61,19 @@ class StoragePort(ABC):
         pass
 
     @abstractmethod
+    def count_stories(self) -> int:
+        """
+        Return the total number of stories in storage.
+
+        Returns:
+            int: Total story count
+
+        Raises:
+            StorageError: If the count fails due to infrastructure issues
+        """
+        pass
+
+    @abstractmethod
     def list_stories(self, limit: int = 20, offset: int = 0) -> List[Story]:
         """
         Retrieve a paginated list of stories, newest first.

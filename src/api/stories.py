@@ -147,10 +147,9 @@ async def list_stories(
         StoryListResponse with stories and pagination info
     """
     stories = storage.list_stories(limit=limit, offset=offset)
-    total = storage.list_stories(limit=10000, offset=0)
     return StoryListResponse(
         stories=[_story_to_response(s) for s in stories],
-        total=len(total),
+        total=storage.count_stories(),
         limit=limit,
         offset=offset,
     )
