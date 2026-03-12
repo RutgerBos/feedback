@@ -6,7 +6,7 @@ independent of the actual storage implementation (MongoDB, PostgreSQL, etc).
 """
 
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Dict, Any
 from src.domain.models import Story
 
 
@@ -87,5 +87,28 @@ class StoragePort(ABC):
 
         Raises:
             StorageError: If retrieval fails due to infrastructure issues
+        """
+        pass
+
+    @abstractmethod
+    def update_story_entities(
+        self,
+        story_id: str,
+        entities: List[Dict[str, Any]],
+        themes: List[str],
+        processing_status: str,
+    ) -> None:
+        """
+        Update a story's extracted entities, themes, and processing status.
+
+        Args:
+            story_id: Unique identifier for the story
+            entities: List of extracted entity dicts (name, type)
+            themes: List of extracted theme strings
+            processing_status: New processing status ("processed" or "failed")
+
+        Raises:
+            NotFoundError: If no story exists with the given ID
+            StorageError: If update fails due to infrastructure issues
         """
         pass

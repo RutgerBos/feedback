@@ -84,6 +84,27 @@ def test_storage_port_has_count_stories_method():
         IncompleteStorage()
 
 
+def test_storage_port_has_update_story_entities_method():
+    """StoragePort requires update_story_entities implementation."""
+    from src.ports.storage import StoragePort
+
+    class IncompleteStorage(StoragePort):
+        def save_story(self, story):
+            pass
+
+        def get_story(self, story_id: str):
+            pass
+
+        def count_stories(self) -> int:
+            return 0
+
+        def list_stories(self, limit: int = 20, offset: int = 0) -> list:
+            return []
+
+    with pytest.raises(TypeError, match="abstract"):
+        IncompleteStorage()
+
+
 def test_can_implement_storage_port():
     """Can create a valid StoragePort implementation."""
     from src.ports.storage import StoragePort
@@ -101,6 +122,9 @@ def test_can_implement_storage_port():
 
         def list_stories(self, limit: int = 20, offset: int = 0) -> list[Story]:
             return []
+
+        def update_story_entities(self, story_id: str, entities: list, themes: list, processing_status: str) -> None:
+            pass
 
     # Should be able to instantiate
     storage = FakeStorage()

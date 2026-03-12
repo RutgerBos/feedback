@@ -29,6 +29,9 @@ class FakeStorage(StoragePort):
     def list_stories(self, limit: int = 20, offset: int = 0) -> list[Story]:
         return list(self.stories.values())[offset:offset + limit]
 
+    def update_story_entities(self, story_id: str, entities: list, themes: list, processing_status: str) -> None:
+        pass
+
 
 def test_submit_story_generates_uuid():
     """Submitting a story generates a UUID for it."""

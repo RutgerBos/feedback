@@ -128,6 +128,36 @@ class MongoDBStorageAdapter(StoragePort):
         except Exception as e:
             raise StorageError(f"Failed to list stories: {e}") from e
 
+    def update_story_entities(
+        self,
+        story_id: str,
+        entities: List[Dict[str, Any]],
+        themes: List[str],
+        processing_status: str,
+    ) -> None:
+        """
+        Update a story's extracted entities, themes, and processing status in MongoDB.
+
+        Raises:
+            NotFoundError: If no story exists with the given ID
+            StorageError: If update fails
+        """
+        try:
+            result = self.collection.update_one(
+                {"_id": story_id},
+                {"$set": {
+                    "entities": entities,
+                    "themes": themes,
+                    "processing_status": processing_status,
+                }},
+            )
+            if result.matched_count == 0:
+                raise NotFoundError(f"Story not found: {story_id}")
+        except NotFoundError:
+            raise
+        except Exception as e:
+            raise StorageError(f"Failed to update story entities: {e}") from e
+
     def _story_to_document(self, story: Story) -> Dict[str, Any]:
         """
         Convert Story domain model to MongoDB document.
