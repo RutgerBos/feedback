@@ -4,22 +4,11 @@ MongoDB storage adapter implementing StoragePort.
 This adapter provides concrete MongoDB implementation of the StoragePort interface.
 """
 
-from typing import Dict, Any
+from typing import Dict, Any, List
 from pymongo.database import Database
 from src.ports.storage import StoragePort
+from src.ports.errors import NotFoundError, StorageError
 from src.domain.models import Story, TriadPlacement, TriadCoordinates, StoryMetadata
-
-
-class NotFoundError(Exception):
-    """Raised when a story is not found in storage."""
-
-    pass
-
-
-class StorageError(Exception):
-    """Raised when storage operations fail."""
-
-    pass
 
 
 class MongoDBStorageAdapter(StoragePort):
@@ -106,6 +95,38 @@ class MongoDBStorageAdapter(StoragePort):
             raise
         except Exception as e:
             raise StorageError(f"Failed to retrieve story: {e}") from e
+
+    def count_stories(self) -> int:
+        """Return the total number of stories in the collection."""
+        try:
+            return self.collection.count_documents({})
+        except Exception as e:
+            raise StorageError(f"Failed to count stories: {e}") from e
+
+    def list_stories(self, limit: int = 20, offset: int = 0) -> List[Story]:
+        """
+        Retrieve a paginated list of stories from MongoDB, newest first.
+
+        Args:
+            limit: Maximum number of stories to return
+            offset: Number of stories to skip
+
+        Returns:
+            List[Story]: List of story domain objects
+
+        Raises:
+            StorageError: If retrieval fails
+        """
+        try:
+            cursor = (
+                self.collection.find()
+                .sort("timestamp", -1)
+                .skip(offset)
+                .limit(limit)
+            )
+            return [self._document_to_story(doc) for doc in cursor]
+        except Exception as e:
+            raise StorageError(f"Failed to list stories: {e}") from e
 
     def _story_to_document(self, story: Story) -> Dict[str, Any]:
         """

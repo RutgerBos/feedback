@@ -31,6 +31,17 @@ def api_client(test_db):
         app.dependency_overrides.pop(get_storage, None)
 
 
+def test_list_stories_rejects_invalid_pagination(test_db, api_client):
+    """GET /api/stories rejects negative offset and out-of-range limit (1-100)."""
+    client = api_client
+
+    assert client.get("/api/stories?offset=-1").status_code == 422
+    assert client.get("/api/stories?limit=0").status_code == 422
+    assert client.get("/api/stories?limit=101").status_code == 422
+    # offset has no upper bound — large page offsets are valid
+    assert client.get("/api/stories?offset=10000").status_code == 200
+
+
 def test_submit_story_via_api(test_db, api_client):
     """Can submit a story via POST /api/stories."""
     client = api_client
@@ -78,6 +89,75 @@ def test_submit_story_with_invalid_data(test_db, api_client):
     assert response.status_code == 422  # Pydantic validation error
 
 
+def test_list_stories_returns_all_stories(test_db, api_client):
+    """GET /api/stories returns all submitted stories."""
+    client = api_client
+
+    story_text = "Working on the new feature was a great collaborative experience. " * 2
+
+    # Submit two stories
+    for i in range(2):
+        client.post(
+            "/api/stories",
+            json={
+                "story_text": story_text,
+                "triads": [
+                    {"triad_id": "workflow_nature", "x": 0.3, "y": 0.4},
+                    {"triad_id": "understanding_quality", "x": 0.4, "y": 0.3},
+                    {"triad_id": "value_character", "x": 0.5, "y": 0.2},
+                ],
+            },
+        )
+
+    response = client.get("/api/stories")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["stories"]) == 2
+    assert data["total"] == 2
+
+
+def test_list_stories_returns_empty_list_when_no_stories(test_db, api_client):
+    """GET /api/stories returns empty list when no stories exist."""
+    client = api_client
+
+    response = client.get("/api/stories")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["stories"] == []
+    assert data["total"] == 0
+
+
+def test_list_stories_supports_pagination(test_db, api_client):
+    """GET /api/stories supports limit and offset query params."""
+    client = api_client
+
+    story_text = "The CI system has improved significantly after the recent infrastructure changes. " * 2
+
+    # Submit 3 stories
+    for _ in range(3):
+        client.post(
+            "/api/stories",
+            json={
+                "story_text": story_text,
+                "triads": [
+                    {"triad_id": "workflow_nature", "x": 0.3, "y": 0.4},
+                    {"triad_id": "understanding_quality", "x": 0.4, "y": 0.3},
+                    {"triad_id": "value_character", "x": 0.5, "y": 0.2},
+                ],
+            },
+        )
+
+    response = client.get("/api/stories?limit=2&offset=0")
+    assert response.status_code == 200
+    assert len(response.json()["stories"]) == 2
+
+    response = client.get("/api/stories?limit=2&offset=2")
+    assert response.status_code == 200
+    assert len(response.json()["stories"]) == 1
+
+
 def test_submit_story_with_metadata(test_db, api_client):
     """Can submit a story with optional metadata (department, role, user_pseudonym)."""
     client = api_client
@@ -109,6 +189,46 @@ def test_submit_story_with_metadata(test_db, api_client):
     assert story["metadata"]["department"] == "engineering"
     assert story["metadata"]["role"] == "senior_developer"
     assert story["metadata"]["user_pseudonym"] == "user_abc123"
+
+
+def test_get_story_by_id(test_db, api_client):
+    """GET /api/stories/{id} returns a story with all fields."""
+    client = api_client
+
+    # First submit a story
+    submit_response = client.post(
+        "/api/stories",
+        json={
+            "story_text": "The deployment pipeline finally works smoothly after months of effort. " * 2,
+            "triads": [
+                {"triad_id": "workflow_nature", "x": 0.5, "y": 0.3},
+                {"triad_id": "understanding_quality", "x": 0.4, "y": 0.4},
+                {"triad_id": "value_character", "x": 0.3, "y": 0.5},
+            ],
+            "metadata": {"department": "engineering", "role": "developer"},
+        },
+    )
+    story_id = submit_response.json()["story_id"]
+
+    # Now retrieve it
+    response = client.get(f"/api/stories/{story_id}")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == story_id
+    assert "deployment pipeline" in data["story_text"]
+    assert len(data["triads"]) == 3
+    assert data["metadata"]["department"] == "engineering"
+    assert "timestamp" in data
+
+
+def test_get_story_returns_404_for_unknown_id(test_db, api_client):
+    """GET /api/stories/{id} returns 404 for a non-existent story."""
+    client = api_client
+
+    response = client.get("/api/stories/nonexistent-id-xyz")
+
+    assert response.status_code == 404
 
 
 def test_submit_story_without_metadata(test_db, api_client):

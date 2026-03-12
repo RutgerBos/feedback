@@ -23,6 +23,12 @@ class FakeStorage(StoragePort):
     def get_story(self, story_id: str) -> Story:
         return self.stories[story_id]
 
+    def count_stories(self) -> int:
+        return len(self.stories)
+
+    def list_stories(self, limit: int = 20, offset: int = 0) -> list[Story]:
+        return list(self.stories.values())[offset:offset + limit]
+
 
 def test_submit_story_generates_uuid():
     """Submitting a story generates a UUID for it."""
