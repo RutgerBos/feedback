@@ -6,7 +6,7 @@ They use Pydantic for validation and immutability.
 """
 
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -98,6 +98,8 @@ class Story(BaseModel):
     metadata: Optional[StoryMetadata] = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     processing_status: str = Field(default="pending")
+    entities: List[Dict[str, Any]] = Field(default_factory=list)
+    themes: List[str] = Field(default_factory=list)
 
     @field_validator("triads")
     @classmethod

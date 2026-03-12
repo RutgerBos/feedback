@@ -46,17 +46,15 @@ class EntityExtractionService:
         try:
             extraction = self.llm.extract_entities(story.story_text)
             entities = extraction.entities
-            themes = self.llm.extract_themes(story.story_text)
             processing_status = "processed"
         except LLMError as e:
             logger.warning("Entity extraction failed for story %s: %s", story_id, e)
             entities = []
-            themes = []
             processing_status = "failed"
 
         self.storage.update_story_entities(
             story_id=story_id,
             entities=entities,
-            themes=themes,
+            themes=[],
             processing_status=processing_status,
         )

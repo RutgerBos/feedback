@@ -196,6 +196,8 @@ class MongoDBStorageAdapter(StoragePort):
             "metadata": metadata_dict,
             "timestamp": story.timestamp,
             "processing_status": story.processing_status,
+            "entities": story.entities,
+            "themes": story.themes,
         }
 
     def _document_to_story(self, document: Dict[str, Any]) -> Story:
@@ -236,4 +238,6 @@ class MongoDBStorageAdapter(StoragePort):
             metadata=metadata,
             timestamp=document["timestamp"],
             processing_status=document.get("processing_status", "pending"),
+            entities=document.get("entities", []),
+            themes=document.get("themes", []),
         )
