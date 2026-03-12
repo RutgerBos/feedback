@@ -83,8 +83,10 @@ class ClaudeLLMAdapter(LLMPort):
             raise LLMError(f"Failed to parse relationship extraction response: {e}") from e
 
     def _require_list(self, data: dict, key: str) -> list:
-        """Extract a list value from parsed JSON, raising LLMError if it's not a list."""
-        value = data.get(key, [])
+        """Extract a list value from parsed JSON, raising LLMError if missing or not a list."""
+        if key not in data:
+            raise LLMError(f"Missing required key '{key}' in LLM response")
+        value = data[key]
         if not isinstance(value, list):
             raise LLMError(f"Expected '{key}' to be a list, got {type(value).__name__}")
         return value
