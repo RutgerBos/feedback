@@ -116,6 +116,90 @@ def test_story_stored_with_correct_structure(storage_adapter, clean_db):
     assert "timestamp" in doc
 
 
+def test_count_stories_returns_zero_when_empty(storage_adapter):
+    """count_stories returns 0 when no stories exist."""
+    assert storage_adapter.count_stories() == 0
+
+
+def test_count_stories_returns_correct_count(storage_adapter):
+    """count_stories returns the number of saved stories."""
+    base_text = "A story long enough to pass validation. " * 3
+    triads = [
+        TriadPlacement(triad_id="t1", coordinates=TriadCoordinates(x=0.3, y=0.6)),
+        TriadPlacement(triad_id="t2", coordinates=TriadCoordinates(x=0.5, y=0.4)),
+        TriadPlacement(triad_id="t3", coordinates=TriadCoordinates(x=0.2, y=0.7)),
+    ]
+
+    for _ in range(3):
+        storage_adapter.save_story(Story(id=str(uuid4()), story_text=base_text, triads=triads))
+
+    assert storage_adapter.count_stories() == 3
+
+
+def test_list_stories_returns_empty_when_no_stories(storage_adapter):
+    """list_stories returns empty list when no stories exist."""
+    assert storage_adapter.list_stories() == []
+
+
+def test_list_stories_returns_all_stories(storage_adapter):
+    """list_stories returns all saved stories."""
+    base_text = "A story long enough to pass validation. " * 3
+    triads = [
+        TriadPlacement(triad_id="t1", coordinates=TriadCoordinates(x=0.3, y=0.6)),
+        TriadPlacement(triad_id="t2", coordinates=TriadCoordinates(x=0.5, y=0.4)),
+        TriadPlacement(triad_id="t3", coordinates=TriadCoordinates(x=0.2, y=0.7)),
+    ]
+
+    for _ in range(3):
+        storage_adapter.save_story(Story(id=str(uuid4()), story_text=base_text, triads=triads))
+
+    stories = storage_adapter.list_stories()
+    assert len(stories) == 3
+
+
+def test_list_stories_ordered_newest_first(storage_adapter):
+    """list_stories returns stories with newest first."""
+    base_text = "A story long enough to pass validation. " * 3
+    triads = [
+        TriadPlacement(triad_id="t1", coordinates=TriadCoordinates(x=0.3, y=0.6)),
+        TriadPlacement(triad_id="t2", coordinates=TriadCoordinates(x=0.5, y=0.4)),
+        TriadPlacement(triad_id="t3", coordinates=TriadCoordinates(x=0.2, y=0.7)),
+    ]
+    older = Story(
+        id=str(uuid4()), story_text=base_text, triads=triads,
+        timestamp=datetime(2025, 1, 1, tzinfo=timezone.utc),
+    )
+    newer = Story(
+        id=str(uuid4()), story_text=base_text, triads=triads,
+        timestamp=datetime(2025, 6, 1, tzinfo=timezone.utc),
+    )
+    storage_adapter.save_story(older)
+    storage_adapter.save_story(newer)
+
+    stories = storage_adapter.list_stories()
+    assert stories[0].id == newer.id
+    assert stories[1].id == older.id
+
+
+def test_list_stories_respects_limit_and_offset(storage_adapter):
+    """list_stories paginates correctly."""
+    base_text = "A story long enough to pass validation. " * 3
+    triads = [
+        TriadPlacement(triad_id="t1", coordinates=TriadCoordinates(x=0.3, y=0.6)),
+        TriadPlacement(triad_id="t2", coordinates=TriadCoordinates(x=0.5, y=0.4)),
+        TriadPlacement(triad_id="t3", coordinates=TriadCoordinates(x=0.2, y=0.7)),
+    ]
+
+    for _ in range(5):
+        storage_adapter.save_story(Story(id=str(uuid4()), story_text=base_text, triads=triads))
+
+    page_one = storage_adapter.list_stories(limit=3, offset=0)
+    page_two = storage_adapter.list_stories(limit=3, offset=3)
+
+    assert len(page_one) == 3
+    assert len(page_two) == 2
+
+
 def test_save_multiple_stories(storage_adapter):
     """Can save multiple stories."""
     story1 = Story(

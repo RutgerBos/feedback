@@ -52,6 +52,27 @@ def test_storage_port_has_list_stories_method():
         def get_story(self, story_id: str):
             pass
 
+        def count_stories(self) -> int:
+            return 0
+
+    with pytest.raises(TypeError, match="abstract"):
+        IncompleteStorage()
+
+
+def test_storage_port_has_count_stories_method():
+    """StoragePort requires count_stories implementation."""
+    from src.ports.storage import StoragePort
+
+    class IncompleteStorage(StoragePort):
+        def save_story(self, story):
+            pass
+
+        def get_story(self, story_id: str):
+            pass
+
+        def list_stories(self, limit: int = 20, offset: int = 0) -> list:
+            return []
+
     with pytest.raises(TypeError, match="abstract"):
         IncompleteStorage()
 
