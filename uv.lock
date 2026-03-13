@@ -959,11 +959,6 @@ dev = [
     { name = "types-pyyaml" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "types-pyyaml" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "anthropic", specifier = ">=0.7.0" },
@@ -984,9 +979,6 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.24.0" },
 ]
 provides-extras = ["dev"]
-
-[package.metadata.requires-dev]
-dev = [{ name = "types-pyyaml", specifier = ">=6.0.12.20250915" }]
 
 [[package]]
 name = "sniffio"
