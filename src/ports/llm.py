@@ -1,8 +1,9 @@
 """
-LLMPort interface for entity extraction.
+LLMPort interface for story analysis.
 
-This port defines the contract for extracting entities and themes from stories,
-independent of the actual LLM provider (Claude, OpenAI, local model, etc).
+This port defines the contract for extracting entities, themes, and relationships
+from stories, independent of the actual LLM provider (Claude, OpenAI, local model, etc).
+EntityExtraction holds entity results only; themes are returned separately by extract_themes().
 """
 
 from abc import ABC, abstractmethod

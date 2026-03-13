@@ -241,9 +241,7 @@ def test_extract_for_story_themes_come_from_extract_themes():
     service.extract_for_story(story.id)
 
     _, themes, _ = storage.updated[story.id]
-    assert themes == ["dedicated theme"], (
-        "themes must come from extract_themes(), not extract_entities()"
-    )
+    assert themes == ["dedicated theme"]
 
 
 # ── Test 9: extract_themes() failure is atomic — entities also empty ───────────
