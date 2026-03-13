@@ -56,9 +56,7 @@ class FakeLLM(LLMPort):
         self._themes = themes or ["automation friction"]
 
     def extract_entities(self, story_text: str) -> EntityExtraction:
-        # Mirror real adapter shape: themes are dicts, not plain strings
-        theme_dicts = [{"name": t, "description": ""} for t in self._themes]
-        return EntityExtraction(entities=self._entities, themes=theme_dicts)
+        return EntityExtraction(entities=self._entities)
 
     def extract_themes(self, story_text: str) -> list:
         return self._themes
@@ -234,14 +232,7 @@ def test_extract_for_story_themes_come_from_extract_themes():
     storage = FakeStorage(stories={story.id: story})
 
     class DivergentLLM(FakeLLM):
-        """Returns different themes from each method to prove which one is used."""
-
-        def extract_entities(self, story_text: str) -> EntityExtraction:
-            # themes bundled here should be IGNORED
-            return EntityExtraction(
-                entities=self._entities,
-                themes=[{"name": "entity-bundled theme", "description": ""}],
-            )
+        """Returns a distinct theme list from extract_themes() to prove it is used."""
 
         def extract_themes(self, story_text: str) -> list:
             return ["dedicated theme"]

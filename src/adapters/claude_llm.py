@@ -36,20 +36,18 @@ class ClaudeLLMAdapter(LLMPort):
         self.client = client
 
     def extract_entities(self, story_text: str) -> EntityExtraction:
-        """Extract entities and themes from story text via Claude."""
+        """Extract entities from story text via Claude."""
         prompt = (
-            "Extract entities and themes from this story. "
+            "Extract entities from this story. "
             "Respond with JSON only: "
-            '{"entities": [{"name": "...", "type": "..."}], '
-            '"themes": [{"name": "...", "description": "..."}]}\n\n'
+            '{"entities": [{"name": "...", "type": "..."}]}\n\n'
             f"Story: {story_text}"
         )
         raw = self._call(prompt)
         try:
             data = json.loads(raw)
             entities = self._require_list(data, "entities")
-            themes = self._require_list(data, "themes")
-            return EntityExtraction(entities=entities, themes=themes)
+            return EntityExtraction(entities=entities)
         except (json.JSONDecodeError, KeyError) as e:
             raise LLMError(f"Failed to parse entity extraction response: {e}") from e
 

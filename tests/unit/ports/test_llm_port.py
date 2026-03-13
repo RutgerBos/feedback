@@ -17,7 +17,7 @@ def test_llm_port_has_extract_themes_method():
 
     class IncompleteProvider(LLMPort):
         def extract_entities(self, story_text: str) -> EntityExtraction:
-            return EntityExtraction(entities=[], themes=[])
+            return EntityExtraction(entities=[])
 
         def extract_relationships(self, story_text: str) -> list:
             return []
@@ -32,7 +32,7 @@ def test_llm_port_has_extract_relationships_method():
 
     class IncompleteProvider(LLMPort):
         def extract_entities(self, story_text: str) -> EntityExtraction:
-            return EntityExtraction(entities=[], themes=[])
+            return EntityExtraction(entities=[])
 
         def extract_themes(self, story_text: str) -> list:
             return []
@@ -47,7 +47,7 @@ def test_can_implement_llm_port():
 
     class FakeLLM(LLMPort):
         def extract_entities(self, story_text: str) -> EntityExtraction:
-            return EntityExtraction(entities=[], themes=[])
+            return EntityExtraction(entities=[])
 
         def extract_themes(self, story_text: str) -> list[str]:
             return []

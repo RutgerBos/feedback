@@ -43,7 +43,6 @@ def test_claude_adapter_extract_entities_returns_entity_extraction():
             {"name": "CI pipeline", "type": "tool"},
             {"name": "deployment", "type": "process"},
         ],
-        "themes": [{"name": "automation friction", "description": "Manual steps causing delays"}],
     })
     adapter = ClaudeLLMAdapter(client=make_fake_anthropic_client(response))
 
@@ -52,7 +51,6 @@ def test_claude_adapter_extract_entities_returns_entity_extraction():
     assert isinstance(result, EntityExtraction)
     assert len(result.entities) == 2
     assert result.entities[0]["name"] == "CI pipeline"
-    assert len(result.themes) == 1
 
 
 def test_claude_adapter_extract_themes_returns_list_of_strings():
