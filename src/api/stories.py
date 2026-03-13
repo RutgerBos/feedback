@@ -6,7 +6,7 @@ Handles story submission and retrieval.
 
 from datetime import datetime
 from typing import Optional, List
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Depends, Query, Request
 from pydantic import BaseModel
 from src.services.story_submission import (
     StorySubmissionService,
@@ -109,17 +109,23 @@ def get_entity_extraction_service(
     return EntityExtractionService(storage=storage, llm=llm)
 
 
-def get_submission_service(storage: StoragePort = Depends(get_storage)) -> StorySubmissionService:
+def get_submission_service(
+    request: Request,
+    storage: StoragePort = Depends(get_storage),
+) -> StorySubmissionService:
     """
     Dependency that provides story submission service.
 
     Args:
+        request: FastAPI request (used to access app.state.triad_config)
         storage: Injected storage port
 
     Returns:
-        StorySubmissionService: Configured service
+        StorySubmissionService: Configured service with triad ID allowlist
     """
-    return StorySubmissionService(storage)
+    triad_config = getattr(request.app.state, "triad_config", None)
+    valid_triad_ids = {t.id for t in triad_config.triads} if triad_config else None
+    return StorySubmissionService(storage, valid_triad_ids=valid_triad_ids)
 
 
 @router.post("", response_model=StorySubmissionResult, status_code=201)

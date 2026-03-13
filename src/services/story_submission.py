@@ -7,7 +7,7 @@ ID generation, and persistence.
 
 from uuid import uuid4
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Set
 from pydantic import BaseModel, Field, field_validator
 
 from src.ports.storage import StoragePort
@@ -85,16 +85,20 @@ class StorySubmissionService:
     - Pure coordination - no business logic
     - All validation delegated to domain models and request model
     - Doesn't know about MongoDB or specific storage
+    - valid_triad_ids: when provided, submitted triad_ids must be in the set
     """
 
-    def __init__(self, storage: StoragePort):
+    def __init__(self, storage: StoragePort, valid_triad_ids: Optional[Set[str]] = None):
         """
         Initialize story submission service.
 
         Args:
             storage: Storage port for persisting stories
+            valid_triad_ids: Allowlist of known triad IDs from config.
+                             If None, triad ID membership is not validated.
         """
         self.storage = storage
+        self.valid_triad_ids = valid_triad_ids
 
     def submit_story(self, request: StorySubmissionRequest) -> StorySubmissionResult:
         """
@@ -110,6 +114,13 @@ class StorySubmissionService:
             ValueError: If validation fails (caught by Pydantic)
             StorageError: If storage operation fails
         """
+        # Validate triad IDs against config allowlist
+        if self.valid_triad_ids is not None:
+            submitted_ids = {t["triad_id"] for t in request.triads}
+            unknown = submitted_ids - self.valid_triad_ids
+            if unknown:
+                raise ValueError(f"Unknown triad IDs: {', '.join(sorted(unknown))}")
+
         # Generate UUID for story
         story_id = str(uuid4())
 
