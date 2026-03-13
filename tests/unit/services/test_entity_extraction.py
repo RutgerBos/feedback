@@ -56,7 +56,9 @@ class FakeLLM(LLMPort):
         self._themes = themes or ["automation friction"]
 
     def extract_entities(self, story_text: str) -> EntityExtraction:
-        return EntityExtraction(entities=self._entities, themes=self._themes)
+        # Mirror real adapter shape: themes are dicts, not plain strings
+        theme_dicts = [{"name": t, "description": ""} for t in self._themes]
+        return EntityExtraction(entities=self._entities, themes=theme_dicts)
 
     def extract_themes(self, story_text: str) -> list:
         return self._themes
@@ -199,8 +201,12 @@ def test_extract_for_story_raises_not_found_for_missing_story():
 
 # ── Test 8: stores themes returned by LLM ─────────────────────────────────────
 
-def test_extract_for_story_stores_themes_from_llm():
-    """Themes returned by LLM are persisted via storage.update_story_entities."""
+def test_extract_for_story_stores_themes_as_strings():
+    """Theme dicts from LLM are mapped to name strings before storage.
+
+    Real adapters return themes as dicts: {"name": "...", "description": "..."}.
+    The service must normalise these to List[str] so Story.themes stays valid.
+    """
     from src.services.entity_extraction import EntityExtractionService
 
     story = make_story()
@@ -212,3 +218,4 @@ def test_extract_for_story_stores_themes_from_llm():
 
     _, themes, _ = storage.updated[story.id]
     assert themes == ["automation friction", "process overhead"]
+    assert all(isinstance(t, str) for t in themes), "themes must be strings, not dicts"
