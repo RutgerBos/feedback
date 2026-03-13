@@ -170,3 +170,59 @@ def test_submit_story_requires_three_triads():
             ],
         )
         service.submit_story(request)
+
+
+# ── Triad ID validation against config ────────────────────────────────────────
+
+VALID_TRIAD_IDS = {"workflow_nature", "understanding_quality", "value_character"}
+
+
+def test_submit_story_accepts_known_triad_ids():
+    """Valid triad_ids pass when a config allowlist is provided."""
+    storage = FakeStorage()
+    service = StorySubmissionService(storage, valid_triad_ids=VALID_TRIAD_IDS)
+
+    request = StorySubmissionRequest(
+        story_text="The deployment pipeline failed twice before we caught the config issue. " * 2,
+        triads=[
+            {"triad_id": "workflow_nature", "x": 0.3, "y": 0.6},
+            {"triad_id": "understanding_quality", "x": 0.5, "y": 0.4},
+            {"triad_id": "value_character", "x": 0.2, "y": 0.7},
+        ],
+    )
+
+    result = service.submit_story(request)
+    assert result.story_id is not None
+
+
+def test_submit_story_rejects_unknown_triad_id():
+    """Unknown triad_id is rejected with ValueError when allowlist is configured."""
+    storage = FakeStorage()
+    service = StorySubmissionService(storage, valid_triad_ids=VALID_TRIAD_IDS)
+
+    with pytest.raises(ValueError, match="phantom_triad"):
+        service.submit_story(StorySubmissionRequest(
+            story_text="The deployment pipeline failed twice before we caught the config issue. " * 2,
+            triads=[
+                {"triad_id": "workflow_nature", "x": 0.3, "y": 0.6},
+                {"triad_id": "understanding_quality", "x": 0.5, "y": 0.4},
+                {"triad_id": "phantom_triad", "x": 0.2, "y": 0.7},
+            ],
+        ))
+
+
+def test_submit_story_skips_triad_id_validation_when_no_config():
+    """Without an allowlist, any triad_id is accepted (backward-compatible)."""
+    storage = FakeStorage()
+    service = StorySubmissionService(storage)  # no valid_triad_ids
+
+    result = service.submit_story(StorySubmissionRequest(
+        story_text="The deployment pipeline failed twice before we caught the config issue. " * 2,
+        triads=[
+            {"triad_id": "anything_goes", "x": 0.3, "y": 0.6},
+            {"triad_id": "whatever", "x": 0.5, "y": 0.4},
+            {"triad_id": "unchecked", "x": 0.2, "y": 0.7},
+        ],
+    ))
+
+    assert result.story_id is not None
