@@ -52,16 +52,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     config_path = Path("config/triads.yaml")
     app.state.triad_config = load_triad_config(config_path)
 
-    # Create infrastructure singletons only after config is validated
-    settings = Settings()
-    app.state.settings = settings
-    app.state.mongo_client = MongoClient(settings.mongodb_url)
+    # Reuse the module-level settings (same instance used for CORS wiring)
+    app.state.settings = _settings
+    app.state.mongo_client = MongoClient(_settings.mongodb_url)
 
     yield
 
     # Shutdown: close the connection pool
     app.state.mongo_client.close()
 
+
+_settings = Settings()
 
 app = FastAPI(
     title="SenseMaker Feedback API",
@@ -70,10 +71,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=_settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
