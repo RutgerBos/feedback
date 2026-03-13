@@ -23,6 +23,8 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pymongo import MongoClient
+from src.config.settings import Settings
 from src.config.triad_loader import load_triad_config
 from src.api.stories import router as stories_router
 
@@ -32,7 +34,8 @@ async def lifespan(app: FastAPI):
     """
     Application lifespan manager.
 
-    Loads configuration on startup and cleans up on shutdown.
+    Loads configuration and creates infrastructure singletons on startup;
+    tears them down cleanly on shutdown.
 
     Raises:
         FileNotFoundError: If config file doesn't exist
@@ -41,16 +44,21 @@ async def lifespan(app: FastAPI):
 
     Notes:
         - Fails fast: invalid config prevents application from starting
-        - Config is stored in app.state for access by endpoints
+        - Config and clients are stored in app.state for access by dependencies
+        - MongoClient is a singleton: connection pool is shared across requests
     """
-    # Startup: Load and validate configuration
+    # Startup
+    settings = Settings()
+    app.state.settings = settings
+    app.state.mongo_client = MongoClient(settings.mongodb_url)
+
     config_path = Path("config/triads.yaml")
     app.state.triad_config = load_triad_config(config_path)
 
     yield
 
-    # Shutdown: cleanup if needed
-    pass
+    # Shutdown: close the connection pool
+    app.state.mongo_client.close()
 
 
 app = FastAPI(

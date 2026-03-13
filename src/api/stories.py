@@ -18,7 +18,6 @@ from src.ports.storage import StoragePort
 from src.ports.llm import LLMPort, EntityExtraction
 from src.ports.errors import NotFoundError, LLMError
 from src.adapters.mongodb_storage import MongoDBStorageAdapter
-from pymongo import MongoClient
 
 
 router = APIRouter(prefix="/api/stories", tags=["stories"])
@@ -53,22 +52,19 @@ class StoryListResponse(BaseModel):
     offset: int
 
 
-def get_storage() -> StoragePort:
+def get_storage(request: Request) -> StoragePort:
     """
     Dependency that provides storage port.
 
+    Reads the MongoClient singleton and database name from app.state,
+    both set during application startup. No new client is created per request.
+
     Returns:
         StoragePort: MongoDB storage adapter
-
-    Notes:
-        - Creates MongoDB client and database connection
-        - In production, should use connection pooling
-        - Connection details from environment/config
     """
-    # TODO: Move connection details to configuration
-    client = MongoClient("mongodb://admin:password@mongodb:27017/")
-    db = client["feedback"]
-    return MongoDBStorageAdapter(db)
+    client = request.app.state.mongo_client
+    db_name = request.app.state.settings.mongodb_database
+    return MongoDBStorageAdapter(client[db_name])
 
 
 class _NoOpLLM(LLMPort):
