@@ -56,7 +56,7 @@ class FakeLLM(LLMPort):
         self._themes = themes or ["automation friction"]
 
     def extract_entities(self, story_text: str) -> EntityExtraction:
-        return EntityExtraction(entities=self._entities, themes=[])
+        return EntityExtraction(entities=self._entities, themes=self._themes)
 
     def extract_themes(self, story_text: str) -> list:
         return self._themes
@@ -195,3 +195,20 @@ def test_extract_for_story_raises_not_found_for_missing_story():
 
     with pytest.raises(NotFoundError):
         service.extract_for_story("nonexistent-id")
+
+
+# ── Test 8: stores themes returned by LLM ─────────────────────────────────────
+
+def test_extract_for_story_stores_themes_from_llm():
+    """Themes returned by LLM are persisted via storage.update_story_entities."""
+    from src.services.entity_extraction import EntityExtractionService
+
+    story = make_story()
+    storage = FakeStorage(stories={story.id: story})
+    llm = FakeLLM(themes=["automation friction", "process overhead"])
+
+    service = EntityExtractionService(storage=storage, llm=llm)
+    service.extract_for_story(story.id)
+
+    _, themes, _ = storage.updated[story.id]
+    assert themes == ["automation friction", "process overhead"]
