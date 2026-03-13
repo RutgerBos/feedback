@@ -3,7 +3,7 @@ Claude LLM adapter implementing LLMPort via the Anthropic API.
 """
 
 import json
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 from src.ports.llm import LLMPort, EntityExtraction
 from src.ports.errors import LLMError
@@ -28,7 +28,7 @@ class ClaudeLLMAdapter(LLMPort):
 
     MODEL = "claude-haiku-4-5-20251001"
 
-    def __init__(self, client):
+    def __init__(self, client: Any) -> None:
         """
         Args:
             client: Anthropic client instance (injected for testability)
@@ -99,6 +99,6 @@ class ClaudeLLMAdapter(LLMPort):
                 max_tokens=1024,
                 messages=[{"role": "user", "content": prompt}],
             )
-            return message.content[0].text
+            return str(message.content[0].text)
         except Exception as e:
             raise LLMError(f"Claude API call failed: {e}") from e
