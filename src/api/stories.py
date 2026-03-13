@@ -16,8 +16,10 @@ from src.services.story_submission import (
 from src.services.entity_extraction import EntityExtractionService
 from src.ports.storage import StoragePort
 from src.ports.llm import LLMPort, EntityExtraction
+from src.ports.graph import GraphPort
 from src.ports.errors import NotFoundError, LLMError
 from src.adapters.mongodb_storage import MongoDBStorageAdapter
+from src.adapters.neo4j_graph import Neo4jGraphAdapter
 from src.domain.models import Story
 
 
@@ -106,6 +108,29 @@ def get_entity_extraction_service(
     return EntityExtractionService(storage=storage, llm=llm)
 
 
+def get_graph(request: Request) -> GraphPort:
+    """
+    Dependency that provides graph port.
+
+    Reads the Neo4j driver singleton from app.state set during startup.
+
+    Returns:
+        GraphPort: Neo4j graph adapter
+    """
+    driver = request.app.state.neo4j_driver
+    return Neo4jGraphAdapter(driver=driver)
+
+
+def _save_story_to_graph(story_id: str, storage: StoragePort, graph: GraphPort) -> None:
+    """Background task: read story from storage and persist as a graph node."""
+    story = storage.get_story(story_id)
+    graph.save_story_node(
+        story_id=story.id,
+        triads=story.triads,
+        timestamp=story.timestamp.isoformat(),
+    )
+
+
 def get_submission_service(
     request: Request,
     storage: StoragePort = Depends(get_storage),
@@ -131,6 +156,8 @@ async def submit_story(
     background_tasks: BackgroundTasks,
     service: StorySubmissionService = Depends(get_submission_service),
     entity_service: EntityExtractionService = Depends(get_entity_extraction_service),
+    storage: StoragePort = Depends(get_storage),
+    graph: GraphPort = Depends(get_graph),
 ) -> StorySubmissionResult:
     """
     Submit a new story with triad placements.
@@ -150,6 +177,7 @@ async def submit_story(
     """
     try:
         result = service.submit_story(request)
+        background_tasks.add_task(_save_story_to_graph, result.story_id, storage, graph)
         background_tasks.add_task(entity_service.extract_for_story, result.story_id)
         return result
     except ValueError as e:

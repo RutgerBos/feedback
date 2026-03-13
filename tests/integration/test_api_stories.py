@@ -336,3 +336,55 @@ def test_submit_story_without_metadata(test_db, api_client):
     story = test_db.stories.find_one({"_id": data["story_id"]})
     assert story is not None
     assert story["metadata"] is None
+
+
+def test_submit_story_triggers_graph_node_creation(test_db):
+    """Submitting a story triggers save_story_node() as a background task."""
+    from src.api.main import app
+    from src.api.stories import get_storage, get_llm, get_graph
+    from src.adapters.mongodb_storage import MongoDBStorageAdapter
+    from src.ports.llm import LLMPort, EntityExtraction
+    from src.ports.graph import GraphPort
+
+    saved_nodes = []
+
+    class FakeLLM(LLMPort):
+        def extract_entities(self, story_text: str) -> EntityExtraction:
+            return EntityExtraction(entities=[])
+
+        def extract_themes(self, story_text: str) -> list:
+            return []
+
+        def extract_relationships(self, story_text: str) -> list:
+            return []
+
+    class CapturingGraph(GraphPort):
+        def save_story_node(self, story_id: str, triads, timestamp: str) -> None:
+            saved_nodes.append({"story_id": story_id, "triads": triads})
+
+    app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
+    app.dependency_overrides[get_llm] = lambda: FakeLLM()
+    app.dependency_overrides[get_graph] = lambda: CapturingGraph()
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/stories",
+                json={
+                    "story_text": "CI failures blocked our deployment repeatedly this sprint. " * 2,
+                    "triads": [
+                        {"triad_id": "workflow_nature", "x": 0.3, "y": 0.6},
+                        {"triad_id": "understanding_quality", "x": 0.5, "y": 0.4},
+                        {"triad_id": "value_character", "x": 0.2, "y": 0.7},
+                    ],
+                },
+            )
+            assert response.status_code == 201
+            story_id = response.json()["story_id"]
+    finally:
+        app.dependency_overrides.pop(get_storage, None)
+        app.dependency_overrides.pop(get_llm, None)
+        app.dependency_overrides.pop(get_graph, None)
+
+    assert len(saved_nodes) == 1
+    assert saved_nodes[0]["story_id"] == story_id
+    assert len(saved_nodes[0]["triads"]) == 3

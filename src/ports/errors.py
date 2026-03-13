@@ -20,3 +20,8 @@ class StorageError(Exception):
 class LLMError(Exception):
     """Raised when an LLM API call fails or its response cannot be parsed."""
     pass
+
+
+class GraphError(Exception):
+    """Raised when a graph database operation fails."""
+    pass

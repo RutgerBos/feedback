@@ -25,6 +25,7 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo import MongoClient
+import neo4j
 from src.config.settings import Settings
 from src.config.triad_loader import load_triad_config
 from src.api.stories import router as stories_router
@@ -55,11 +56,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Reuse the module-level settings (same instance used for CORS wiring)
     app.state.settings = _settings
     app.state.mongo_client = MongoClient(_settings.mongodb_url)
+    app.state.neo4j_driver = neo4j.GraphDatabase.driver(
+        _settings.neo4j_url,
+        auth=(_settings.neo4j_user, _settings.neo4j_password),
+    )
 
     yield
 
-    # Shutdown: close the connection pool
+    # Shutdown: close connection pools
     app.state.mongo_client.close()
+    app.state.neo4j_driver.close()
 
 
 _settings = Settings()

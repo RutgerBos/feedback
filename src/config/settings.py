@@ -24,5 +24,8 @@ class Settings(BaseSettings):
     mongodb_url: str = "mongodb://admin:password@mongodb:27017/"
     mongodb_database: str = "feedback"
     cors_origins: List[str] = ["http://localhost:3000", "http://localhost:8000"]
+    neo4j_url: str = "bolt://localhost:7687"
+    neo4j_user: str = "neo4j"
+    neo4j_password: str = "password"
 
     model_config = {"env_file": ".env", "extra": "ignore"}
