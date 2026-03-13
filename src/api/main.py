@@ -63,6 +63,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.mongo_client.close()
 
 
+_settings = Settings()
+
 app = FastAPI(
     title="SenseMaker Feedback API",
     description="Narrative feedback collection and analysis system",
@@ -70,10 +72,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=_settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

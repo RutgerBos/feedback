@@ -6,16 +6,12 @@ from fastapi.testclient import TestClient
 
 def test_app_starts_with_valid_config():
     """Application starts successfully when config/triads.yaml is valid."""
-    # Import after ensuring config exists
     from src.api.main import app
 
-    # Act: Create test client (triggers startup)
-    client = TestClient(app)
-
-    # Assert: Health endpoint works
-    response = client.get("/health")
-    assert response.status_code == 200
-    assert response.json()["status"] == "healthy"
+    with TestClient(app) as client:
+        response = client.get("/health")
+        assert response.status_code == 200
+        assert response.json()["status"] == "healthy"
 
 
 def test_app_loads_triad_config_on_startup():
@@ -33,6 +29,36 @@ def test_app_loads_triad_config_on_startup():
         assert app.state.triad_config is not None
         assert app.state.triad_config.version == "1.0"
         assert len(app.state.triad_config.triads) == 3
+
+
+def test_cors_allows_configured_origin(monkeypatch):
+    """Requests from a configured CORS origin receive the Access-Control-Allow-Origin header."""
+    monkeypatch.setenv("CORS_ORIGINS", '["http://localhost:3000"]')
+    from importlib import reload
+    import src.config.settings as settings_mod
+    import src.api.main as main_mod
+    reload(settings_mod)
+    reload(main_mod)
+
+    with TestClient(main_mod.app) as client:
+        response = client.get("/health", headers={"Origin": "http://localhost:3000"})
+        assert response.status_code == 200
+        assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
+
+
+def test_cors_rejects_unknown_origin(monkeypatch):
+    """Requests from an unconfigured origin do not receive the CORS header."""
+    monkeypatch.setenv("CORS_ORIGINS", '["http://localhost:3000"]')
+    from importlib import reload
+    import src.config.settings as settings_mod
+    import src.api.main as main_mod
+    reload(settings_mod)
+    reload(main_mod)
+
+    with TestClient(main_mod.app) as client:
+        response = client.get("/health", headers={"Origin": "http://evil.example.com"})
+        assert response.status_code == 200
+        assert "access-control-allow-origin" not in response.headers
 
 
 def test_app_creates_mongo_client_singleton_on_startup():
