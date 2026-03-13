@@ -177,8 +177,8 @@ async def submit_story(
     """
     try:
         result = service.submit_story(request)
-        background_tasks.add_task(entity_service.extract_for_story, result.story_id)
         background_tasks.add_task(_save_story_to_graph, result.story_id, storage, graph)
+        background_tasks.add_task(entity_service.extract_for_story, result.story_id)
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

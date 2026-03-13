@@ -70,23 +70,24 @@ def test_save_story_node_creates_story_node():
     assert params.get("timestamp") == TIMESTAMP
 
 
-# ── Test 3: triad placements stored as properties ─────────────────────────────
+# ── Test 3: triads accepted by the method signature ───────────────────────────
 
-def test_save_story_node_stores_triad_placements():
-    """save_story_node persists triad placement data on the node."""
+def test_save_story_node_accepts_triad_placements():
+    """save_story_node accepts triad placements without error.
+
+    Triad coordinates are not stored as node properties in Story 3.1 because
+    Neo4j cannot store lists of maps as a property. Triad data will be modelled
+    as relationships/nodes in Story 3.4.
+    """
     from src.adapters.neo4j_graph import Neo4jGraphAdapter
 
     driver = FakeDriver()
     adapter = Neo4jGraphAdapter(driver=driver)
 
+    # Must not raise even though triads are not stored on the node
     adapter.save_story_node(story_id=STORY_ID, triads=TRIADS, timestamp=TIMESTAMP)
 
-    query, params = driver.session_instance.queries[0]
-    triads_param = params.get("triads")
-    assert triads_param is not None
-    assert len(triads_param) == 3
-    triad_ids = [t["triad_id"] for t in triads_param]
-    assert "workflow_nature" in triad_ids
+    assert len(driver.session_instance.queries) == 1
 
 
 # ── Test 4: raises GraphError on driver failure ───────────────────────────────

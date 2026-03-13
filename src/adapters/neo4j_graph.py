@@ -31,26 +31,22 @@ class Neo4jGraphAdapter(GraphPort):
     def save_story_node(
         self, story_id: str, triads: List[TriadPlacement], timestamp: str
     ) -> None:
-        """Create or update a Story node in Neo4j."""
-        triads_data = [
-            {
-                "triad_id": t.triad_id,
-                "x": t.coordinates.x,
-                "y": t.coordinates.y,
-            }
-            for t in triads
-        ]
+        """Create or update a Story node in Neo4j.
+
+        Notes:
+        - Triad coordinates are not stored as node properties here: Neo4j
+          properties cannot hold lists of maps. Triad data will be modelled
+          as relationships/nodes in Story 3.4 (Link Stories by Triad Proximity).
+        """
         try:
             with self._driver.session() as session:
                 session.run(
                     """
                     MERGE (s:Story {story_id: $story_id})
-                    SET s.timestamp = $timestamp,
-                        s.triads = $triads
+                    SET s.timestamp = $timestamp
                     """,
                     story_id=story_id,
                     timestamp=timestamp,
-                    triads=triads_data,
                 )
         except Exception as e:
             raise GraphError(f"Failed to save story node: {e}") from e
