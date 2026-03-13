@@ -90,6 +90,73 @@ def test_save_story_node_accepts_triad_placements():
     assert len(driver.session_instance.queries) == 1
 
 
+# ── Tests for save_entity_nodes ───────────────────────────────────────────────
+
+ENTITIES = [
+    {"name": "CI pipeline", "type": "tool"},
+    {"name": "deployment", "type": "process"},
+]
+
+
+def test_save_entity_nodes_creates_entity_nodes_and_relationships():
+    """save_entity_nodes creates Entity nodes and MENTIONS relationships in one transaction."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    adapter.save_entity_nodes(story_id=STORY_ID, entities=ENTITIES)
+
+    # Single UNWIND query — all entities in one transaction
+    assert len(driver.session_instance.queries) == 1
+    query, params = driver.session_instance.queries[0]
+    assert "Entity" in query
+    assert "MENTIONS" in query
+    assert "UNWIND" in query
+    assert params.get("story_id") == STORY_ID
+    entities_param = params.get("entities")
+    assert len(entities_param) == 2
+    assert entities_param[0]["name"] == "CI pipeline"
+    assert entities_param[1]["name"] == "deployment"
+
+
+def test_save_entity_nodes_empty_list_is_noop():
+    """save_entity_nodes does nothing when entities list is empty."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    adapter.save_entity_nodes(story_id=STORY_ID, entities=[])
+
+    assert len(driver.session_instance.queries) == 0
+
+
+def test_save_entity_nodes_raises_graph_error_on_failure():
+    """save_entity_nodes raises GraphError when the driver raises."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+    from src.ports.errors import GraphError
+
+    class FailingSession:
+        def run(self, query: str, **params):
+            raise Exception("Neo4j unavailable")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+    class FailingDriver:
+        def session(self):
+            return FailingSession()
+
+    adapter = Neo4jGraphAdapter(driver=FailingDriver())
+
+    with pytest.raises(GraphError):
+        adapter.save_entity_nodes(story_id=STORY_ID, entities=ENTITIES)
+
+
 # ── Test 4: raises GraphError on driver failure ───────────────────────────────
 
 def test_save_story_node_raises_graph_error_on_failure():

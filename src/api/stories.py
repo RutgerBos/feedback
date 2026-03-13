@@ -14,6 +14,7 @@ from src.services.story_submission import (
     StorySubmissionResult,
 )
 from src.services.entity_extraction import EntityExtractionService
+from src.services.graph_projection import GraphProjectionService
 from src.ports.storage import StoragePort
 from src.ports.llm import LLMPort, EntityExtraction
 from src.ports.graph import GraphPort
@@ -100,14 +101,6 @@ def get_llm() -> LLMPort:
     return _NoOpLLM()
 
 
-def get_entity_extraction_service(
-    storage: StoragePort = Depends(get_storage),
-    llm: LLMPort = Depends(get_llm),
-) -> EntityExtractionService:
-    """Dependency that provides entity extraction service."""
-    return EntityExtractionService(storage=storage, llm=llm)
-
-
 def get_graph(request: Request) -> GraphPort:
     """
     Dependency that provides graph port.
@@ -119,6 +112,23 @@ def get_graph(request: Request) -> GraphPort:
     """
     driver = request.app.state.neo4j_driver
     return Neo4jGraphAdapter(driver=driver)
+
+
+def get_graph_projection_service(
+    storage: StoragePort = Depends(get_storage),
+    graph: GraphPort = Depends(get_graph),
+) -> GraphProjectionService:
+    """Dependency that provides graph projection service."""
+    return GraphProjectionService(storage=storage, graph=graph)
+
+
+def get_entity_extraction_service(
+    storage: StoragePort = Depends(get_storage),
+    llm: LLMPort = Depends(get_llm),
+    graph_projection: GraphProjectionService = Depends(get_graph_projection_service),
+) -> EntityExtractionService:
+    """Dependency that provides entity extraction service with graph projection wired."""
+    return EntityExtractionService(storage=storage, llm=llm, graph_projection=graph_projection)
 
 
 def _save_story_to_graph(story_id: str, storage: StoragePort, graph: GraphPort) -> None:

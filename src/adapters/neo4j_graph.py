@@ -2,7 +2,7 @@
 Neo4j graph adapter implementing GraphPort.
 """
 
-from typing import Any, List
+from typing import Any, Dict, List
 
 from src.ports.graph import GraphPort
 from src.ports.errors import GraphError
@@ -27,6 +27,40 @@ class Neo4jGraphAdapter(GraphPort):
 
     def __init__(self, driver: Any) -> None:
         self._driver = driver
+
+    def save_entity_nodes(
+        self, story_id: str, entities: List[Dict[str, Any]]
+    ) -> None:
+        """Create Entity nodes and MENTIONS relationships for a story.
+
+        Notes:
+        - Entity identity is name-only (POC decision). Type is a mutable annotation;
+          if the LLM labels the same name differently across stories, the last write wins.
+          This should be revisited if entity deduplication becomes a requirement.
+        - All entities are written in a single transaction for atomicity.
+        """
+        if not entities:
+            return
+        entities_data = [
+            {"name": e.get("name", ""), "entity_type": e.get("type", "")}
+            for e in entities
+        ]
+        try:
+            with self._driver.session() as session:
+                session.run(
+                    """
+                    UNWIND $entities AS entity
+                    MERGE (e:Entity {name: entity.name})
+                    SET e.type = entity.entity_type
+                    WITH e
+                    MATCH (s:Story {story_id: $story_id})
+                    MERGE (s)-[:MENTIONS]->(e)
+                    """,
+                    entities=entities_data,
+                    story_id=story_id,
+                )
+        except Exception as e:
+            raise GraphError(f"Failed to save entity nodes: {e}") from e
 
     def save_story_node(
         self, story_id: str, triads: List[TriadPlacement], timestamp: str
