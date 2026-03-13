@@ -46,12 +46,7 @@ class EntityExtractionService:
         try:
             extraction = self.llm.extract_entities(story.story_text)
             entities = extraction.entities
-            themes = [
-                name for t in extraction.themes
-                if isinstance(t, dict)
-                and isinstance(name := t.get("name", ""), str)
-                and name
-            ]
+            themes = self.llm.extract_themes(story.story_text)
             processing_status = "processed"
         except LLMError as e:
             logger.warning("Entity extraction failed for story %s: %s", story_id, e)

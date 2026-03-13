@@ -199,13 +199,12 @@ def test_extract_for_story_raises_not_found_for_missing_story():
         service.extract_for_story("nonexistent-id")
 
 
-# ── Test 8: stores themes returned by LLM ─────────────────────────────────────
+# ── Test 8: stores themes returned by extract_themes() ────────────────────────
 
-def test_extract_for_story_stores_themes_as_strings():
-    """Theme dicts from LLM are mapped to name strings before storage.
+def test_extract_for_story_stores_themes_from_extract_themes():
+    """Themes returned by extract_themes() are persisted as-is.
 
-    Real adapters return themes as dicts: {"name": "...", "description": "..."}.
-    The service must normalise these to List[str] so Story.themes stays valid.
+    extract_themes() returns List[str] directly — no normalisation needed.
     """
     from src.services.entity_extraction import EntityExtractionService
 
@@ -218,39 +217,65 @@ def test_extract_for_story_stores_themes_as_strings():
 
     _, themes, _ = storage.updated[story.id]
     assert themes == ["automation friction", "process overhead"]
-    assert all(isinstance(t, str) for t in themes), "themes must be strings, not dicts"
+    assert all(isinstance(t, str) for t in themes)
 
 
-# ── Test 9: malformed theme items are skipped, not raised ─────────────────────
+# ── Test 10: themes come from extract_themes(), not extract_entities() ─────────
 
-def test_extract_for_story_skips_malformed_theme_items():
-    """Malformed theme items (missing 'name', wrong type) are skipped gracefully.
+def test_extract_for_story_themes_come_from_extract_themes():
+    """Themes are sourced from extract_themes(), not bundled with entities.
 
-    LLM output is non-deterministic; the service must not crash or leave the
-    story in 'pending' if some theme items lack a 'name' key.
+    The dedicated extract_themes() call is the canonical source of Story.themes.
+    extract_entities() may also return themes but those are ignored.
     """
     from src.services.entity_extraction import EntityExtractionService
 
     story = make_story()
     storage = FakeStorage(stories={story.id: story})
 
-    class MalformedThemeLLM(FakeLLM):
+    class DivergentLLM(FakeLLM):
+        """Returns different themes from each method to prove which one is used."""
+
         def extract_entities(self, story_text: str) -> EntityExtraction:
+            # themes bundled here should be IGNORED
             return EntityExtraction(
                 entities=self._entities,
-                themes=[
-                    {"name": "valid theme", "description": "ok"},
-                    {},                      # missing 'name'
-                    "bare string",           # wrong type entirely
-                    {"name": 123},           # non-string 'name' — would break Pydantic
-                    {"name": ["nested"]},    # non-string 'name'
-                ],
+                themes=[{"name": "entity-bundled theme", "description": ""}],
             )
 
-    service = EntityExtractionService(storage=storage, llm=MalformedThemeLLM())
+        def extract_themes(self, story_text: str) -> list:
+            return ["dedicated theme"]
+
+    service = EntityExtractionService(storage=storage, llm=DivergentLLM())
+    service.extract_for_story(story.id)
+
+    _, themes, _ = storage.updated[story.id]
+    assert themes == ["dedicated theme"], (
+        "themes must come from extract_themes(), not extract_entities()"
+    )
+
+
+# ── Test 9: extract_themes() failure is atomic — entities also empty ───────────
+
+def test_extract_for_story_is_atomic_on_theme_failure():
+    """If extract_themes() fails after extract_entities() succeeds, all are empty.
+
+    Failure semantics are atomic: a partial extraction is worse than none
+    because it leaves the story in an inconsistent state.
+    """
+    from src.services.entity_extraction import EntityExtractionService
+
+    story = make_story()
+    storage = FakeStorage(stories={story.id: story})
+
+    class ThemeFailingLLM(FakeLLM):
+        def extract_themes(self, story_text: str) -> list:
+            raise LLMError("theme extraction failed")
+
+    service = EntityExtractionService(storage=storage, llm=ThemeFailingLLM())
     service.extract_for_story(story.id)  # must not raise
 
-    _, themes, status = storage.updated[story.id]
-    assert status == "processed"
-    assert themes == ["valid theme"]          # only the well-formed item survives
-    assert all(isinstance(t, str) for t in themes)  # Pydantic-safe
+    entities, themes, status = storage.updated[story.id]
+    assert status == "failed"
+    assert entities == []
+    assert themes == []
