@@ -76,7 +76,10 @@ class OllamaLLMAdapter(LLMPort):
         raw = self._call(prompt)
         try:
             data = json.loads(raw)
-            return self._require_list(data, "themes")
+            themes = self._require_list(data, "themes")
+            if not all(isinstance(t, str) for t in themes):
+                raise LLMError("Expected all theme elements to be strings")
+            return themes
         except (json.JSONDecodeError, KeyError) as e:
             raise LLMError(f"Failed to parse theme extraction response: {e}") from e
 

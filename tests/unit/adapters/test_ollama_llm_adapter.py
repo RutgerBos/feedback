@@ -117,6 +117,22 @@ def test_ollama_adapter_extract_themes_raises_on_bad_shape():
         adapter.extract_themes("some story text here")
 
 
+def test_ollama_adapter_extract_themes_raises_on_non_string_elements():
+    """extract_themes raises LLMError when any element is not a string.
+
+    Story.themes is List[str]; non-string elements would cause a Pydantic
+    ValidationError on readback. The adapter must catch this at the boundary.
+    """
+    from src.adapters.ollama_llm import OllamaLLMAdapter
+    from src.ports.errors import LLMError
+
+    bad_response = json.dumps({"themes": ["valid theme", 42, {"name": "oops"}]})
+    adapter = OllamaLLMAdapter(http_client=make_fake_http_client(bad_response))
+
+    with pytest.raises(LLMError):
+        adapter.extract_themes("some story text here")
+
+
 def test_ollama_adapter_extract_relationships_returns_list_of_dicts():
     """extract_relationships parses ollama JSON response into list of dicts."""
     from src.adapters.ollama_llm import OllamaLLMAdapter
