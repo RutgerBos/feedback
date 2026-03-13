@@ -99,7 +99,7 @@ ENTITIES = [
 
 
 def test_save_entity_nodes_creates_entity_nodes_and_relationships():
-    """save_entity_nodes creates Entity nodes and MENTIONS relationships."""
+    """save_entity_nodes creates Entity nodes and MENTIONS relationships in one transaction."""
     from src.adapters.neo4j_graph import Neo4jGraphAdapter
 
     driver = FakeDriver()
@@ -107,13 +107,17 @@ def test_save_entity_nodes_creates_entity_nodes_and_relationships():
 
     adapter.save_entity_nodes(story_id=STORY_ID, entities=ENTITIES)
 
-    assert len(driver.session_instance.queries) == len(ENTITIES)
-    for query, params in driver.session_instance.queries:
-        assert "Entity" in query
-        assert "MENTIONS" in query
-        assert params.get("story_id") == STORY_ID
-        assert "name" in params
-        assert "entity_type" in params
+    # Single UNWIND query — all entities in one transaction
+    assert len(driver.session_instance.queries) == 1
+    query, params = driver.session_instance.queries[0]
+    assert "Entity" in query
+    assert "MENTIONS" in query
+    assert "UNWIND" in query
+    assert params.get("story_id") == STORY_ID
+    entities_param = params.get("entities")
+    assert len(entities_param) == 2
+    assert entities_param[0]["name"] == "CI pipeline"
+    assert entities_param[1]["name"] == "deployment"
 
 
 def test_save_entity_nodes_empty_list_is_noop():
