@@ -1,10 +1,11 @@
 """Tests for EntityExtractionService."""
 
 import pytest
-from src.ports.storage import StoragePort
-from src.ports.llm import LLMPort, EntityExtraction
+
+from src.domain.models import Story, TriadCoordinates, TriadPlacement
 from src.ports.errors import LLMError, NotFoundError
-from src.domain.models import Story, TriadPlacement, TriadCoordinates
+from src.ports.llm import EntityExtraction, LLMPort
+from src.ports.storage import StoragePort
 
 
 def make_story(story_id: str = "story-1") -> Story:

@@ -7,7 +7,7 @@ EntityExtraction holds entity results only; themes are returned separately by ex
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any
 
 
 class EntityExtraction:
@@ -24,7 +24,7 @@ class EntityExtraction:
     - Themes are extracted separately via extract_themes()
     """
 
-    def __init__(self, entities: List[Dict[str, Any]]):
+    def __init__(self, entities: list[dict[str, Any]]):
         self.entities = entities
 
 
@@ -63,7 +63,7 @@ class LLMPort(ABC):
         pass
 
     @abstractmethod
-    def extract_themes(self, story_text: str) -> List[str]:
+    def extract_themes(self, story_text: str) -> list[str]:
         """
         Extract themes from story text.
 
@@ -79,7 +79,7 @@ class LLMPort(ABC):
         pass
 
     @abstractmethod
-    def extract_relationships(self, story_text: str) -> List[Dict[str, Any]]:
+    def extract_relationships(self, story_text: str) -> list[dict[str, Any]]:
         """
         Extract relationships between entities in story text.
 

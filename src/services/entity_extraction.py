@@ -3,10 +3,11 @@ EntityExtractionService: orchestrates LLM entity extraction for stories.
 """
 
 import logging
-from typing import TYPE_CHECKING, Optional
-from src.ports.storage import StoragePort
-from src.ports.llm import LLMPort
+from typing import TYPE_CHECKING
+
 from src.ports.errors import LLMError
+from src.ports.llm import LLMPort
+from src.ports.storage import StoragePort
 
 if TYPE_CHECKING:
     from src.services.graph_projection import GraphProjectionService
@@ -39,7 +40,7 @@ class EntityExtractionService:
         self,
         storage: StoragePort,
         llm: LLMPort,
-        graph_projection: "Optional[GraphProjectionService]" = None,
+        graph_projection: "GraphProjectionService | None" = None,
     ) -> None:
         self.storage = storage
         self.llm = llm

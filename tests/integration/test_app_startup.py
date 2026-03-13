@@ -1,6 +1,5 @@
 """Integration tests for application startup."""
 
-import pytest
 from fastapi.testclient import TestClient
 
 
@@ -35,8 +34,9 @@ def test_cors_allows_configured_origin(monkeypatch):
     """Requests from a configured CORS origin receive the Access-Control-Allow-Origin header."""
     monkeypatch.setenv("CORS_ORIGINS", '["http://localhost:3000"]')
     from importlib import reload
-    import src.config.settings as settings_mod
+
     import src.api.main as main_mod
+    import src.config.settings as settings_mod
     reload(settings_mod)
     reload(main_mod)
 
@@ -50,8 +50,9 @@ def test_cors_rejects_unknown_origin(monkeypatch):
     """Requests from an unconfigured origin do not receive the CORS header."""
     monkeypatch.setenv("CORS_ORIGINS", '["http://localhost:3000"]')
     from importlib import reload
-    import src.config.settings as settings_mod
+
     import src.api.main as main_mod
+    import src.config.settings as settings_mod
     reload(settings_mod)
     reload(main_mod)
 

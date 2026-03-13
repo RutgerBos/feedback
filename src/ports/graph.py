@@ -6,7 +6,8 @@ independent of the actual graph database (Neo4j, Neptune, etc).
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any
+
 from src.domain.models import TriadPlacement
 
 
@@ -31,7 +32,7 @@ class GraphPort(ABC):
 
     @abstractmethod
     def save_entity_nodes(
-        self, story_id: str, entities: List[Dict[str, Any]]
+        self, story_id: str, entities: list[dict[str, Any]]
     ) -> None:
         """
         Create Entity nodes and MENTIONS relationships from a Story node.
@@ -47,7 +48,7 @@ class GraphPort(ABC):
 
     @abstractmethod
     def save_theme_nodes(
-        self, story_id: str, themes: List[str]
+        self, story_id: str, themes: list[str]
     ) -> None:
         """
         Create Theme nodes and HAS_THEME relationships from a Story node.
@@ -63,7 +64,7 @@ class GraphPort(ABC):
 
     @abstractmethod
     def save_story_node(
-        self, story_id: str, triads: List[TriadPlacement], timestamp: str
+        self, story_id: str, triads: list[TriadPlacement], timestamp: str
     ) -> None:
         """
         Create a story node in the knowledge graph.

@@ -1,11 +1,13 @@
 """Integration tests for MongoDB storage adapter."""
 
-import pytest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
+
+import pytest
 from pymongo import MongoClient
+
 from src.adapters.mongodb_storage import MongoDBStorageAdapter
-from src.domain.models import Story, TriadPlacement, TriadCoordinates, StoryMetadata
+from src.domain.models import Story, StoryMetadata, TriadCoordinates, TriadPlacement
 
 
 @pytest.fixture
@@ -47,7 +49,7 @@ def test_save_story_returns_id(storage_adapter):
             TriadPlacement(triad_id="value_character", coordinates=TriadCoordinates(x=0.2, y=0.7)),
         ],
         metadata=StoryMetadata(department="engineering"),
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
     )
 
     story_id = storage_adapter.save_story(story)
@@ -67,7 +69,7 @@ def test_saved_story_can_be_retrieved(storage_adapter):
             TriadPlacement(triad_id="value_character", coordinates=TriadCoordinates(x=0.2, y=0.7)),
         ],
         metadata=StoryMetadata(department="engineering", role="developer"),
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
     )
 
     story_id = storage_adapter.save_story(original_story)
@@ -100,7 +102,7 @@ def test_story_stored_with_correct_structure(storage_adapter, clean_db):
             TriadPlacement(triad_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.4)),
             TriadPlacement(triad_id="value_character", coordinates=TriadCoordinates(x=0.2, y=0.7)),
         ],
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
     )
 
     storage_adapter.save_story(story)
@@ -167,11 +169,11 @@ def test_list_stories_ordered_newest_first(storage_adapter):
     ]
     older = Story(
         id=str(uuid4()), story_text=base_text, triads=triads,
-        timestamp=datetime(2025, 1, 1, tzinfo=timezone.utc),
+        timestamp=datetime(2025, 1, 1, tzinfo=UTC),
     )
     newer = Story(
         id=str(uuid4()), story_text=base_text, triads=triads,
-        timestamp=datetime(2025, 6, 1, tzinfo=timezone.utc),
+        timestamp=datetime(2025, 6, 1, tzinfo=UTC),
     )
     storage_adapter.save_story(older)
     storage_adapter.save_story(newer)
@@ -202,7 +204,6 @@ def test_list_stories_respects_limit_and_offset(storage_adapter):
 
 def test_update_story_entities_persists_and_round_trips(storage_adapter):
     """update_story_entities persists entities/themes and they survive a save/get cycle."""
-    from src.ports.errors import NotFoundError
 
     story = Story(
         id=str(uuid4()),

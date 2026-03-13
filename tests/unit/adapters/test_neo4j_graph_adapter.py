@@ -1,9 +1,9 @@
 """Tests for Neo4jGraphAdapter."""
 
 import pytest
-from src.ports.graph import GraphPort
-from src.domain.models import TriadPlacement, TriadCoordinates
 
+from src.domain.models import TriadCoordinates, TriadPlacement
+from src.ports.graph import GraphPort
 
 STORY_ID = "story-abc"
 TIMESTAMP = "2026-03-13T10:00:00Z"

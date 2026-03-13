@@ -13,7 +13,7 @@ def test_llm_port_is_abstract():
 
 def test_llm_port_has_extract_themes_method():
     """LLMPort requires extract_themes implementation."""
-    from src.ports.llm import LLMPort, EntityExtraction
+    from src.ports.llm import EntityExtraction, LLMPort
 
     class IncompleteProvider(LLMPort):
         def extract_entities(self, story_text: str) -> EntityExtraction:
@@ -28,7 +28,7 @@ def test_llm_port_has_extract_themes_method():
 
 def test_llm_port_has_extract_relationships_method():
     """LLMPort requires extract_relationships implementation."""
-    from src.ports.llm import LLMPort, EntityExtraction
+    from src.ports.llm import EntityExtraction, LLMPort
 
     class IncompleteProvider(LLMPort):
         def extract_entities(self, story_text: str) -> EntityExtraction:
@@ -43,7 +43,7 @@ def test_llm_port_has_extract_relationships_method():
 
 def test_can_implement_llm_port():
     """Can create a valid LLMPort implementation."""
-    from src.ports.llm import LLMPort, EntityExtraction
+    from src.ports.llm import EntityExtraction, LLMPort
 
     class FakeLLM(LLMPort):
         def extract_entities(self, story_text: str) -> EntityExtraction:

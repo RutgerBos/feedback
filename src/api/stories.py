@@ -5,24 +5,24 @@ Handles story submission and retrieval.
 """
 
 from datetime import datetime
-from typing import Optional, List
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Depends, Query, Request
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
-from src.services.story_submission import (
-    StorySubmissionService,
-    StorySubmissionRequest,
-    StorySubmissionResult,
-)
-from src.services.entity_extraction import EntityExtractionService
-from src.services.graph_projection import GraphProjectionService
-from src.ports.storage import StoragePort
-from src.ports.llm import LLMPort, EntityExtraction
-from src.ports.graph import GraphPort
-from src.ports.errors import NotFoundError, LLMError
+
 from src.adapters.mongodb_storage import MongoDBStorageAdapter
 from src.adapters.neo4j_graph import Neo4jGraphAdapter
 from src.domain.models import Story
-
+from src.ports.errors import LLMError, NotFoundError
+from src.ports.graph import GraphPort
+from src.ports.llm import EntityExtraction, LLMPort
+from src.ports.storage import StoragePort
+from src.services.entity_extraction import EntityExtractionService
+from src.services.graph_projection import GraphProjectionService
+from src.services.story_submission import (
+    StorySubmissionRequest,
+    StorySubmissionResult,
+    StorySubmissionService,
+)
 
 router = APIRouter(prefix="/api/stories", tags=["stories"])
 
@@ -34,23 +34,23 @@ class TriadResponse(BaseModel):
 
 
 class MetadataResponse(BaseModel):
-    user_pseudonym: Optional[str] = None
-    department: Optional[str] = None
-    role: Optional[str] = None
-    tool_context: Optional[str] = None
+    user_pseudonym: str | None = None
+    department: str | None = None
+    role: str | None = None
+    tool_context: str | None = None
 
 
 class StoryResponse(BaseModel):
     id: str
     story_text: str
-    triads: List[TriadResponse]
-    metadata: Optional[MetadataResponse] = None
+    triads: list[TriadResponse]
+    metadata: MetadataResponse | None = None
     timestamp: datetime
     processing_status: str
 
 
 class StoryListResponse(BaseModel):
-    stories: List[StoryResponse]
+    stories: list[StoryResponse]
     total: int
     limit: int
     offset: int
@@ -191,10 +191,10 @@ async def submit_story(
         background_tasks.add_task(entity_service.extract_for_story, result.story_id)
         return result
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         # Log the error in production
-        raise HTTPException(status_code=500, detail="Failed to submit story")
+        raise HTTPException(status_code=500, detail="Failed to submit story") from e
 
 
 def _story_to_response(story: Story) -> StoryResponse:
@@ -263,5 +263,5 @@ async def get_story(
     try:
         story = storage.get_story(story_id)
         return _story_to_response(story)
-    except NotFoundError:
-        raise HTTPException(status_code=404, detail=f"Story not found: {story_id}")
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=f"Story not found: {story_id}") from e

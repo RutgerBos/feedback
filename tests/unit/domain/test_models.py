@@ -1,7 +1,8 @@
 """Tests for domain models."""
 
-import pytest
 from datetime import datetime
+
+import pytest
 from pydantic import ValidationError
 
 
@@ -33,7 +34,7 @@ def test_triad_coordinates_validates_range():
 
 def test_create_triad_placement():
     """Can create a triad placement with coordinates."""
-    from src.domain.models import TriadPlacement, TriadCoordinates
+    from src.domain.models import TriadCoordinates, TriadPlacement
 
     placement = TriadPlacement(
         triad_id="workflow_nature",
@@ -71,7 +72,7 @@ def test_story_metadata_all_fields_optional():
 
 def test_create_story():
     """Can create a complete story."""
-    from src.domain.models import Story, TriadPlacement, TriadCoordinates, StoryMetadata
+    from src.domain.models import Story, StoryMetadata, TriadCoordinates, TriadPlacement
 
     story = Story(
         id="test-uuid-123",
@@ -103,7 +104,7 @@ def test_create_story():
 
 def test_story_validates_minimum_text_length():
     """Story text must be at least 50 characters."""
-    from src.domain.models import Story, TriadPlacement, TriadCoordinates
+    from src.domain.models import Story, TriadCoordinates, TriadPlacement
 
     # Valid - exactly 50 chars
     Story(
@@ -138,7 +139,7 @@ def test_story_validates_minimum_text_length():
 
 def test_story_validates_maximum_text_length():
     """Story text must be at most 2000 characters."""
-    from src.domain.models import Story, TriadPlacement, TriadCoordinates
+    from src.domain.models import Story, TriadCoordinates, TriadPlacement
 
     # Valid - exactly 2000 chars
     Story(
@@ -173,7 +174,7 @@ def test_story_validates_maximum_text_length():
 
 def test_story_requires_exactly_three_triads():
     """Story must have exactly 3 triad placements."""
-    from src.domain.models import Story, TriadPlacement, TriadCoordinates
+    from src.domain.models import Story, TriadCoordinates, TriadPlacement
 
     # Invalid - only 2 triads
     with pytest.raises(ValidationError) as exc_info:

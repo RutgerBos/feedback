@@ -6,7 +6,8 @@ independent of the actual storage implementation (MongoDB, PostgreSQL, etc).
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any
+from typing import Any
+
 from src.domain.models import Story
 
 
@@ -74,7 +75,7 @@ class StoragePort(ABC):
         pass
 
     @abstractmethod
-    def list_stories(self, limit: int = 20, offset: int = 0) -> List[Story]:
+    def list_stories(self, limit: int = 20, offset: int = 0) -> list[Story]:
         """
         Retrieve a paginated list of stories, newest first.
 
@@ -94,8 +95,8 @@ class StoragePort(ABC):
     def update_story_entities(
         self,
         story_id: str,
-        entities: List[Dict[str, Any]],
-        themes: List[str],
+        entities: list[dict[str, Any]],
+        themes: list[str],
         processing_status: str,
     ) -> None:
         """

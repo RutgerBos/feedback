@@ -19,10 +19,10 @@ def test_db():
 @pytest.fixture
 def api_client(test_db):
     """Provide a TestClient with storage overridden to use the test database."""
-    from src.api.main import app
-    from src.api.stories import get_storage, get_llm
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
-    from src.ports.llm import LLMPort, EntityExtraction
+    from src.api.main import app
+    from src.api.stories import get_llm, get_storage
+    from src.ports.llm import EntityExtraction, LLMPort
 
     class NoOpLLM(LLMPort):
         def extract_entities(self, story_text: str) -> EntityExtraction:
@@ -109,7 +109,7 @@ def test_list_stories_returns_all_stories(test_db, api_client):
     story_text = "Working on the new feature was a great collaborative experience. " * 2
 
     # Submit two stories
-    for i in range(2):
+    for _ in range(2):
         client.post(
             "/api/stories",
             json={
@@ -246,10 +246,10 @@ def test_get_story_returns_404_for_unknown_id(test_db, api_client):
 
 def test_submit_story_triggers_entity_extraction(test_db):
     """Submitting a story triggers background entity extraction via FakeLLM."""
-    from src.api.main import app
-    from src.api.stories import get_storage, get_llm
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
-    from src.ports.llm import LLMPort, EntityExtraction
+    from src.api.main import app
+    from src.api.stories import get_llm, get_storage
+    from src.ports.llm import EntityExtraction, LLMPort
 
     class FakeLLM(LLMPort):
         def extract_entities(self, story_text: str) -> EntityExtraction:
@@ -340,11 +340,11 @@ def test_submit_story_without_metadata(test_db, api_client):
 
 def test_submit_story_triggers_graph_node_creation(test_db):
     """Submitting a story triggers save_story_node() as a background task."""
-    from src.api.main import app
-    from src.api.stories import get_storage, get_llm, get_graph
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
-    from src.ports.llm import LLMPort, EntityExtraction
+    from src.api.main import app
+    from src.api.stories import get_graph, get_llm, get_storage
     from src.ports.graph import GraphPort
+    from src.ports.llm import EntityExtraction, LLMPort
 
     saved_nodes = []
 

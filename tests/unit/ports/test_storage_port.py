@@ -1,7 +1,7 @@
 """Tests for StoragePort interface."""
 
+
 import pytest
-from abc import ABC
 
 
 def test_storage_port_is_abstract():
@@ -107,8 +107,8 @@ def test_storage_port_has_update_story_entities_method():
 
 def test_can_implement_storage_port():
     """Can create a valid StoragePort implementation."""
-    from src.ports.storage import StoragePort
     from src.domain.models import Story
+    from src.ports.storage import StoragePort
 
     class FakeStorage(StoragePort):
         def save_story(self, story: Story) -> str:

@@ -2,11 +2,11 @@
 Neo4j graph adapter implementing GraphPort.
 """
 
-from typing import Any, Dict, List
+from typing import Any
 
-from src.ports.graph import GraphPort
-from src.ports.errors import GraphError
 from src.domain.models import TriadPlacement
+from src.ports.errors import GraphError
+from src.ports.graph import GraphPort
 
 
 class Neo4jGraphAdapter(GraphPort):
@@ -29,7 +29,7 @@ class Neo4jGraphAdapter(GraphPort):
         self._driver = driver
 
     def save_entity_nodes(
-        self, story_id: str, entities: List[Dict[str, Any]]
+        self, story_id: str, entities: list[dict[str, Any]]
     ) -> None:
         """Create Entity nodes and MENTIONS relationships for a story.
 
@@ -62,7 +62,7 @@ class Neo4jGraphAdapter(GraphPort):
         except Exception as e:
             raise GraphError(f"Failed to save entity nodes: {e}") from e
 
-    def save_theme_nodes(self, story_id: str, themes: List[str]) -> None:
+    def save_theme_nodes(self, story_id: str, themes: list[str]) -> None:
         """Create Theme nodes and HAS_THEME relationships for a story.
 
         Notes:
@@ -94,7 +94,7 @@ class Neo4jGraphAdapter(GraphPort):
             raise GraphError(f"Failed to save theme nodes: {e}") from e
 
     def save_story_node(
-        self, story_id: str, triads: List[TriadPlacement], timestamp: str
+        self, story_id: str, triads: list[TriadPlacement], timestamp: str
     ) -> None:
         """Create or update a Story node in Neo4j.
 
