@@ -33,3 +33,18 @@ def test_app_loads_triad_config_on_startup():
         assert app.state.triad_config is not None
         assert app.state.triad_config.version == "1.0"
         assert len(app.state.triad_config.triads) == 3
+
+
+def test_app_creates_mongo_client_singleton_on_startup():
+    """Application creates a single MongoClient at startup and stores it in app.state."""
+    from src.api.main import app
+
+    with TestClient(app) as client:
+        client.get("/health")
+
+        assert hasattr(app.state, "mongo_client")
+        assert app.state.mongo_client is not None
+        # Verify it is the same object across two accesses (singleton)
+        first = app.state.mongo_client
+        second = app.state.mongo_client
+        assert first is second
