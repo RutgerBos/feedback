@@ -105,6 +105,22 @@ def test_claude_adapter_extract_themes_raises_on_bad_shape():
         adapter.extract_themes("some story text here")
 
 
+def test_claude_adapter_extract_themes_raises_on_non_string_elements():
+    """extract_themes raises LLMError when any element is not a string.
+
+    Story.themes is List[str]; non-string elements would cause a Pydantic
+    ValidationError on readback. The adapter must catch this at the boundary.
+    """
+    from src.adapters.claude_llm import ClaudeLLMAdapter
+    from src.ports.errors import LLMError
+
+    bad_response = json.dumps({"themes": ["valid theme", 42, {"name": "oops"}]})
+    adapter = ClaudeLLMAdapter(client=make_fake_anthropic_client(bad_response))
+
+    with pytest.raises(LLMError):
+        adapter.extract_themes("some story text here")
+
+
 def test_claude_adapter_extract_relationships_raises_on_bad_shape():
     """extract_relationships raises LLMError when relationships is not a list."""
     from src.adapters.claude_llm import ClaudeLLMAdapter
