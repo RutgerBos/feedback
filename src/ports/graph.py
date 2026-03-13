@@ -6,7 +6,7 @@ independent of the actual graph database (Neo4j, Neptune, etc).
 """
 
 from abc import ABC, abstractmethod
-from typing import List
+from typing import Any, Dict, List
 from src.domain.models import TriadPlacement
 
 
@@ -28,6 +28,22 @@ class GraphPort(ABC):
     - Will expand with relationship and query methods as needed
     - May raise GraphError for database failures
     """
+
+    @abstractmethod
+    def save_entity_nodes(
+        self, story_id: str, entities: List[Dict[str, Any]]
+    ) -> None:
+        """
+        Create Entity nodes and MENTIONS relationships from a Story node.
+
+        Args:
+            story_id: ID of the story that mentions these entities
+            entities: List of entity dicts with "name" and "type" keys
+
+        Raises:
+            GraphError: If node or relationship creation fails
+        """
+        pass
 
     @abstractmethod
     def save_story_node(

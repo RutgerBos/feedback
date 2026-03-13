@@ -20,6 +20,9 @@ def test_can_implement_graph_port():
         def save_story_node(self, story_id: str, triads, timestamp: str) -> None:
             pass
 
+        def save_entity_nodes(self, story_id: str, entities: list) -> None:
+            pass
+
     graph = FakeGraph()
     assert graph is not None
     assert isinstance(graph, GraphPort)

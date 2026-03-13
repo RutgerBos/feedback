@@ -2,7 +2,7 @@
 Neo4j graph adapter implementing GraphPort.
 """
 
-from typing import Any, List
+from typing import Any, Dict, List
 
 from src.ports.graph import GraphPort
 from src.ports.errors import GraphError
@@ -27,6 +27,30 @@ class Neo4jGraphAdapter(GraphPort):
 
     def __init__(self, driver: Any) -> None:
         self._driver = driver
+
+    def save_entity_nodes(
+        self, story_id: str, entities: List[Dict[str, Any]]
+    ) -> None:
+        """Create Entity nodes and MENTIONS relationships for a story."""
+        if not entities:
+            return
+        try:
+            with self._driver.session() as session:
+                for entity in entities:
+                    session.run(
+                        """
+                        MERGE (e:Entity {name: $name})
+                        SET e.type = $entity_type
+                        WITH e
+                        MATCH (s:Story {story_id: $story_id})
+                        MERGE (s)-[:MENTIONS]->(e)
+                        """,
+                        name=entity.get("name", ""),
+                        entity_type=entity.get("type", ""),
+                        story_id=story_id,
+                    )
+        except Exception as e:
+            raise GraphError(f"Failed to save entity nodes: {e}") from e
 
     def save_story_node(
         self, story_id: str, triads: List[TriadPlacement], timestamp: str

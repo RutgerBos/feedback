@@ -268,3 +268,57 @@ def test_extract_for_story_is_atomic_on_theme_failure():
     assert status == "failed"
     assert entities == []
     assert themes == []
+
+
+# ── Tests for graph_projection wiring ─────────────────────────────────────────
+
+class FakeGraphProjection:
+    """Records save_entities_for_story calls."""
+
+    def __init__(self):
+        self.calls = []
+
+    def save_entities_for_story(self, story_id: str) -> None:
+        self.calls.append(story_id)
+
+
+def test_extract_for_story_triggers_graph_projection_on_success():
+    """On successful extraction, graph_projection.save_entities_for_story() is called."""
+    from src.services.entity_extraction import EntityExtractionService
+
+    story = make_story()
+    storage = FakeStorage(stories={story.id: story})
+    graph_projection = FakeGraphProjection()
+
+    service = EntityExtractionService(storage=storage, llm=FakeLLM(), graph_projection=graph_projection)
+    service.extract_for_story(story.id)
+
+    assert graph_projection.calls == [story.id]
+
+
+def test_extract_for_story_skips_graph_projection_on_failure():
+    """On LLM failure, graph_projection is not called."""
+    from src.services.entity_extraction import EntityExtractionService
+
+    story = make_story()
+    storage = FakeStorage(stories={story.id: story})
+    graph_projection = FakeGraphProjection()
+
+    service = EntityExtractionService(storage=storage, llm=FailingLLM(), graph_projection=graph_projection)
+    service.extract_for_story(story.id)
+
+    assert graph_projection.calls == []
+
+
+def test_extract_for_story_works_without_graph_projection():
+    """graph_projection=None is backwards compatible — no AttributeError raised."""
+    from src.services.entity_extraction import EntityExtractionService
+
+    story = make_story()
+    storage = FakeStorage(stories={story.id: story})
+
+    service = EntityExtractionService(storage=storage, llm=FakeLLM())  # no graph_projection
+    service.extract_for_story(story.id)  # must not raise
+
+    _, _, status = storage.updated[story.id]
+    assert status == "processed"

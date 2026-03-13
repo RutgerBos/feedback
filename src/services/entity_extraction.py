@@ -3,9 +3,13 @@ EntityExtractionService: orchestrates LLM entity extraction for stories.
 """
 
 import logging
+from typing import TYPE_CHECKING, Optional
 from src.ports.storage import StoragePort
 from src.ports.llm import LLMPort
 from src.ports.errors import LLMError
+
+if TYPE_CHECKING:
+    from src.services.graph_projection import GraphProjectionService
 
 logger = logging.getLogger(__name__)
 
@@ -22,16 +26,24 @@ class EntityExtractionService:
     Collaborators:
     - StoragePort (to retrieve and update stories)
     - LLMPort (to extract entities and themes via separate calls)
+    - GraphProjectionService (optional; projects entities into graph after extraction)
 
     Notes:
     - Failure is atomic: if either LLM call fails, both results are stored empty
     - Failed extractions do NOT raise — caller is never blocked
     - NotFoundError from storage IS propagated (caller must handle)
+    - graph_projection is optional for backwards compatibility
     """
 
-    def __init__(self, storage: StoragePort, llm: LLMPort) -> None:
+    def __init__(
+        self,
+        storage: StoragePort,
+        llm: LLMPort,
+        graph_projection: "Optional[GraphProjectionService]" = None,
+    ) -> None:
         self.storage = storage
         self.llm = llm
+        self.graph_projection = graph_projection
 
     def extract_for_story(self, story_id: str) -> None:
         """
@@ -62,3 +74,6 @@ class EntityExtractionService:
             themes=themes,
             processing_status=processing_status,
         )
+
+        if processing_status == "processed" and self.graph_projection is not None:
+            self.graph_projection.save_entities_for_story(story_id)
