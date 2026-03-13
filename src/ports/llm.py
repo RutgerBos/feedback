@@ -6,7 +6,7 @@ independent of the actual LLM provider (Claude, OpenAI, local model, etc).
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Tuple
+from typing import Any, Dict, List
 
 
 class EntityExtraction:
@@ -24,7 +24,7 @@ class EntityExtraction:
     - For plain theme strings use extract_themes() instead
     """
 
-    def __init__(self, entities: List[Dict[str, Any]], themes: List[Dict[str, Any]]):
+    def __init__(self, entities: List[Dict[str, Any]], themes: List[Any]):
         self.entities = entities
         self.themes = themes
 
