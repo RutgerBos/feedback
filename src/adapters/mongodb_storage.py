@@ -4,11 +4,13 @@ MongoDB storage adapter implementing StoragePort.
 This adapter provides concrete MongoDB implementation of the StoragePort interface.
 """
 
-from typing import Dict, Any, List
+from typing import Any
+
 from pymongo.database import Database
-from src.ports.storage import StoragePort
+
+from src.domain.models import Story, StoryMetadata, TriadCoordinates, TriadPlacement
 from src.ports.errors import NotFoundError, StorageError
-from src.domain.models import Story, TriadPlacement, TriadCoordinates, StoryMetadata
+from src.ports.storage import StoragePort
 
 
 class MongoDBStorageAdapter(StoragePort):
@@ -103,7 +105,7 @@ class MongoDBStorageAdapter(StoragePort):
         except Exception as e:
             raise StorageError(f"Failed to count stories: {e}") from e
 
-    def list_stories(self, limit: int = 20, offset: int = 0) -> List[Story]:
+    def list_stories(self, limit: int = 20, offset: int = 0) -> list[Story]:
         """
         Retrieve a paginated list of stories from MongoDB, newest first.
 
@@ -131,8 +133,8 @@ class MongoDBStorageAdapter(StoragePort):
     def update_story_entities(
         self,
         story_id: str,
-        entities: List[Dict[str, Any]],
-        themes: List[str],
+        entities: list[dict[str, Any]],
+        themes: list[str],
         processing_status: str,
     ) -> None:
         """
@@ -158,7 +160,7 @@ class MongoDBStorageAdapter(StoragePort):
         except Exception as e:
             raise StorageError(f"Failed to update story entities: {e}") from e
 
-    def _story_to_document(self, story: Story) -> Dict[str, Any]:
+    def _story_to_document(self, story: Story) -> dict[str, Any]:
         """
         Convert Story domain model to MongoDB document.
 
@@ -200,7 +202,7 @@ class MongoDBStorageAdapter(StoragePort):
             "themes": story.themes,
         }
 
-    def _document_to_story(self, document: Dict[str, Any]) -> Story:
+    def _document_to_story(self, document: dict[str, Any]) -> Story:
         """
         Convert MongoDB document to Story domain model.
 

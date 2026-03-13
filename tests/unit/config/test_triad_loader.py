@@ -1,8 +1,9 @@
 """Tests for triad configuration loader."""
 
-import pytest
-from pathlib import Path
 import tempfile
+from pathlib import Path
+
+import pytest
 import yaml
 from pydantic import ValidationError
 

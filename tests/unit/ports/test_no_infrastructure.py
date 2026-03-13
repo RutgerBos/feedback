@@ -1,7 +1,6 @@
 """Test that ports have no infrastructure dependencies."""
 
 import ast
-import importlib.util
 from pathlib import Path
 
 
@@ -30,7 +29,7 @@ def test_ports_have_no_infrastructure_imports():
     port_files = [f for f in port_files if f.name != "__init__.py"]
 
     for port_file in port_files:
-        with open(port_file, "r") as f:
+        with open(port_file) as f:
             tree = ast.parse(f.read(), filename=str(port_file))
 
         # Collect all imports
@@ -71,7 +70,7 @@ def test_ports_only_import_from_domain():
     ]
 
     for port_file in port_files:
-        with open(port_file, "r") as f:
+        with open(port_file) as f:
             tree = ast.parse(f.read(), filename=str(port_file))
 
         for node in ast.walk(tree):
@@ -81,7 +80,7 @@ def test_ports_only_import_from_domain():
                 ):
                     # Allow relative imports within src
                     if not node.module.startswith("src"):
-                        assert False, (
+                        raise AssertionError(
                             f"{port_file.name} imports from unexpected module: "
                             f"{node.module}. Ports should only import from domain or stdlib."
                         )

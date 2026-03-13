@@ -1,10 +1,11 @@
 """Tests for GraphProjectionService."""
 
 import pytest
-from src.ports.storage import StoragePort
+
+from src.domain.models import Story, TriadCoordinates, TriadPlacement
+from src.ports.errors import GraphError, NotFoundError
 from src.ports.graph import GraphPort
-from src.ports.errors import NotFoundError, GraphError
-from src.domain.models import Story, TriadPlacement, TriadCoordinates
+from src.ports.storage import StoragePort
 
 
 def make_story(story_id: str = "story-1", processing_status: str = "processed") -> Story:

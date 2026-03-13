@@ -13,8 +13,8 @@ def test_graph_port_is_abstract():
 
 def test_can_implement_graph_port():
     """Can create a valid GraphPort implementation."""
+    from src.domain.models import TriadCoordinates, TriadPlacement
     from src.ports.graph import GraphPort
-    from src.domain.models import TriadPlacement, TriadCoordinates
 
     class FakeGraph(GraphPort):
         def save_story_node(self, story_id: str, triads, timestamp: str) -> None:

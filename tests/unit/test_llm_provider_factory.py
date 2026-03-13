@@ -1,13 +1,14 @@
 """Tests for LLM provider factory."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 
 def test_factory_creates_claude_adapter_for_claude_config():
     """Factory returns ClaudeLLMAdapter when config provider is 'claude'."""
-    from src.adapters.llm_factory import create_llm_provider
     from src.adapters.claude_llm import ClaudeLLMAdapter
+    from src.adapters.llm_factory import create_llm_provider
 
     fake_client = MagicMock()
     with patch("src.adapters.llm_factory.anthropic") as mock_anthropic:

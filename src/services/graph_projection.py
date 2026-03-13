@@ -3,9 +3,10 @@ GraphProjectionService: projects extracted story data into the knowledge graph.
 """
 
 import logging
-from src.ports.storage import StoragePort
-from src.ports.graph import GraphPort
+
 from src.ports.errors import GraphError
+from src.ports.graph import GraphPort
+from src.ports.storage import StoragePort
 
 logger = logging.getLogger(__name__)
 

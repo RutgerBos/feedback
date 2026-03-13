@@ -1,6 +1,5 @@
 """Tests for application settings."""
 
-import pytest
 from src.config.settings import Settings
 
 

@@ -5,8 +5,9 @@ These are pure domain objects with no infrastructure dependencies.
 They use Pydantic for validation and immutability.
 """
 
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -66,10 +67,10 @@ class StoryMetadata(BaseModel):
     - Immutable value object
     """
 
-    user_pseudonym: Optional[str] = None
-    department: Optional[str] = None
-    role: Optional[str] = None
-    tool_context: Optional[str] = None
+    user_pseudonym: str | None = None
+    department: str | None = None
+    role: str | None = None
+    tool_context: str | None = None
 
     model_config = {"frozen": True}
 
@@ -94,16 +95,16 @@ class Story(BaseModel):
 
     id: str = Field(..., min_length=1)
     story_text: str = Field(..., min_length=50, max_length=2000)
-    triads: List[TriadPlacement] = Field(..., min_length=3, max_length=3)
-    metadata: Optional[StoryMetadata] = None
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    triads: list[TriadPlacement] = Field(..., min_length=3, max_length=3)
+    metadata: StoryMetadata | None = None
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     processing_status: str = Field(default="pending")
-    entities: List[Dict[str, Any]] = Field(default_factory=list)
-    themes: List[str] = Field(default_factory=list)
+    entities: list[dict[str, Any]] = Field(default_factory=list)
+    themes: list[str] = Field(default_factory=list)
 
     @field_validator("triads")
     @classmethod
-    def validate_unique_triad_ids(cls, v: List[TriadPlacement]) -> List[TriadPlacement]:
+    def validate_unique_triad_ids(cls, v: list[TriadPlacement]) -> list[TriadPlacement]:
         """Ensure triad IDs are unique within the story."""
         triad_ids = [placement.triad_id for placement in v]
         if len(triad_ids) != len(set(triad_ids)):

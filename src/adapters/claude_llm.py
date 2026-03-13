@@ -3,10 +3,10 @@ Claude LLM adapter implementing LLMPort via the Anthropic API.
 """
 
 import json
-from typing import Any, Dict, List
+from typing import Any
 
-from src.ports.llm import LLMPort, EntityExtraction
 from src.ports.errors import LLMError
+from src.ports.llm import EntityExtraction, LLMPort
 
 
 class ClaudeLLMAdapter(LLMPort):
@@ -51,7 +51,7 @@ class ClaudeLLMAdapter(LLMPort):
         except (json.JSONDecodeError, KeyError) as e:
             raise LLMError(f"Failed to parse entity extraction response: {e}") from e
 
-    def extract_themes(self, story_text: str) -> List[str]:
+    def extract_themes(self, story_text: str) -> list[str]:
         """Extract theme strings from story text via Claude."""
         prompt = (
             "Extract 1-5 themes from this story as descriptive phrases. "
@@ -68,7 +68,7 @@ class ClaudeLLMAdapter(LLMPort):
         except (json.JSONDecodeError, KeyError) as e:
             raise LLMError(f"Failed to parse theme extraction response: {e}") from e
 
-    def extract_relationships(self, story_text: str) -> List[Dict[str, Any]]:
+    def extract_relationships(self, story_text: str) -> list[dict[str, Any]]:
         """Extract entity relationships from story text via Claude."""
         prompt = (
             "Extract relationships between entities in this story. "

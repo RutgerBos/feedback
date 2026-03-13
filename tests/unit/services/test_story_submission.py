@@ -1,11 +1,12 @@
 """Tests for story submission service."""
 
-import pytest
 from uuid import UUID
-from src.services.story_submission import StorySubmissionService, StorySubmissionRequest
-from src.domain.models import TriadPlacement, TriadCoordinates
-from src.ports.storage import StoragePort
+
+import pytest
+
 from src.domain.models import Story
+from src.ports.storage import StoragePort
+from src.services.story_submission import StorySubmissionRequest, StorySubmissionService
 
 
 class FakeStorage(StoragePort):

@@ -19,16 +19,18 @@ Notes:
 - Config validation happens at startup (fail-fast)
 """
 
-from pathlib import Path
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from pathlib import Path
+
+import neo4j
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo import MongoClient
-import neo4j
+
+from src.api.stories import router as stories_router
 from src.config.settings import Settings
 from src.config.triad_loader import load_triad_config
-from src.api.stories import router as stories_router
 
 
 @asynccontextmanager

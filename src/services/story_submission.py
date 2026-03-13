@@ -5,13 +5,14 @@ Coordinates the submission of new stories, including validation,
 ID generation, and persistence.
 """
 
+from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
-from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List, Set
+
 from pydantic import BaseModel, Field, field_validator
 
+from src.domain.models import Story, StoryMetadata, TriadCoordinates, TriadPlacement
 from src.ports.storage import StoragePort
-from src.domain.models import Story, TriadPlacement, TriadCoordinates, StoryMetadata
 
 
 class StorySubmissionRequest(BaseModel):
@@ -30,12 +31,12 @@ class StorySubmissionRequest(BaseModel):
     """
 
     story_text: str = Field(..., min_length=50, max_length=2000)
-    triads: List[Dict[str, Any]] = Field(..., min_length=3, max_length=3)
-    metadata: Optional[Dict[str, Optional[str]]] = None
+    triads: list[dict[str, Any]] = Field(..., min_length=3, max_length=3)
+    metadata: dict[str, str | None] | None = None
 
     @field_validator("triads")
     @classmethod
-    def validate_triad_structure(cls, v: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def validate_triad_structure(cls, v: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Ensure each triad has required fields."""
         for triad in v:
             if "triad_id" not in triad:
@@ -88,7 +89,7 @@ class StorySubmissionService:
     - valid_triad_ids: when provided, submitted triad_ids must be in the set
     """
 
-    def __init__(self, storage: StoragePort, valid_triad_ids: Optional[Set[str]] = None):
+    def __init__(self, storage: StoragePort, valid_triad_ids: set[str] | None = None):
         """
         Initialize story submission service.
 
@@ -149,7 +150,7 @@ class StorySubmissionService:
             story_text=request.story_text,
             triads=triad_placements,
             metadata=metadata,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             processing_status="pending",
         )
 

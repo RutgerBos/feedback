@@ -1,8 +1,10 @@
 """Tests for ClaudeLLMAdapter."""
 
 import json
+
 import pytest
-from src.ports.llm import LLMPort, EntityExtraction
+
+from src.ports.llm import EntityExtraction, LLMPort
 
 
 def make_fake_anthropic_client(response_text: str):
