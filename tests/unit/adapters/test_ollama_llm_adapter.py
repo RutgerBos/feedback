@@ -38,7 +38,6 @@ def test_ollama_adapter_extract_entities_returns_entity_extraction():
 
     response = json.dumps({
         "entities": [{"name": "CI pipeline", "type": "tool"}],
-        "themes": [{"name": "tooling issues", "description": "Problems with dev tools"}],
     })
     adapter = OllamaLLMAdapter(http_client=make_fake_http_client(response))
 
@@ -46,7 +45,6 @@ def test_ollama_adapter_extract_entities_returns_entity_extraction():
 
     assert isinstance(result, EntityExtraction)
     assert result.entities[0]["name"] == "CI pipeline"
-    assert len(result.themes) == 1
 
 
 def test_ollama_adapter_extract_themes_returns_list_of_strings():

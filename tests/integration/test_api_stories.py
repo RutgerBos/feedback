@@ -26,7 +26,7 @@ def api_client(test_db):
 
     class NoOpLLM(LLMPort):
         def extract_entities(self, story_text: str) -> EntityExtraction:
-            return EntityExtraction(entities=[], themes=[])
+            return EntityExtraction(entities=[])
 
         def extract_themes(self, story_text: str) -> list:
             return []
@@ -255,7 +255,6 @@ def test_submit_story_triggers_entity_extraction(test_db):
         def extract_entities(self, story_text: str) -> EntityExtraction:
             return EntityExtraction(
                 entities=[{"name": "CI pipeline", "type": "tool"}],
-                themes=[],
             )
 
         def extract_themes(self, story_text: str) -> list:

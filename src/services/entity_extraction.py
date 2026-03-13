@@ -14,15 +14,17 @@ class EntityExtractionService:
     """
     Responsibilities:
     - Retrieve a story from storage
-    - Call LLM to extract entities and themes
+    - Call LLM to extract entities (via extract_entities())
+    - Call LLM to extract themes (via extract_themes())
     - Persist extraction results back to storage
     - Handle LLM failures gracefully (log, store empty results, set status)
 
     Collaborators:
     - StoragePort (to retrieve and update stories)
-    - LLMPort (to extract entities and themes)
+    - LLMPort (to extract entities and themes via separate calls)
 
     Notes:
+    - Failure is atomic: if either LLM call fails, both results are stored empty
     - Failed extractions do NOT raise — caller is never blocked
     - NotFoundError from storage IS propagated (caller must handle)
     """

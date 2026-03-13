@@ -1,8 +1,9 @@
 """
-LLMPort interface for entity extraction.
+LLMPort interface for story analysis.
 
-This port defines the contract for extracting entities and themes from stories,
-independent of the actual LLM provider (Claude, OpenAI, local model, etc).
+This port defines the contract for extracting entities, themes, and relationships
+from stories, independent of the actual LLM provider (Claude, OpenAI, local model, etc).
+EntityExtraction holds entity results only; themes are returned separately by extract_themes().
 """
 
 from abc import ABC, abstractmethod
@@ -12,21 +13,19 @@ from typing import Any, Dict, List
 class EntityExtraction:
     """
     Responsibilities:
-    - Hold extracted entities and rich theme objects from a combined extraction
+    - Hold extracted entities from an extraction pass
 
     Collaborators:
     - None (value object)
 
     Notes:
-    - Used by extract_entities() for a combined extraction pass
+    - Used by extract_entities() for entity-only extraction
     - entities: [{"name": "...", "type": "..."}]
-    - themes: [{"name": "...", "description": "..."}]  (rich objects, not plain strings)
-    - For plain theme strings use extract_themes() instead
+    - Themes are extracted separately via extract_themes()
     """
 
-    def __init__(self, entities: List[Dict[str, Any]], themes: List[Dict[str, Any]]):
+    def __init__(self, entities: List[Dict[str, Any]]):
         self.entities = entities
-        self.themes = themes
 
 
 class LLMPort(ABC):
