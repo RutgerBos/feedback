@@ -219,3 +219,35 @@ def test_extract_for_story_stores_themes_as_strings():
     _, themes, _ = storage.updated[story.id]
     assert themes == ["automation friction", "process overhead"]
     assert all(isinstance(t, str) for t in themes), "themes must be strings, not dicts"
+
+
+# ── Test 9: malformed theme items are skipped, not raised ─────────────────────
+
+def test_extract_for_story_skips_malformed_theme_items():
+    """Malformed theme items (missing 'name', wrong type) are skipped gracefully.
+
+    LLM output is non-deterministic; the service must not crash or leave the
+    story in 'pending' if some theme items lack a 'name' key.
+    """
+    from src.services.entity_extraction import EntityExtractionService
+
+    story = make_story()
+    storage = FakeStorage(stories={story.id: story})
+
+    class MalformedThemeLLM(FakeLLM):
+        def extract_entities(self, story_text: str) -> EntityExtraction:
+            return EntityExtraction(
+                entities=self._entities,
+                themes=[
+                    {"name": "valid theme", "description": "ok"},
+                    {},                   # missing 'name'
+                    "bare string",        # wrong type entirely
+                ],
+            )
+
+    service = EntityExtractionService(storage=storage, llm=MalformedThemeLLM())
+    service.extract_for_story(story.id)  # must not raise
+
+    _, themes, status = storage.updated[story.id]
+    assert status == "processed"
+    assert themes == ["valid theme"]   # only the well-formed item survives
