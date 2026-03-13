@@ -62,6 +62,37 @@ class Neo4jGraphAdapter(GraphPort):
         except Exception as e:
             raise GraphError(f"Failed to save entity nodes: {e}") from e
 
+    def save_theme_nodes(self, story_id: str, themes: List[str]) -> None:
+        """Create Theme nodes and HAS_THEME relationships for a story.
+
+        Notes:
+        - Theme identity is the normalised text (trimmed, lowercased, whitespace-collapsed).
+        - All themes written in a single transaction for atomicity.
+        """
+        if not themes:
+            return
+        normalised = list(dict.fromkeys(
+            n for n in (" ".join(t.strip().lower().split()) for t in themes) if n
+        ))
+        if not normalised:
+            return
+        themes_data = [{"name": n} for n in normalised]
+        try:
+            with self._driver.session() as session:
+                session.run(
+                    """
+                    MATCH (s:Story {story_id: $story_id})
+                    WITH s
+                    UNWIND $themes AS theme
+                    MERGE (t:Theme {name: theme.name})
+                    MERGE (s)-[:HAS_THEME]->(t)
+                    """,
+                    themes=themes_data,
+                    story_id=story_id,
+                )
+        except Exception as e:
+            raise GraphError(f"Failed to save theme nodes: {e}") from e
+
     def save_story_node(
         self, story_id: str, triads: List[TriadPlacement], timestamp: str
     ) -> None:

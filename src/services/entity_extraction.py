@@ -76,4 +76,4 @@ class EntityExtractionService:
         )
 
         if processing_status == "processed" and self.graph_projection is not None:
-            self.graph_projection.save_entities_for_story(story_id)
+            self.graph_projection.project_story(story_id)

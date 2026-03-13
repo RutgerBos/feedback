@@ -31,12 +31,25 @@ class GraphProjectionService:
         self.storage = storage
         self.graph = graph
 
-    def save_entities_for_story(self, story_id: str) -> None:
+    def project_story(self, story_id: str) -> None:
         """
-        Project entities from a processed story into the knowledge graph.
+        Project all extracted data from a processed story into the knowledge graph.
+
+        Runs entity and theme projection in sequence. Each is independent;
+        a GraphError in one does not block the other.
 
         Args:
             story_id: ID of the story to project
+
+        Raises:
+            NotFoundError: If no story exists with the given ID
+        """
+        self.save_entities_for_story(story_id)
+        self.save_themes_for_story(story_id)
+
+    def save_entities_for_story(self, story_id: str) -> None:
+        """
+        Project entities from a processed story into the knowledge graph.
 
         Raises:
             NotFoundError: If no story exists with the given ID
@@ -49,4 +62,21 @@ class GraphProjectionService:
         try:
             self.graph.save_entity_nodes(story_id=story_id, entities=story.entities)
         except GraphError as e:
-            logger.warning("Graph projection failed for story %s: %s", story_id, e)
+            logger.warning("Entity graph projection failed for story %s: %s", story_id, e)
+
+    def save_themes_for_story(self, story_id: str) -> None:
+        """
+        Project themes from a processed story into the knowledge graph.
+
+        Raises:
+            NotFoundError: If no story exists with the given ID
+        """
+        story = self.storage.get_story(story_id)
+
+        if story.processing_status != "processed":
+            return
+
+        try:
+            self.graph.save_theme_nodes(story_id=story_id, themes=story.themes)
+        except GraphError as e:
+            logger.warning("Theme graph projection failed for story %s: %s", story_id, e)
