@@ -291,6 +291,26 @@ def test_submit_story_triggers_entity_extraction(test_db):
     assert doc["entities"] == [{"name": "CI pipeline", "type": "tool"}]
 
 
+def test_submit_story_rejects_unknown_triad_id(test_db, api_client):
+    """POST /api/stories returns 400 when a triad_id is not in the loaded config."""
+    client = api_client
+
+    response = client.post(
+        "/api/stories",
+        json={
+            "story_text": "The deployment pipeline failed twice before we caught the config issue. " * 2,
+            "triads": [
+                {"triad_id": "workflow_nature", "x": 0.3, "y": 0.6},
+                {"triad_id": "understanding_quality", "x": 0.5, "y": 0.4},
+                {"triad_id": "phantom_triad", "x": 0.2, "y": 0.7},  # not in config
+            ],
+        },
+    )
+
+    assert response.status_code == 400
+    assert "phantom_triad" in response.json()["detail"]
+
+
 def test_submit_story_without_metadata(test_db, api_client):
     """Can submit a story without metadata - metadata is optional."""
     client = api_client
