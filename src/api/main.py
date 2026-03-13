@@ -47,13 +47,14 @@ async def lifespan(app: FastAPI):
         - Config and clients are stored in app.state for access by dependencies
         - MongoClient is a singleton: connection pool is shared across requests
     """
-    # Startup
+    # Load file-based config first — fails fast with no resources to clean up
+    config_path = Path("config/triads.yaml")
+    app.state.triad_config = load_triad_config(config_path)
+
+    # Create infrastructure singletons only after config is validated
     settings = Settings()
     app.state.settings = settings
     app.state.mongo_client = MongoClient(settings.mongodb_url)
-
-    config_path = Path("config/triads.yaml")
-    app.state.triad_config = load_triad_config(config_path)
 
     yield
 
