@@ -71,16 +71,20 @@ class Neo4jGraphAdapter(GraphPort):
         """
         if not themes:
             return
-        normalised = [" ".join(t.strip().lower().split()) for t in themes]
+        normalised = list(dict.fromkeys(
+            n for n in (" ".join(t.strip().lower().split()) for t in themes) if n
+        ))
+        if not normalised:
+            return
         themes_data = [{"name": n} for n in normalised]
         try:
             with self._driver.session() as session:
                 session.run(
                     """
+                    MATCH (s:Story {story_id: $story_id})
+                    WITH s
                     UNWIND $themes AS theme
                     MERGE (t:Theme {name: theme.name})
-                    WITH t
-                    MATCH (s:Story {story_id: $story_id})
                     MERGE (s)-[:HAS_THEME]->(t)
                     """,
                     themes=themes_data,
