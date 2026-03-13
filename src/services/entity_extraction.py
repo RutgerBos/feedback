@@ -48,7 +48,9 @@ class EntityExtractionService:
             entities = extraction.entities
             themes = [
                 name for t in extraction.themes
-                if isinstance(t, dict) and (name := t.get("name", ""))
+                if isinstance(t, dict)
+                and isinstance(name := t.get("name", ""), str)
+                and name
             ]
             processing_status = "processed"
         except LLMError as e:

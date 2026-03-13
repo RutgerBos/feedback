@@ -240,8 +240,10 @@ def test_extract_for_story_skips_malformed_theme_items():
                 entities=self._entities,
                 themes=[
                     {"name": "valid theme", "description": "ok"},
-                    {},                   # missing 'name'
-                    "bare string",        # wrong type entirely
+                    {},                      # missing 'name'
+                    "bare string",           # wrong type entirely
+                    {"name": 123},           # non-string 'name' — would break Pydantic
+                    {"name": ["nested"]},    # non-string 'name'
                 ],
             )
 
@@ -250,4 +252,5 @@ def test_extract_for_story_skips_malformed_theme_items():
 
     _, themes, status = storage.updated[story.id]
     assert status == "processed"
-    assert themes == ["valid theme"]   # only the well-formed item survives
+    assert themes == ["valid theme"]          # only the well-formed item survives
+    assert all(isinstance(t, str) for t in themes)  # Pydantic-safe
