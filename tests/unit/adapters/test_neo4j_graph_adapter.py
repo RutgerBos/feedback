@@ -157,6 +157,83 @@ def test_save_entity_nodes_raises_graph_error_on_failure():
         adapter.save_entity_nodes(story_id=STORY_ID, entities=ENTITIES)
 
 
+# ── Tests for save_theme_nodes ────────────────────────────────────────────────
+
+THEMES = ["automation friction", "  Developer Experience  ", "TOOLING RELIABILITY"]
+
+
+def test_save_theme_nodes_creates_theme_nodes_and_relationships():
+    """save_theme_nodes creates Theme nodes and HAS_THEME relationships via UNWIND."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    adapter.save_theme_nodes(story_id=STORY_ID, themes=THEMES)
+
+    assert len(driver.session_instance.queries) == 1
+    query, params = driver.session_instance.queries[0]
+    assert "Theme" in query
+    assert "HAS_THEME" in query
+    assert "UNWIND" in query
+    assert params.get("story_id") == STORY_ID
+    themes_param = params.get("themes")
+    assert len(themes_param) == 3
+
+
+def test_save_theme_nodes_normalises_text():
+    """Theme text is trimmed, lowercased, and whitespace-collapsed before MERGE."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    adapter.save_theme_nodes(story_id=STORY_ID, themes=["  Developer Experience  ", "TOOLING  RELIABILITY"])
+
+    _, params = driver.session_instance.queries[0]
+    normalised = [t["name"] for t in params["themes"]]
+    assert "developer experience" in normalised
+    assert "tooling  reliability" not in normalised  # internal whitespace collapsed
+    assert "tooling reliability" in normalised
+
+
+def test_save_theme_nodes_empty_list_is_noop():
+    """save_theme_nodes does nothing when themes list is empty."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    adapter.save_theme_nodes(story_id=STORY_ID, themes=[])
+
+    assert len(driver.session_instance.queries) == 0
+
+
+def test_save_theme_nodes_raises_graph_error_on_failure():
+    """save_theme_nodes raises GraphError when the driver raises."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+    from src.ports.errors import GraphError
+
+    class FailingSession:
+        def run(self, query: str, **params):
+            raise Exception("Neo4j unavailable")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+    class FailingDriver:
+        def session(self):
+            return FailingSession()
+
+    adapter = Neo4jGraphAdapter(driver=FailingDriver())
+
+    with pytest.raises(GraphError):
+        adapter.save_theme_nodes(story_id=STORY_ID, themes=["some theme"])
+
+
 # ── Test 4: raises GraphError on driver failure ───────────────────────────────
 
 def test_save_story_node_raises_graph_error_on_failure():

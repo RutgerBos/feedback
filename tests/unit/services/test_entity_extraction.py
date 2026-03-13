@@ -273,17 +273,17 @@ def test_extract_for_story_is_atomic_on_theme_failure():
 # ── Tests for graph_projection wiring ─────────────────────────────────────────
 
 class FakeGraphProjection:
-    """Records save_entities_for_story calls."""
+    """Records project_story calls."""
 
     def __init__(self):
         self.calls = []
 
-    def save_entities_for_story(self, story_id: str) -> None:
+    def project_story(self, story_id: str) -> None:
         self.calls.append(story_id)
 
 
 def test_extract_for_story_triggers_graph_projection_on_success():
-    """On successful extraction, graph_projection.save_entities_for_story() is called."""
+    """On successful extraction, graph_projection.project_story() is called."""
     from src.services.entity_extraction import EntityExtractionService
 
     story = make_story()

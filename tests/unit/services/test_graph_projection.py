@@ -48,6 +48,7 @@ class FakeStorage(StoragePort):
 class FakeGraph(GraphPort):
     def __init__(self):
         self.saved_entity_calls = []  # list of (story_id, entities)
+        self.saved_theme_calls = []   # list of (story_id, themes)
 
     def save_story_node(self, story_id: str, triads, timestamp: str) -> None:
         pass
@@ -55,12 +56,18 @@ class FakeGraph(GraphPort):
     def save_entity_nodes(self, story_id: str, entities: list) -> None:
         self.saved_entity_calls.append((story_id, entities))
 
+    def save_theme_nodes(self, story_id: str, themes: list) -> None:
+        self.saved_theme_calls.append((story_id, themes))
+
 
 class FailingGraph(GraphPort):
     def save_story_node(self, story_id: str, triads, timestamp: str) -> None:
         pass
 
     def save_entity_nodes(self, story_id: str, entities: list) -> None:
+        raise GraphError("Neo4j unavailable")
+
+    def save_theme_nodes(self, story_id: str, themes: list) -> None:
         raise GraphError("Neo4j unavailable")
 
 
@@ -134,3 +141,99 @@ def test_save_entities_for_story_propagates_not_found():
 
     with pytest.raises(NotFoundError):
         service.save_entities_for_story("nonexistent-id")
+
+
+# ── Tests for save_themes_for_story ───────────────────────────────────────────
+
+def test_save_themes_for_story_calls_save_theme_nodes():
+    """save_themes_for_story reads story and calls graph.save_theme_nodes()."""
+    from src.services.graph_projection import GraphProjectionService
+
+    story = make_story()
+    story.themes = ["automation friction", "developer experience"]
+    storage = FakeStorage(stories={story.id: story})
+    graph = FakeGraph()
+
+    service = GraphProjectionService(storage=storage, graph=graph)
+    service.save_themes_for_story(story.id)
+
+    assert len(graph.saved_theme_calls) == 1
+    called_story_id, called_themes = graph.saved_theme_calls[0]
+    assert called_story_id == story.id
+    assert called_themes == story.themes
+
+
+def test_save_themes_for_story_skips_unprocessed_stories():
+    """save_themes_for_story does nothing if processing_status != 'processed'."""
+    from src.services.graph_projection import GraphProjectionService
+
+    for status in ("pending", "failed"):
+        story = make_story(processing_status=status)
+        story.themes = ["some theme"]
+        storage = FakeStorage(stories={story.id: story})
+        graph = FakeGraph()
+
+        service = GraphProjectionService(storage=storage, graph=graph)
+        service.save_themes_for_story(story.id)
+
+        assert graph.saved_theme_calls == [], f"Expected no calls for status={status!r}"
+
+
+def test_save_themes_for_story_handles_graph_error_gracefully():
+    """GraphError from the graph adapter is caught and does not propagate."""
+    from src.services.graph_projection import GraphProjectionService
+
+    story = make_story()
+    story.themes = ["automation"]
+    storage = FakeStorage(stories={story.id: story})
+
+    service = GraphProjectionService(storage=storage, graph=FailingGraph())
+
+    service.save_themes_for_story(story.id)  # must not raise
+
+
+# ── Tests for project_story ───────────────────────────────────────────────────
+
+def test_project_story_calls_both_entity_and_theme_projection():
+    """project_story delegates to both save_entities_for_story and save_themes_for_story."""
+    from src.services.graph_projection import GraphProjectionService
+
+    story = make_story()
+    story.themes = ["automation friction"]
+    storage = FakeStorage(stories={story.id: story})
+    graph = FakeGraph()
+
+    service = GraphProjectionService(storage=storage, graph=graph)
+    service.project_story(story.id)
+
+    assert len(graph.saved_entity_calls) == 1
+    assert len(graph.saved_theme_calls) == 1
+
+
+def test_project_story_continues_themes_after_entity_graph_error():
+    """A GraphError in entity projection does not block theme projection."""
+    from src.services.graph_projection import GraphProjectionService
+
+    class EntityFailingGraph(GraphPort):
+        def __init__(self):
+            self.saved_theme_calls = []
+
+        def save_story_node(self, story_id, triads, timestamp):
+            pass
+
+        def save_entity_nodes(self, story_id, entities):
+            raise GraphError("entity failure")
+
+        def save_theme_nodes(self, story_id, themes):
+            self.saved_theme_calls.append((story_id, themes))
+
+    story = make_story()
+    story.themes = ["some theme"]
+    storage = FakeStorage(stories={story.id: story})
+    graph = EntityFailingGraph()
+
+    service = GraphProjectionService(storage=storage, graph=graph)
+    service.project_story(story.id)  # must not raise
+
+    # Theme projection ran despite entity failure
+    assert len(graph.saved_theme_calls) == 1

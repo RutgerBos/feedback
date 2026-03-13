@@ -365,6 +365,9 @@ def test_submit_story_triggers_graph_node_creation(test_db):
         def save_entity_nodes(self, story_id: str, entities: list) -> None:
             pass
 
+        def save_theme_nodes(self, story_id: str, themes: list) -> None:
+            pass
+
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: FakeLLM()
     app.dependency_overrides[get_graph] = lambda: CapturingGraph()

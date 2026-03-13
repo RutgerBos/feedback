@@ -46,6 +46,22 @@ class GraphPort(ABC):
         pass
 
     @abstractmethod
+    def save_theme_nodes(
+        self, story_id: str, themes: List[str]
+    ) -> None:
+        """
+        Create Theme nodes and HAS_THEME relationships from a Story node.
+
+        Args:
+            story_id: ID of the story that has these themes
+            themes: List of theme strings (will be normalised before MERGE)
+
+        Raises:
+            GraphError: If node or relationship creation fails
+        """
+        pass
+
+    @abstractmethod
     def save_story_node(
         self, story_id: str, triads: List[TriadPlacement], timestamp: str
     ) -> None:
