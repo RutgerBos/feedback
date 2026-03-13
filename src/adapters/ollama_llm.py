@@ -29,7 +29,7 @@ class OllamaLLMAdapter(LLMPort):
     DEFAULT_BASE_URL = "http://localhost:11434"
     DEFAULT_MODEL = "llama3"
 
-    def __init__(self, base_url: str = DEFAULT_BASE_URL, model: str = DEFAULT_MODEL, http_client=None):
+    def __init__(self, base_url: str = DEFAULT_BASE_URL, model: str = DEFAULT_MODEL, http_client: Any = None) -> None:
         """
         Args:
             base_url: Base URL of the ollama server
@@ -41,7 +41,7 @@ class OllamaLLMAdapter(LLMPort):
         self._http_client = http_client
 
     @property
-    def http_client(self):
+    def http_client(self) -> Any:
         if self._http_client is None:
             import httpx
             self._http_client = httpx.Client()
@@ -112,6 +112,6 @@ class OllamaLLMAdapter(LLMPort):
                 json={"model": self.model, "prompt": prompt, "stream": False},
             )
             response.raise_for_status()
-            return response.json()["response"]
+            return str(response.json()["response"])
         except Exception as e:
             raise LLMError(f"Ollama API call failed: {e}") from e

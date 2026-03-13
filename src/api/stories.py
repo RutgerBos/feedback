@@ -18,6 +18,7 @@ from src.ports.storage import StoragePort
 from src.ports.llm import LLMPort, EntityExtraction
 from src.ports.errors import NotFoundError, LLMError
 from src.adapters.mongodb_storage import MongoDBStorageAdapter
+from src.domain.models import Story
 
 
 router = APIRouter(prefix="/api/stories", tags=["stories"])
@@ -158,7 +159,7 @@ async def submit_story(
         raise HTTPException(status_code=500, detail="Failed to submit story")
 
 
-def _story_to_response(story) -> StoryResponse:
+def _story_to_response(story: Story) -> StoryResponse:
     return StoryResponse(
         id=story.id,
         story_text=story.story_text,
