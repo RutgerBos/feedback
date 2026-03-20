@@ -26,11 +26,13 @@ from pathlib import Path
 import neo4j
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pymongo import MongoClient
 
 from src.api.insights import router as insights_router
 from src.api.patterns import router as patterns_router
 from src.api.stories import router as stories_router
+from src.api.ui import router as ui_router
 from src.config.settings import Settings
 from src.config.triad_loader import load_triad_config
 
@@ -89,7 +91,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register routers
+# Static files and UI
+app.mount("/static", StaticFiles(directory="static"), name="static")
+app.include_router(ui_router)
+
+# API routers
 app.include_router(stories_router)
 app.include_router(patterns_router)
 app.include_router(insights_router)
@@ -109,15 +115,3 @@ async def health_check() -> dict[str, str]:
     }
 
 
-@app.get("/")
-async def root() -> dict[str, str]:
-    """
-    Root endpoint with API information.
-
-    Returns:
-        Dictionary with welcome message and documentation link
-    """
-    return {
-        "message": "SenseMaker Feedback API",
-        "docs": "/docs",
-    }

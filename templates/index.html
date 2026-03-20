@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Submit Your Story{% endblock %}
+
+{% block content %}
+<section class="submission-form">
+    <h2>Share Your Experience</h2>
+    <p class="instructions">
+        Describe a specific experience, then place a marker on each triangle
+        to show where your story sits.
+    </p>
+
+    <form id="story-form"
+          hx-post="/api/stories"
+          hx-target="#result"
+          hx-swap="innerHTML"
+          hx-indicator="#submit-indicator">
+
+        <div class="field">
+            <label for="story_text">Your Story</label>
+            <textarea
+                id="story_text"
+                name="story_text"
+                rows="6"
+                minlength="50"
+                maxlength="2000"
+                placeholder="Describe a specific experience in 50–2000 characters…"
+                required
+            ></textarea>
+            <span class="char-count"><span id="char-count">0</span> / 2000</span>
+        </div>
+
+        <div class="triads">
+            {% for triad in triads %}
+            <div class="triad" id="triad-{{ triad.id }}">
+                <h3>{{ triad.name }}</h3>
+                <p class="triad-description">{{ triad.description }}</p>
+
+                <div class="triad-canvas-wrapper">
+                    <svg class="triad-canvas"
+                         data-triad-id="{{ triad.id }}"
+                         viewBox="0 0 200 180"
+                         width="200" height="180"
+                         role="img"
+                         aria-label="{{ triad.name }} placement triangle">
+
+                        <!-- Equilateral triangle: top-centre, bottom-left, bottom-right -->
+                        <polygon
+                            points="100,10 10,170 190,170"
+                            class="triad-triangle"
+                        />
+
+                        <!-- Vertex labels -->
+                        <text x="100" y="6" class="vertex-label top">{{ triad.vertices[0].label }}</text>
+                        <text x="4"   y="180" class="vertex-label bottom-left">{{ triad.vertices[1].label }}</text>
+                        <text x="196" y="180" class="vertex-label bottom-right">{{ triad.vertices[2].label }}</text>
+
+                        <!-- Draggable marker — starts at centroid -->
+                        <circle
+                            class="triad-marker"
+                            cx="100" cy="117"
+                            r="8"
+                        />
+                    </svg>
+                </div>
+
+                <!-- Hidden coordinate inputs updated by JS -->
+                <input type="hidden" name="{{ triad.id }}_x" value="0.5">
+                <input type="hidden" name="{{ triad.id }}_y" value="0.5">
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="submit-row">
+            <button type="submit" id="submit-btn">Submit Story</button>
+            <span id="submit-indicator" class="htmx-indicator">Submitting…</span>
+        </div>
+    </form>
+
+    <div id="result"></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/triad.js"></script>
+<script>
+    // Character counter
+    const textarea = document.getElementById('story_text');
+    const counter = document.getElementById('char-count');
+    textarea.addEventListener('input', () => {
+        counter.textContent = textarea.value.length;
+    });
+
+    // HTMX: after successful submission, show confirmation
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+        if (evt.detail.elt.id === 'story-form' && evt.detail.successful) {
+            document.getElementById('result').innerHTML =
+                '<div class="confirmation">✓ Story submitted. Thank you!</div>';
+            evt.detail.elt.reset();
+            document.getElementById('char-count').textContent = '0';
+        }
+    });
+</script>
+{% endblock %}
