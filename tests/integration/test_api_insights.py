@@ -48,7 +48,7 @@ def api_client(test_db):
         def find_themes_ranked(self, limit, from_date=None, to_date=None):
             return []
 
-        def find_story_ids_by_theme(self, theme_name, limit, offset):
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None):
             return []
 
         def count_stories_by_theme(self, theme_name):
@@ -161,7 +161,7 @@ def test_synthesize_returns_narrative_when_stories_exist(test_db):
         def find_themes_ranked(self, limit, from_date=None, to_date=None):
             return []
 
-        def find_story_ids_by_theme(self, theme_name, limit, offset):
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None):
             return []
 
         def count_stories_by_theme(self, theme_name):
@@ -285,7 +285,7 @@ def test_synthesize_returns_503_on_storage_error(test_db):
         def find_themes_ranked(self, limit, from_date=None, to_date=None):
             return []
 
-        def find_story_ids_by_theme(self, theme_name, limit, offset):
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None):
             return []
 
         def count_stories_by_theme(self, theme_name):
@@ -374,7 +374,7 @@ def test_synthesize_returns_503_on_graph_error(test_db):
         def find_themes_ranked(self, limit, from_date=None, to_date=None):
             return []
 
-        def find_story_ids_by_theme(self, theme_name, limit, offset):
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None):
             return []
 
         def count_stories_by_theme(self, theme_name):

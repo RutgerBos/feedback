@@ -619,6 +619,35 @@ def test_find_story_ids_by_theme_emits_cypher_with_skip_limit():
     assert params.get("limit") == 5
 
 
+def test_find_story_ids_by_theme_has_stable_secondary_sort():
+    """find_story_ids_by_theme uses story_id as secondary sort for stable pagination."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.find_story_ids_by_theme("automation friction", limit=5, offset=0)
+
+    query, _ = driver.session_instance.queries[0]
+    order_section = query.upper().split("ORDER BY")[-1]
+    assert "STORY_ID" in order_section
+
+
+def test_find_story_ids_by_theme_passes_date_params():
+    """find_story_ids_by_theme forwards from_date and to_date to Cypher."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.find_story_ids_by_theme(
+        "automation friction", limit=5, offset=0,
+        from_date="2026-01-01T00:00:00", to_date="2026-03-31T23:59:59",
+    )
+
+    query, params = driver.session_instance.queries[0]
+    assert params.get("from_date") == "2026-01-01T00:00:00"
+    assert params.get("to_date") == "2026-03-31T23:59:59"
+
+
 def test_find_story_ids_by_theme_returns_ids_from_result():
     """find_story_ids_by_theme returns story_id values from the query result."""
     from src.adapters.neo4j_graph import Neo4jGraphAdapter

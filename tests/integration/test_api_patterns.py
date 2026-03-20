@@ -69,7 +69,7 @@ def api_client(test_db):
         def find_themes_ranked(self, limit, from_date=None, to_date=None):
             return []
 
-        def find_story_ids_by_theme(self, theme_name, limit, offset):
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None):
             return []
 
         def count_stories_by_theme(self, theme_name):
@@ -167,7 +167,7 @@ def test_query_by_entity_returns_503_on_graph_error(test_db):
         def find_themes_ranked(self, limit, from_date=None, to_date=None):
             return []
 
-        def find_story_ids_by_theme(self, theme_name, limit, offset):
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None):
             return []
 
         def count_stories_by_theme(self, theme_name):
@@ -241,7 +241,7 @@ def test_query_by_entity_returns_stories_from_graph(test_db):
         def find_themes_ranked(self, limit, from_date=None, to_date=None):
             return []
 
-        def find_story_ids_by_theme(self, theme_name, limit, offset):
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None):
             return []
 
         def count_stories_by_theme(self, theme_name):
@@ -315,7 +315,7 @@ def test_get_themes_returns_503_on_graph_error(test_db):
         def count_stories_by_entity(self, entity_name): return 0
         def find_themes_ranked(self, limit, from_date=None, to_date=None):
             raise GraphError("Neo4j unavailable")
-        def find_story_ids_by_theme(self, theme_name, limit, offset): return []
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None): return []
         def count_stories_by_theme(self, theme_name): return 0
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
@@ -359,7 +359,7 @@ def test_get_themes_returns_ranked_themes_with_sample_ids(test_db):
         def count_stories_by_entity(self, entity_name): return 0
         def find_themes_ranked(self, limit, from_date=None, to_date=None):
             return [("automation friction", 5), ("tooling", 2)]
-        def find_story_ids_by_theme(self, theme_name, limit, offset):
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None):
             return ["story-1", "story-2"][:limit]
         def count_stories_by_theme(self, theme_name): return 0
 

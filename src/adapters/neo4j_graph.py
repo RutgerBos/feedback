@@ -232,7 +232,12 @@ class Neo4jGraphAdapter(GraphPort):
             raise GraphError(f"Failed to find ranked themes: {e}") from e
 
     def find_story_ids_by_theme(
-        self, theme_name: str, limit: int, offset: int
+        self,
+        theme_name: str,
+        limit: int,
+        offset: int,
+        from_date: str | None = None,
+        to_date: str | None = None,
     ) -> list[str]:
         """Return story IDs for stories with the given theme, newest first."""
         try:
@@ -241,11 +246,15 @@ class Neo4jGraphAdapter(GraphPort):
                     """
                     MATCH (s:Story)-[:HAS_THEME]->(t:Theme)
                     WHERE toLower(t.name) = toLower($theme_name)
+                      AND ($from_date IS NULL OR s.timestamp >= $from_date)
+                      AND ($to_date   IS NULL OR s.timestamp <= $to_date)
                     RETURN s.story_id AS story_id
-                    ORDER BY s.timestamp DESC
+                    ORDER BY s.timestamp DESC, s.story_id DESC
                     SKIP $offset LIMIT $limit
                     """,
                     theme_name=theme_name,
+                    from_date=from_date,
+                    to_date=to_date,
                     offset=offset,
                     limit=limit,
                 )

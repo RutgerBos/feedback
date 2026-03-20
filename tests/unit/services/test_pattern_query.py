@@ -36,6 +36,7 @@ class FakeGraph(GraphPort):
         self.find_calls: list[tuple[str, int, int]] = []
         self.count_calls: list[str] = []
         self.ranked_calls: list[dict] = []
+        self.theme_find_calls: list[dict] = []
 
     def save_story_node(self, story_id, triads, timestamp):
         pass
@@ -61,7 +62,8 @@ class FakeGraph(GraphPort):
         self.ranked_calls.append({"limit": limit, "from_date": from_date, "to_date": to_date})
         return self._ranked_themes[:limit]
 
-    def find_story_ids_by_theme(self, theme_name, limit, offset):
+    def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None):
+        self.theme_find_calls.append({"theme_name": theme_name, "from_date": from_date, "to_date": to_date})
         return self._theme_story_ids.get(theme_name, [])[:limit]
 
     def count_stories_by_theme(self, theme_name):
@@ -281,6 +283,22 @@ def test_query_themes_passes_date_params_to_graph():
 
     assert graph.ranked_calls[0]["from_date"] == "2026-01-01"
     assert graph.ranked_calls[0]["to_date"] == "2026-03-31"
+
+
+def test_query_themes_passes_date_params_to_sample_id_lookup():
+    """query_themes forwards from_date and to_date to find_story_ids_by_theme."""
+    from src.services.pattern_query import PatternQueryService
+
+    graph = FakeGraph(
+        ranked_themes=[("automation friction", 3)],
+        theme_story_ids={"automation friction": ["s1"]},
+    )
+    service = PatternQueryService(graph=graph, storage=FakeStorage())
+
+    service.query_themes(limit=10, sample_size=3, from_date="2026-01-01", to_date="2026-03-31")
+
+    assert graph.theme_find_calls[0]["from_date"] == "2026-01-01"
+    assert graph.theme_find_calls[0]["to_date"] == "2026-03-31"
 
 
 def test_query_themes_propagates_graph_error():

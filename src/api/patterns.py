@@ -47,6 +47,13 @@ async def get_themes(
 
     Optionally filtered by ISO8601 date strings (from_date, to_date).
     """
+    # Normalize bare YYYY-MM-DD strings so Neo4j lexicographic comparison includes
+    # stories timestamped as full ISO datetimes on those boundary dates.
+    if from_date and len(from_date) == 10:
+        from_date = from_date + "T00:00:00"
+    if to_date and len(to_date) == 10:
+        to_date = to_date + "T23:59:59"
+
     try:
         result = service.query_themes(
             limit=limit,

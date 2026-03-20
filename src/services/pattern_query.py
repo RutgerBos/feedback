@@ -92,7 +92,8 @@ class PatternQueryService:
         themes = []
         for name, story_count in ranked:
             sample_ids = self._graph.find_story_ids_by_theme(
-                name, limit=sample_size, offset=0
+                name, limit=sample_size, offset=0,
+                from_date=from_date, to_date=to_date,
             )
             themes.append({
                 "name": name,

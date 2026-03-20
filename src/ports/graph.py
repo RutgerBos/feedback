@@ -162,7 +162,12 @@ class GraphPort(ABC):
 
     @abstractmethod
     def find_story_ids_by_theme(
-        self, theme_name: str, limit: int, offset: int
+        self,
+        theme_name: str,
+        limit: int,
+        offset: int,
+        from_date: str | None = None,
+        to_date: str | None = None,
     ) -> list[str]:
         """
         Return story IDs for stories with the given theme, newest first.
@@ -171,9 +176,11 @@ class GraphPort(ABC):
             theme_name: Theme name to match (case-insensitive)
             limit:      Maximum number of IDs to return
             offset:     Number of IDs to skip
+            from_date:  ISO8601 string — only include stories on or after this date
+            to_date:    ISO8601 string — only include stories on or before this date
 
         Returns:
-            List of story_id strings
+            List of story_id strings, ordered by timestamp DESC, story_id DESC
 
         Raises:
             GraphError: If the query fails

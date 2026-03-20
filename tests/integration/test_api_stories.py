@@ -65,7 +65,7 @@ def api_client(test_db):
         def find_themes_ranked(self, limit, from_date=None, to_date=None):
             return []
 
-        def find_story_ids_by_theme(self, theme_name, limit, offset):
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None):
             return []
 
         def count_stories_by_theme(self, theme_name):
@@ -333,7 +333,7 @@ def test_submit_story_triggers_entity_extraction(test_db):
         def find_themes_ranked(self, limit, from_date=None, to_date=None):
             return []
 
-        def find_story_ids_by_theme(self, theme_name, limit, offset):
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None):
             return []
 
         def count_stories_by_theme(self, theme_name):
@@ -467,7 +467,7 @@ def test_submit_story_triggers_graph_node_creation(test_db):
         def find_themes_ranked(self, limit, from_date=None, to_date=None):
             return []
 
-        def find_story_ids_by_theme(self, theme_name, limit, offset):
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None):
             return []
 
         def count_stories_by_theme(self, theme_name):
