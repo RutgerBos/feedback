@@ -7,7 +7,7 @@ Query stories by entity or theme.
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from src.api.stories import StoryListResponse, _story_to_response, get_graph, get_storage
-from src.ports.errors import GraphError
+from src.ports.errors import GraphError, NotFoundError
 from src.ports.graph import GraphPort
 from src.ports.storage import StoragePort
 from src.services.pattern_query import PatternQueryService
@@ -48,6 +48,8 @@ async def query_by_entity(
         result = service.query_by_entity(entity_name, limit=limit, offset=offset)
     except GraphError as e:
         raise HTTPException(status_code=503, detail="Graph database unavailable") from e
+    except NotFoundError as e:
+        raise HTTPException(status_code=503, detail="Story data inconsistency — retry later") from e
 
     return StoryListResponse(
         stories=[_story_to_response(s) for s in result.stories],

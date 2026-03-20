@@ -17,11 +17,15 @@ TRIADS = [
 class FakeResult:
     """Fake Neo4j query result supporting .data() and .single()."""
 
+    def __init__(self, rows: list | None = None, single_row: dict | None = None):
+        self._rows = rows if rows is not None else []
+        self._single_row = single_row if single_row is not None else {"count": 0}
+
     def data(self) -> list:
-        return []
+        return self._rows
 
     def single(self):
-        return {"count": 0}
+        return self._single_row
 
 
 class FakeSession:
@@ -31,12 +35,13 @@ class FakeSession:
     so that transactional and non-transactional adapters can both be tested.
     """
 
-    def __init__(self):
+    def __init__(self, result: FakeResult | None = None):
         self.queries = []  # list of (query, params)
+        self._result = result or FakeResult()
 
     def run(self, query: str, **params) -> "FakeResult":
         self.queries.append((query, params))
-        return FakeResult()
+        return self._result
 
     def execute_write(self, tx_func) -> None:
         """Run tx_func with self as the transaction object (records queries)."""
@@ -52,8 +57,8 @@ class FakeSession:
 class FakeDriver:
     """Injects a FakeSession for each session() call."""
 
-    def __init__(self):
-        self.session_instance = FakeSession()
+    def __init__(self, result: FakeResult | None = None):
+        self.session_instance = FakeSession(result=result)
 
     def session(self):
         return self.session_instance
@@ -509,3 +514,26 @@ def test_count_stories_by_entity_raises_graph_error_on_failure():
     adapter = Neo4jGraphAdapter(driver=FailingDriver())
     with pytest.raises(GraphError):
         adapter.count_stories_by_entity("anything")
+
+
+def test_find_story_ids_by_entity_returns_ids_from_result():
+    """find_story_ids_by_entity returns the story_id values from the query result."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    rows = [{"story_id": "abc"}, {"story_id": "def"}]
+    driver = FakeDriver(result=FakeResult(rows=rows))
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    ids = adapter.find_story_ids_by_entity("CI pipeline", limit=10, offset=0)
+    assert ids == ["abc", "def"]
+
+
+def test_count_stories_by_entity_returns_count_from_result():
+    """count_stories_by_entity returns the count from the query result."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver(result=FakeResult(single_row={"count": 7}))
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    count = adapter.count_stories_by_entity("CI pipeline")
+    assert count == 7

@@ -2,10 +2,10 @@
 
 import pytest
 
-from src.ports.errors import GraphError
+from src.domain.models import Story, TriadCoordinates, TriadPlacement
+from src.ports.errors import GraphError, NotFoundError
 from src.ports.graph import GraphPort
 from src.ports.storage import StoragePort
-from src.domain.models import Story, TriadPlacement, TriadCoordinates
 
 
 def make_story(story_id: str = "story-1") -> Story:
@@ -57,6 +57,8 @@ class FakeStorage(StoragePort):
         return story.id
 
     def get_story(self, story_id: str) -> Story:
+        if story_id not in self._stories:
+            raise NotFoundError(f"Story not found: {story_id}")
         return self._stories[story_id]
 
     def count_stories(self) -> int:
@@ -159,3 +161,37 @@ def test_query_by_entity_returns_multiple_stories_in_order():
 
     assert result.stories == [s1, s2]
     assert result.total == 2
+
+
+# ── Test 6: stale graph ID raises NotFoundError ───────────────────────────────
+
+
+def test_query_by_entity_propagates_not_found_for_stale_graph_id():
+    """NotFoundError propagates when a graph ID has no corresponding story in storage."""
+    from src.services.pattern_query import PatternQueryService
+
+    graph = FakeGraph(story_ids=["stale-id"], total=1)
+    storage = FakeStorage(stories={})  # storage does not have the story
+
+    service = PatternQueryService(graph=graph, storage=storage)
+    with pytest.raises(NotFoundError):
+        service.query_by_entity("entity", limit=10, offset=0)
+
+
+# ── Test 7: total reflects full count, not page size ─────────────────────────
+
+
+def test_query_by_entity_total_is_full_count_not_page_size():
+    """total is the full match count even when offset reduces the returned stories."""
+    from src.services.pattern_query import PatternQueryService
+
+    s3 = make_story("s3")
+    # Graph returns only s3 (page 2), but total count is 3
+    graph = FakeGraph(story_ids=["s3"], total=3)
+    storage = FakeStorage(stories={"s3": s3})
+
+    service = PatternQueryService(graph=graph, storage=storage)
+    result = service.query_by_entity("entity", limit=1, offset=2)
+
+    assert len(result.stories) == 1
+    assert result.total == 3
