@@ -74,6 +74,12 @@ def api_client(test_db):
 
         def count_stories_by_theme(self, theme_name):
             return 0
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None):
+            return []
+
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
+            return []
+
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
@@ -172,6 +178,12 @@ def test_query_by_entity_returns_503_on_graph_error(test_db):
 
         def count_stories_by_theme(self, theme_name):
             return 0
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None):
+            return []
+
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
+            return []
+
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
@@ -246,6 +258,12 @@ def test_query_by_entity_returns_stories_from_graph(test_db):
 
         def count_stories_by_theme(self, theme_name):
             return 0
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None):
+            return []
+
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
+            return []
+
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
@@ -317,6 +335,12 @@ def test_get_themes_returns_503_on_graph_error(test_db):
             raise GraphError("Neo4j unavailable")
         def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None): return []
         def count_stories_by_theme(self, theme_name): return 0
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None):
+            return []
+
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
+            return []
+
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
@@ -362,6 +386,12 @@ def test_get_themes_returns_ranked_themes_with_sample_ids(test_db):
         def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None):
             return ["story-1", "story-2"][:limit]
         def count_stories_by_theme(self, theme_name): return 0
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None):
+            return []
+
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
+            return []
+
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
@@ -375,6 +405,118 @@ def test_get_themes_returns_ranked_themes_with_sample_ids(test_db):
             assert body["themes"][0]["name"] == "automation friction"
             assert body["themes"][0]["story_count"] == 5
             assert "sample_story_ids" in body["themes"][0]
+    finally:
+        app.dependency_overrides.pop(get_storage, None)
+        app.dependency_overrides.pop(get_llm, None)
+        app.dependency_overrides.pop(get_graph, None)
+
+
+# ── Story 4.3: GET /api/patterns/correlations ─────────────────────────────────
+
+
+def test_get_correlations_returns_200_with_empty_list(test_db, api_client):
+    """GET /api/patterns/correlations returns 200 and empty pairs when no correlations."""
+    response = api_client.get("/api/patterns/correlations")
+    assert response.status_code == 200
+    assert response.json() == {"pairs": []}
+
+
+def test_get_correlations_returns_503_on_graph_error(test_db):
+    """GET /api/patterns/correlations returns 503 when graph is unavailable."""
+    from src.adapters.mongodb_storage import MongoDBStorageAdapter
+    from src.api.main import app
+    from src.api.stories import get_graph, get_llm, get_storage
+    from src.domain.models import SentimentAnalysis
+    from src.ports.errors import GraphError
+    from src.ports.graph import GraphPort
+    from src.ports.llm import EntityExtraction, LLMPort
+
+    class NoOpLLM(LLMPort):
+        def extract_entities(self, story_text): return EntityExtraction(entities=[])
+        def extract_themes(self, story_text): return []
+        def extract_relationships(self, story_text): return []
+        def extract_sentiment(self, story_text):
+            return SentimentAnalysis(emotion_markers=[], process_sentiment="neutral", outcome_sentiment="neutral")
+        def synthesize_insights(self, context):
+            from src.domain.models import InsightOutput
+            return InsightOutput(narrative="")
+
+    class FailingGraph(GraphPort):
+        def save_story_node(self, story_id, triads, timestamp): pass
+        def save_entity_nodes(self, story_id, entities): pass
+        def save_theme_nodes(self, story_id, themes): pass
+        def save_proximity_relationships(self, story_id, pairs): pass
+        def find_story_ids_by_entity(self, entity_name, limit, offset): return []
+        def count_stories_by_entity(self, entity_name): return 0
+        def find_themes_ranked(self, limit, from_date=None, to_date=None): return []
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None): return []
+        def count_stories_by_theme(self, theme_name): return 0
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None):
+            raise GraphError("Neo4j down")
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0): return []
+
+    app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
+    app.dependency_overrides[get_llm] = lambda: NoOpLLM()
+    app.dependency_overrides[get_graph] = lambda: FailingGraph()
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/patterns/correlations")
+            assert response.status_code == 503
+    finally:
+        app.dependency_overrides.pop(get_storage, None)
+        app.dependency_overrides.pop(get_llm, None)
+        app.dependency_overrides.pop(get_graph, None)
+
+
+def test_get_correlations_returns_ranked_pairs_with_sample_ids(test_db):
+    """GET /api/patterns/correlations returns pairs with jaccard and sample story IDs."""
+    from src.adapters.mongodb_storage import MongoDBStorageAdapter
+    from src.api.main import app
+    from src.api.stories import get_graph, get_llm, get_storage
+    from src.domain.models import SentimentAnalysis
+    from src.ports.graph import GraphPort
+    from src.ports.llm import EntityExtraction, LLMPort
+
+    class NoOpLLM(LLMPort):
+        def extract_entities(self, story_text): return EntityExtraction(entities=[])
+        def extract_themes(self, story_text): return []
+        def extract_relationships(self, story_text): return []
+        def extract_sentiment(self, story_text):
+            return SentimentAnalysis(emotion_markers=[], process_sentiment="neutral", outcome_sentiment="neutral")
+        def synthesize_insights(self, context):
+            from src.domain.models import InsightOutput
+            return InsightOutput(narrative="")
+
+    class CorrelationGraph(GraphPort):
+        def save_story_node(self, story_id, triads, timestamp): pass
+        def save_entity_nodes(self, story_id, entities): pass
+        def save_theme_nodes(self, story_id, themes): pass
+        def save_proximity_relationships(self, story_id, pairs): pass
+        def find_story_ids_by_entity(self, entity_name, limit, offset): return []
+        def count_stories_by_entity(self, entity_name): return 0
+        def find_themes_ranked(self, limit, from_date=None, to_date=None): return []
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None): return []
+        def count_stories_by_theme(self, theme_name): return 0
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None):
+            return [("CI pipeline", "deployment", 5, 0.71)]
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
+            return ["story-1"]
+
+    app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
+    app.dependency_overrides[get_llm] = lambda: NoOpLLM()
+    app.dependency_overrides[get_graph] = lambda: CorrelationGraph()
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/patterns/correlations")
+            assert response.status_code == 200
+            body = response.json()
+            assert len(body["pairs"]) == 1
+            pair = body["pairs"][0]
+            assert pair["entity_a"] == "CI pipeline"
+            assert pair["entity_b"] == "deployment"
+            assert pair["co_count"] == 5
+            assert pair["jaccard"] == 0.71
+            assert pair["sample_story_ids"] == ["story-1"]
     finally:
         app.dependency_overrides.pop(get_storage, None)
         app.dependency_overrides.pop(get_llm, None)

@@ -202,3 +202,54 @@ class GraphPort(ABC):
             GraphError: If the query fails
         """
         pass
+
+    @abstractmethod
+    def find_entity_correlations(
+        self,
+        limit: int,
+        threshold: float = 0.0,
+        entity_type: str | None = None,
+    ) -> list[tuple[str, str, int, float]]:
+        """
+        Return entity pairs ranked by Jaccard co-occurrence strength.
+
+        Jaccard = |stories with both| / |stories with either|
+
+        Args:
+            limit:       Maximum number of pairs to return
+            threshold:   Minimum Jaccard score (0.0–1.0) to include a pair
+            entity_type: If given, restrict both entities to this type
+
+        Returns:
+            List of (entity_a, entity_b, co_count, jaccard) tuples,
+            ordered by jaccard DESC, entity_a ASC, entity_b ASC
+
+        Raises:
+            GraphError: If the query fails
+        """
+        pass
+
+    @abstractmethod
+    def find_story_ids_by_entity_pair(
+        self,
+        entity_a: str,
+        entity_b: str,
+        limit: int,
+        offset: int = 0,
+    ) -> list[str]:
+        """
+        Return story IDs for stories that mention both entity_a and entity_b.
+
+        Args:
+            entity_a: First entity name (case-insensitive)
+            entity_b: Second entity name (case-insensitive)
+            limit:    Maximum number of IDs to return
+            offset:   Number of IDs to skip
+
+        Returns:
+            List of story_id strings, ordered by timestamp DESC, story_id DESC
+
+        Raises:
+            GraphError: If the query fails
+        """
+        pass

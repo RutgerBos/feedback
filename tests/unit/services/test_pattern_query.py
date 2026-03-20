@@ -28,15 +28,21 @@ class FakeGraph(GraphPort):
         total: int = 0,
         ranked_themes: list[tuple[str, int]] | None = None,
         theme_story_ids: dict[str, list[str]] | None = None,
+        correlations: list[tuple[str, str, int, float]] | None = None,
+        pair_story_ids: dict[tuple[str, str], list[str]] | None = None,
     ):
         self._story_ids = story_ids or []
         self._total = total
         self._ranked_themes = ranked_themes or []
         self._theme_story_ids = theme_story_ids or {}
+        self._correlations = correlations or []
+        self._pair_story_ids = pair_story_ids or {}
         self.find_calls: list[tuple[str, int, int]] = []
         self.count_calls: list[str] = []
         self.ranked_calls: list[dict] = []
         self.theme_find_calls: list[dict] = []
+        self.correlation_calls: list[dict] = []
+        self.pair_find_calls: list[dict] = []
 
     def save_story_node(self, story_id, triads, timestamp):
         pass
@@ -68,6 +74,15 @@ class FakeGraph(GraphPort):
 
     def count_stories_by_theme(self, theme_name):
         return 0
+
+    def find_entity_correlations(self, limit, threshold=0.0, entity_type=None):
+        self.correlation_calls.append({"limit": limit, "threshold": threshold, "entity_type": entity_type})
+        return self._correlations[:limit]
+
+    def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
+        self.pair_find_calls.append({"entity_a": entity_a, "entity_b": entity_b})
+        return self._pair_story_ids.get((entity_a, entity_b), [])[:limit]
+
 
 
 class FakeStorage(StoragePort):
@@ -103,6 +118,9 @@ class FailingGraph(FakeGraph):
         raise GraphError("Neo4j down")
 
     def find_themes_ranked(self, limit, from_date=None, to_date=None):
+        raise GraphError("Neo4j down")
+
+    def find_entity_correlations(self, limit, threshold=0.0, entity_type=None):
         raise GraphError("Neo4j down")
 
 
@@ -308,3 +326,72 @@ def test_query_themes_propagates_graph_error():
     service = PatternQueryService(graph=FailingGraph(), storage=FakeStorage())
     with pytest.raises(GraphError):
         service.query_themes(limit=10, sample_size=3)
+
+
+# ── Story 4.3: query_correlations ────────────────────────────────────────────
+
+
+def test_query_correlations_returns_pairs_with_sample_ids():
+    """query_correlations returns correlation pairs with sample story IDs."""
+    from src.services.pattern_query import PatternQueryService
+
+    graph = FakeGraph(
+        correlations=[("CI pipeline", "deployment", 5, 0.71)],
+        pair_story_ids={("CI pipeline", "deployment"): ["s1", "s2"]},
+    )
+    service = PatternQueryService(graph=graph, storage=FakeStorage())
+    result = service.query_correlations(limit=10, sample_size=2)
+
+    assert len(result.pairs) == 1
+    pair = result.pairs[0]
+    assert pair.entity_a == "CI pipeline"
+    assert pair.entity_b == "deployment"
+    assert pair.co_count == 5
+    assert pair.jaccard == 0.71
+    assert pair.sample_story_ids == ["s1", "s2"]
+
+
+def test_query_correlations_empty_when_no_correlations():
+    """query_correlations returns empty list when graph has no correlations."""
+    from src.services.pattern_query import PatternQueryService
+
+    graph = FakeGraph(correlations=[])
+    service = PatternQueryService(graph=graph, storage=FakeStorage())
+    result = service.query_correlations(limit=10, sample_size=3)
+
+    assert result.pairs == []
+
+
+def test_query_correlations_sample_ids_capped_at_sample_size():
+    """query_correlations caps sample_story_ids to sample_size."""
+    from src.services.pattern_query import PatternQueryService
+
+    graph = FakeGraph(
+        correlations=[("a", "b", 10, 0.8)],
+        pair_story_ids={("a", "b"): ["s1", "s2", "s3", "s4"]},
+    )
+    service = PatternQueryService(graph=graph, storage=FakeStorage())
+    result = service.query_correlations(limit=10, sample_size=2)
+
+    assert len(result.pairs[0].sample_story_ids) == 2
+
+
+def test_query_correlations_forwards_threshold_and_entity_type():
+    """query_correlations passes threshold and entity_type to find_entity_correlations."""
+    from src.services.pattern_query import PatternQueryService
+
+    graph = FakeGraph(correlations=[])
+    service = PatternQueryService(graph=graph, storage=FakeStorage())
+    service.query_correlations(limit=10, sample_size=3, threshold=0.3, entity_type="tool")
+
+    assert graph.correlation_calls[0]["threshold"] == 0.3
+    assert graph.correlation_calls[0]["entity_type"] == "tool"
+
+
+def test_query_correlations_propagates_graph_error():
+    """GraphError from find_entity_correlations propagates to caller."""
+    from src.services.pattern_query import PatternQueryService
+
+    service = PatternQueryService(graph=FailingGraph(), storage=FakeStorage())
+    with pytest.raises(GraphError):
+        service.query_correlations(limit=10, sample_size=3)

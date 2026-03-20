@@ -43,6 +43,12 @@ def test_can_implement_graph_port():
 
         def count_stories_by_theme(self, theme_name):
             return 0
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None):
+            return []
+
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
+            return []
+
 
     graph = FakeGraph()
     assert graph is not None

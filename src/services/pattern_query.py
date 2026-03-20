@@ -27,6 +27,39 @@ class EntityQueryResult:
 
 
 @dataclass
+class CorrelationPair:
+    """
+    Responsibilities:
+    - Hold one entity-pair correlation result
+
+    Collaborators:
+    - None (value object)
+    """
+
+    entity_a: str
+    entity_b: str
+    co_count: int
+    jaccard: float
+    sample_story_ids: list[str]
+
+
+@dataclass
+class CorrelationQueryResult:
+    """
+    Responsibilities:
+    - Hold ranked entity-pair correlation results
+
+    Collaborators:
+    - CorrelationPair (value object)
+
+    Notes:
+    - pairs sorted by jaccard descending
+    """
+
+    pairs: list[CorrelationPair] = field(default_factory=list)
+
+
+@dataclass
 class ThemeQueryResult:
     """
     Responsibilities:
@@ -101,6 +134,45 @@ class PatternQueryService:
                 "sample_story_ids": sample_ids,
             })
         return ThemeQueryResult(themes=themes)
+
+    def query_correlations(
+        self,
+        limit: int,
+        sample_size: int,
+        threshold: float = 0.0,
+        entity_type: str | None = None,
+    ) -> CorrelationQueryResult:
+        """
+        Return entity pairs ranked by Jaccard co-occurrence strength.
+
+        Args:
+            limit:       Maximum number of pairs to return
+            sample_size: Maximum story IDs to include per pair
+            threshold:   Minimum Jaccard score to include a pair
+            entity_type: If given, restrict both entities to this type
+
+        Returns:
+            CorrelationQueryResult with ranked pairs list
+
+        Raises:
+            GraphError: If the graph query fails
+        """
+        ranked = self._graph.find_entity_correlations(
+            limit=limit, threshold=threshold, entity_type=entity_type
+        )
+        pairs = []
+        for entity_a, entity_b, co_count, jaccard in ranked:
+            sample_ids = self._graph.find_story_ids_by_entity_pair(
+                entity_a, entity_b, limit=sample_size
+            )
+            pairs.append(CorrelationPair(
+                entity_a=entity_a,
+                entity_b=entity_b,
+                co_count=co_count,
+                jaccard=jaccard,
+                sample_story_ids=sample_ids,
+            ))
+        return CorrelationQueryResult(pairs=pairs)
 
     def query_by_entity(
         self, entity_name: str, limit: int, offset: int

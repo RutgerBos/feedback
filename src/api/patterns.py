@@ -24,6 +24,18 @@ def get_pattern_query_service(
     return PatternQueryService(graph=graph, storage=storage)
 
 
+class CorrelationPair(BaseModel):
+    entity_a: str
+    entity_b: str
+    co_count: int
+    jaccard: float
+    sample_story_ids: list[str]
+
+
+class CorrelationListResponse(BaseModel):
+    pairs: list[CorrelationPair]
+
+
 class ThemeEntry(BaseModel):
     name: str
     story_count: int
@@ -66,6 +78,43 @@ async def get_themes(
 
     return ThemeListResponse(
         themes=[ThemeEntry(**t) for t in result.themes]
+    )
+
+
+@router.get("/correlations", response_model=CorrelationListResponse)
+async def get_correlations(
+    limit: int = Query(default=25, ge=1, le=100),
+    sample_size: int = Query(default=3, ge=1, le=10),
+    threshold: float = Query(default=0.0, ge=0.0, le=1.0),
+    entity_type: str | None = Query(default=None),
+    service: PatternQueryService = Depends(get_pattern_query_service),
+) -> CorrelationListResponse:
+    """
+    Return entity pairs ranked by Jaccard co-occurrence strength.
+
+    threshold filters out weak correlations; entity_type restricts both entities to that type.
+    """
+    try:
+        result = service.query_correlations(
+            limit=limit,
+            sample_size=sample_size,
+            threshold=threshold,
+            entity_type=entity_type,
+        )
+    except GraphError as e:
+        raise HTTPException(status_code=503, detail="Graph database unavailable") from e
+
+    return CorrelationListResponse(
+        pairs=[
+            CorrelationPair(
+                entity_a=p.entity_a,
+                entity_b=p.entity_b,
+                co_count=p.co_count,
+                jaccard=p.jaccard,
+                sample_story_ids=p.sample_story_ids,
+            )
+            for p in result.pairs
+        ]
     )
 
 
