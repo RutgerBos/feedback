@@ -262,3 +262,34 @@ def test_temporal_propagates_graph_error():
     service = TemporalService(graph=FailingGraph(), storage=FakeStorage())
     with pytest.raises(GraphError):
         service.query_temporal(from_date=None, to_date=None)
+
+
+# ── Test 10: combined theme+entity filters intersect for drift ────────────────
+
+
+def test_temporal_combined_filters_intersect_drift():
+    """When both theme and entity are given, drift uses only stories matching both."""
+    from src.services.temporal import TemporalService
+
+    jan = datetime(2026, 1, 15, 10, 0, tzinfo=UTC)
+    feb = datetime(2026, 2, 10, 10, 0, tzinfo=UTC)
+    # s1 matches theme only, s2 matches entity only, s3 matches both
+    s1 = make_story("s1", jan, x=0.1, y=0.1)
+    s2 = make_story("s2", feb, x=0.5, y=0.5)
+    s3 = make_story("s3", jan, x=0.9, y=0.9)
+
+    # theme filter returns s1 + s3, entity filter returns s2 + s3 → intersection is s3
+    graph = FakeGraph(theme_ids=["s1", "s3"], entity_ids=["s2", "s3"])
+    storage = FakeStorage(stories={"s1": s1, "s2": s2, "s3": s3})
+    service = TemporalService(graph=graph, storage=storage)
+    result = service.query_temporal(
+        from_date=None, to_date=None,
+        theme="automation friction", entity="CI pipeline",
+    )
+
+    drift = next((d for d in result.triad_drift if d.triad_id == "workflow_nature"), None)
+    assert drift is not None
+    # Only s3 contributes — single centroid in Jan at (0.9, 0.9)
+    assert len(drift.centroids) == 1
+    assert drift.centroids[0].window == "2026-01"
+    assert abs(drift.centroids[0].center_x - 0.9) < 1e-9

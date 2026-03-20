@@ -175,11 +175,19 @@ class TemporalService:
             from_date:   ISO8601 string lower bound (inclusive), or None
             to_date:     ISO8601 string upper bound (inclusive), or None
             window_size: "month" (YYYY-MM) or "day" (YYYY-MM-DD)
-            theme:       If given, restrict theme_frequency to this theme and
-                         compute drift only from stories matching this theme
-            entity:      If given, restrict entity_frequency to this entity and
-                         compute drift only from stories matching this entity;
-                         combined with theme via intersection
+            theme:       If given: theme_frequency shows only this theme;
+                         drift uses only stories that have this theme
+            entity:      If given: entity_frequency shows only this entity;
+                         drift uses only stories that mention this entity;
+                         when combined with theme, drift uses intersection of
+                         both ID sets (stories matching theme AND entity)
+
+        Notes on filter semantics:
+            Each filter dimension is independent in frequency data — theme
+            restricts theme_frequency, entity restricts entity_frequency.
+            Drift, however, uses the intersection of whichever filters are
+            active, giving a view of "where are stories matching ALL filters
+            placed in signifier space over time?"
 
         Returns:
             TemporalResult with theme_frequency, entity_frequency, triad_drift,

@@ -260,6 +260,10 @@ async def get_temporal(
         )
     except GraphError as e:
         raise HTTPException(status_code=503, detail="Graph database unavailable") from e
+    except NotFoundError as e:
+        raise HTTPException(status_code=503, detail="Story data inconsistency — retry later") from e
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=f"Invalid date format: {e}") from e
 
     return TemporalResponse(
         windows=result.windows,
