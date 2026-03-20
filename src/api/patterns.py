@@ -11,7 +11,7 @@ from src.api.stories import StoryListResponse, _story_to_response, get_graph, ge
 from src.ports.errors import GraphError, NotFoundError
 from src.ports.graph import GraphPort
 from src.ports.storage import StoragePort
-from src.services.pattern_query import CorrelationQueryResult, PatternQueryService
+from src.services.pattern_query import PatternQueryService
 
 router = APIRouter(prefix="/api/patterns", tags=["patterns"])
 
@@ -105,7 +105,16 @@ async def get_correlations(
         raise HTTPException(status_code=503, detail="Graph database unavailable") from e
 
     return CorrelationListResponse(
-        pairs=[CorrelationPair(**p) for p in result.pairs]
+        pairs=[
+            CorrelationPair(
+                entity_a=p.entity_a,
+                entity_b=p.entity_b,
+                co_count=p.co_count,
+                jaccard=p.jaccard,
+                sample_story_ids=p.sample_story_ids,
+            )
+            for p in result.pairs
+        ]
     )
 
 

@@ -785,7 +785,7 @@ def test_find_entity_correlations_applies_threshold():
 
 
 def test_find_entity_correlations_applies_entity_type_filter():
-    """find_entity_correlations includes entity_type in query when provided."""
+    """find_entity_correlations appends AND a.type/b.type to the WHERE clause (not a second WHERE)."""
     from src.adapters.neo4j_graph import Neo4jGraphAdapter
 
     driver = FakeDriver()
@@ -793,7 +793,11 @@ def test_find_entity_correlations_applies_entity_type_filter():
     adapter.find_entity_correlations(limit=10, entity_type="tool")
 
     query, params = driver.session_instance.queries[0]
-    assert "entity_type" in params or "type" in query.lower()
+    # Must use AND, not a second WHERE keyword
+    assert params.get("entity_type") == "tool"
+    # Count WHERE occurrences in the first MATCH block (before the WITH)
+    first_with = query.upper().split("WITH")[0]
+    assert first_with.count("WHERE") == 1, "entity_type filter must use AND, not a second WHERE"
 
 
 def test_find_entity_correlations_has_stable_sort():

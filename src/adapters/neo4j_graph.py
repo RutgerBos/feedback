@@ -269,7 +269,7 @@ class Neo4jGraphAdapter(GraphPort):
         entity_type: str | None = None,
     ) -> list[tuple[str, str, int, float]]:
         """Return entity pairs ranked by Jaccard co-occurrence strength."""
-        type_filter = "WHERE a.type = $entity_type AND b.type = $entity_type" if entity_type else ""
+        type_filter = "AND a.type = $entity_type AND b.type = $entity_type" if entity_type else ""
         try:
             with self._driver.session() as session:
                 result = session.run(

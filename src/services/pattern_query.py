@@ -27,20 +27,36 @@ class EntityQueryResult:
 
 
 @dataclass
+class CorrelationPair:
+    """
+    Responsibilities:
+    - Hold one entity-pair correlation result
+
+    Collaborators:
+    - None (value object)
+    """
+
+    entity_a: str
+    entity_b: str
+    co_count: int
+    jaccard: float
+    sample_story_ids: list[str]
+
+
+@dataclass
 class CorrelationQueryResult:
     """
     Responsibilities:
     - Hold ranked entity-pair correlation results
 
     Collaborators:
-    - None (value object)
+    - CorrelationPair (value object)
 
     Notes:
     - pairs sorted by jaccard descending
-    - each entry: {entity_a, entity_b, co_count, jaccard, sample_story_ids}
     """
 
-    pairs: list[dict] = field(default_factory=list)
+    pairs: list[CorrelationPair] = field(default_factory=list)
 
 
 @dataclass
@@ -149,13 +165,13 @@ class PatternQueryService:
             sample_ids = self._graph.find_story_ids_by_entity_pair(
                 entity_a, entity_b, limit=sample_size
             )
-            pairs.append({
-                "entity_a": entity_a,
-                "entity_b": entity_b,
-                "co_count": co_count,
-                "jaccard": jaccard,
-                "sample_story_ids": sample_ids,
-            })
+            pairs.append(CorrelationPair(
+                entity_a=entity_a,
+                entity_b=entity_b,
+                co_count=co_count,
+                jaccard=jaccard,
+                sample_story_ids=sample_ids,
+            ))
         return CorrelationQueryResult(pairs=pairs)
 
     def query_by_entity(

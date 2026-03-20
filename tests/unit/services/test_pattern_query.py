@@ -344,11 +344,11 @@ def test_query_correlations_returns_pairs_with_sample_ids():
 
     assert len(result.pairs) == 1
     pair = result.pairs[0]
-    assert pair["entity_a"] == "CI pipeline"
-    assert pair["entity_b"] == "deployment"
-    assert pair["co_count"] == 5
-    assert pair["jaccard"] == 0.71
-    assert pair["sample_story_ids"] == ["s1", "s2"]
+    assert pair.entity_a == "CI pipeline"
+    assert pair.entity_b == "deployment"
+    assert pair.co_count == 5
+    assert pair.jaccard == 0.71
+    assert pair.sample_story_ids == ["s1", "s2"]
 
 
 def test_query_correlations_empty_when_no_correlations():
@@ -373,7 +373,7 @@ def test_query_correlations_sample_ids_capped_at_sample_size():
     service = PatternQueryService(graph=graph, storage=FakeStorage())
     result = service.query_correlations(limit=10, sample_size=2)
 
-    assert len(result.pairs[0]["sample_story_ids"]) == 2
+    assert len(result.pairs[0].sample_story_ids) == 2
 
 
 def test_query_correlations_forwards_threshold_and_entity_type():
