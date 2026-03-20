@@ -8,7 +8,7 @@ independent of the actual graph database (Neo4j, Neptune, etc).
 from abc import ABC, abstractmethod
 from typing import Any
 
-from src.domain.models import TriadPlacement
+from src.domain.models import TriadPlacement, TriadProximity
 
 
 class GraphPort(ABC):
@@ -17,10 +17,12 @@ class GraphPort(ABC):
     - Create story nodes in knowledge graph
     - Create entity and theme nodes
     - Create relationships between nodes
+    - Create proximity relationships between stories
     - Support graph queries (added as needed)
 
     Collaborators:
     - TriadPlacement (domain model)
+    - TriadProximity (domain model)
 
     Notes:
     - No knowledge of graph database implementation (Neo4j, Neptune, etc)
@@ -76,5 +78,24 @@ class GraphPort(ABC):
 
         Raises:
             GraphError: If node creation fails
+        """
+        pass
+
+    @abstractmethod
+    def save_proximity_relationships(
+        self, story_id: str, pairs: list[TriadProximity]
+    ) -> None:
+        """
+        Replace proximity relationships for a story.
+
+        Deletes all existing NEAR_IN_SIGNIFIER_SPACE edges touching story_id,
+        then creates new ones from pairs. Empty pairs list still deletes stale edges.
+
+        Args:
+            story_id: ID of the story being reprojected
+            pairs: TriadProximity values to write (may be empty)
+
+        Raises:
+            GraphError: If deletion or creation fails
         """
         pass

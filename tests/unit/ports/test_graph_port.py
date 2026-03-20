@@ -26,6 +26,9 @@ def test_can_implement_graph_port():
         def save_theme_nodes(self, story_id: str, themes: list) -> None:
             pass
 
+        def save_proximity_relationships(self, story_id: str, pairs: list) -> None:
+            pass
+
     graph = FakeGraph()
     assert graph is not None
     assert isinstance(graph, GraphPort)

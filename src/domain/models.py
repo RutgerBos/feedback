@@ -5,10 +5,11 @@ These are pure domain objects with no infrastructure dependencies.
 They use Pydantic for validation and immutability.
 """
 
+import math
 from datetime import UTC, datetime
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class TriadCoordinates(BaseModel):
@@ -31,6 +32,10 @@ class TriadCoordinates(BaseModel):
 
     model_config = {"frozen": True}
 
+    def distance_to(self, other: "TriadCoordinates") -> float:
+        """Euclidean distance in 2D barycentric space."""
+        return math.sqrt((self.x - other.x) ** 2 + (self.y - other.y) ** 2)
+
 
 class TriadPlacement(BaseModel):
     """
@@ -50,6 +55,47 @@ class TriadPlacement(BaseModel):
     coordinates: TriadCoordinates
 
     model_config = {"frozen": True}
+
+
+_SQRT2 = math.sqrt(2)
+
+
+class TriadProximity(BaseModel):
+    """
+    Responsibilities:
+    - Represent a proximity relationship between two stories in one triad's signifier space
+    - Ensure canonical ordering of story IDs to prevent duplicate pairs
+    - Compute weight from distance
+
+    Collaborators:
+    - None (value object)
+
+    Notes:
+    - Immutable value object
+    - story_id_a is always lexicographically <= story_id_b (canonical ordering)
+    - weight = 1 - distance / sqrt(2); ranges from 1.0 (identical) to ~0.0 (far apart)
+    """
+
+    story_id_a: str
+    story_id_b: str
+    triad_id: str
+    distance: float
+
+    model_config = {"frozen": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def canonicalize_ids(cls, values: dict) -> dict:
+        a = values.get("story_id_a", "")
+        b = values.get("story_id_b", "")
+        if a > b:
+            values["story_id_a"], values["story_id_b"] = b, a
+        return values
+
+    @property
+    def weight(self) -> float:
+        """Proximity weight: 1.0 = identical position, 0.0 = maximum distance."""
+        return 1.0 - self.distance / _SQRT2
 
 
 class StoryMetadata(BaseModel):

@@ -15,13 +15,21 @@ TRIADS = [
 
 
 class FakeSession:
-    """Records Cypher queries and parameters for inspection."""
+    """Records Cypher queries and parameters for inspection.
+
+    Supports both direct session.run() and session.execute_write(tx_func)
+    so that transactional and non-transactional adapters can both be tested.
+    """
 
     def __init__(self):
         self.queries = []  # list of (query, params)
 
     def run(self, query: str, **params) -> None:
         self.queries.append((query, params))
+
+    def execute_write(self, tx_func) -> None:
+        """Run tx_func with self as the transaction object (records queries)."""
+        tx_func(self)
 
     def __enter__(self):
         return self
@@ -307,3 +315,103 @@ def test_save_story_node_raises_graph_error_on_failure():
 
     with pytest.raises(GraphError):
         adapter.save_story_node(story_id=STORY_ID, triads=TRIADS, timestamp=TIMESTAMP)
+
+
+# ── Story 3.4: save_proximity_relationships ───────────────────────────────────
+
+def test_save_proximity_relationships_empty_list_still_deletes_stale_edges():
+    """save_proximity_relationships with empty pairs still issues a DELETE query.
+
+    Stale edges must be removed even when no new pairs qualify, so that
+    reprojection is always consistent.
+    """
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    adapter.save_proximity_relationships(story_id=STORY_ID, pairs=[])
+
+    assert len(driver.session_instance.queries) == 1
+    query, params = driver.session_instance.queries[0]
+    assert "DELETE" in query
+    assert params.get("story_id") == STORY_ID
+
+
+def test_save_proximity_relationships_emits_unwind_merge_cypher():
+    """save_proximity_relationships issues UNWIND+MERGE for NEAR_IN_SIGNIFIER_SPACE."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+    from src.domain.models import TriadProximity
+
+    pair = TriadProximity(
+        story_id_a="story-aaa",
+        story_id_b="story-zzz",
+        triad_id="workflow_nature",
+        distance=0.2,
+    )
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    adapter.save_proximity_relationships(story_id="story-aaa", pairs=[pair])
+
+    assert len(driver.session_instance.queries) >= 1
+    queries_text = " ".join(q for q, _ in driver.session_instance.queries)
+    assert "NEAR_IN_SIGNIFIER_SPACE" in queries_text
+    assert "UNWIND" in queries_text
+
+
+def test_save_proximity_relationships_deletes_existing_edges_first():
+    """save_proximity_relationships deletes stale edges before writing new ones."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+    from src.domain.models import TriadProximity
+
+    pair = TriadProximity(
+        story_id_a="story-aaa",
+        story_id_b="story-zzz",
+        triad_id="workflow_nature",
+        distance=0.2,
+    )
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    adapter.save_proximity_relationships(story_id="story-aaa", pairs=[pair])
+
+    # First query should be the DELETE
+    first_query, first_params = driver.session_instance.queries[0]
+    assert "DELETE" in first_query
+    assert first_params.get("story_id") == "story-aaa"
+
+
+def test_save_proximity_relationships_raises_graph_error_on_failure():
+    """save_proximity_relationships raises GraphError when driver raises."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+    from src.domain.models import TriadProximity
+    from src.ports.errors import GraphError
+
+    pair = TriadProximity(
+        story_id_a="story-aaa",
+        story_id_b="story-zzz",
+        triad_id="workflow_nature",
+        distance=0.2,
+    )
+
+    class FailingSession:
+        def run(self, query: str, **params):
+            raise Exception("Neo4j unavailable")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+    class FailingDriver:
+        def session(self):
+            return FailingSession()
+
+    adapter = Neo4jGraphAdapter(driver=FailingDriver())
+
+    with pytest.raises(GraphError):
+        adapter.save_proximity_relationships(story_id="story-aaa", pairs=[pair])

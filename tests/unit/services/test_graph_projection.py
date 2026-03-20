@@ -63,6 +63,9 @@ class FakeGraph(GraphPort):
     def save_theme_nodes(self, story_id: str, themes: list) -> None:
         self.saved_theme_calls.append((story_id, themes))
 
+    def save_proximity_relationships(self, story_id: str, pairs: list) -> None:
+        pass
+
 
 class FailingGraph(GraphPort):
     def save_story_node(self, story_id: str, triads, timestamp: str) -> None:
@@ -72,6 +75,9 @@ class FailingGraph(GraphPort):
         raise GraphError("Neo4j unavailable")
 
     def save_theme_nodes(self, story_id: str, themes: list) -> None:
+        raise GraphError("Neo4j unavailable")
+
+    def save_proximity_relationships(self, story_id: str, pairs: list) -> None:
         raise GraphError("Neo4j unavailable")
 
 
@@ -231,6 +237,9 @@ def test_project_story_continues_themes_after_entity_graph_error():
         def save_theme_nodes(self, story_id, themes):
             self.saved_theme_calls.append((story_id, themes))
 
+        def save_proximity_relationships(self, story_id, pairs):
+            pass
+
     story = make_story()
     story.themes = ["some theme"]
     storage = FakeStorage(stories={story.id: story})
@@ -241,3 +250,49 @@ def test_project_story_continues_themes_after_entity_graph_error():
 
     # Theme projection ran despite entity failure
     assert len(graph.saved_theme_calls) == 1
+
+
+# ── Story 3.4: proximity wiring ───────────────────────────────────────────────
+
+def test_project_story_calls_proximity_calculation():
+    """project_story calls proximity calculation after entity and theme projection."""
+    from src.services.graph_projection import GraphProjectionService
+
+    story = make_story()
+    storage = FakeStorage(stories={story.id: story})
+    graph = FakeGraph()
+
+    proximity_calls = []
+
+    class TrackingProximity:
+        def calculate_for_story(self, story_id: str) -> None:
+            proximity_calls.append(story_id)
+
+    service = GraphProjectionService(
+        storage=storage,
+        graph=graph,
+        proximity=TrackingProximity(),
+    )
+    service.project_story(story.id)
+
+    assert proximity_calls == [story.id]
+
+
+def test_project_story_swallows_proximity_graph_error():
+    """A GraphError from proximity calculation does not propagate."""
+    from src.services.graph_projection import GraphProjectionService
+
+    class FailingProximity:
+        def calculate_for_story(self, story_id: str) -> None:
+            raise GraphError("proximity failure")
+
+    story = make_story()
+    storage = FakeStorage(stories={story.id: story})
+    graph = FakeGraph()
+
+    service = GraphProjectionService(
+        storage=storage,
+        graph=graph,
+        proximity=FailingProximity(),
+    )
+    service.project_story(story.id)  # must not raise
