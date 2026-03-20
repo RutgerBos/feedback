@@ -75,6 +75,30 @@ class StoryMetadata(BaseModel):
     model_config = {"frozen": True}
 
 
+class SentimentAnalysis(BaseModel):
+    """
+    Responsibilities:
+    - Hold sentiment analysis results for a story
+    - Capture emotion markers, process sentiment, and outcome sentiment
+
+    Collaborators:
+    - None (value object)
+
+    Notes:
+    - Immutable value object
+    - Distinguishes between emotion about process vs outcome
+    - emotion_markers: specific emotions detected (e.g. "frustration", "relief")
+    - process_sentiment: overall sentiment about the process experienced
+    - outcome_sentiment: overall sentiment about the outcome achieved
+    """
+
+    emotion_markers: list[str] = Field(default_factory=list)
+    process_sentiment: str
+    outcome_sentiment: str
+
+    model_config = {"frozen": True}
+
+
 class Story(BaseModel):
     """
     Responsibilities:
@@ -101,6 +125,7 @@ class Story(BaseModel):
     processing_status: str = Field(default="pending")
     entities: list[dict[str, Any]] = Field(default_factory=list)
     themes: list[str] = Field(default_factory=list)
+    sentiment: SentimentAnalysis | None = None
 
     @field_validator("triads")
     @classmethod

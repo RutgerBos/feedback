@@ -11,13 +11,14 @@ from pydantic import BaseModel
 
 from src.adapters.mongodb_storage import MongoDBStorageAdapter
 from src.adapters.neo4j_graph import Neo4jGraphAdapter
-from src.domain.models import Story
+from src.domain.models import SentimentAnalysis, Story
 from src.ports.errors import LLMError, NotFoundError
 from src.ports.graph import GraphPort
 from src.ports.llm import EntityExtraction, LLMPort
 from src.ports.storage import StoragePort
 from src.services.entity_extraction import EntityExtractionService
 from src.services.graph_projection import GraphProjectionService
+from src.services.sentiment_extraction import SentimentExtractionService
 from src.services.story_submission import (
     StorySubmissionRequest,
     StorySubmissionResult,
@@ -90,6 +91,9 @@ class _NoOpLLM(LLMPort):
     def extract_relationships(self, story_text: str) -> list:
         raise LLMError("No LLM provider configured")
 
+    def extract_sentiment(self, story_text: str) -> SentimentAnalysis:
+        raise LLMError("No LLM provider configured")
+
 
 def get_llm() -> LLMPort:
     """
@@ -131,6 +135,14 @@ def get_entity_extraction_service(
     return EntityExtractionService(storage=storage, llm=llm, graph_projection=graph_projection)
 
 
+def get_sentiment_extraction_service(
+    storage: StoragePort = Depends(get_storage),
+    llm: LLMPort = Depends(get_llm),
+) -> SentimentExtractionService:
+    """Dependency that provides sentiment extraction service."""
+    return SentimentExtractionService(storage=storage, llm=llm)
+
+
 def _save_story_to_graph(story_id: str, storage: StoragePort, graph: GraphPort) -> None:
     """Background task: read story from storage and persist as a graph node."""
     story = storage.get_story(story_id)
@@ -166,6 +178,7 @@ async def submit_story(
     background_tasks: BackgroundTasks,
     service: StorySubmissionService = Depends(get_submission_service),
     entity_service: EntityExtractionService = Depends(get_entity_extraction_service),
+    sentiment_service: SentimentExtractionService = Depends(get_sentiment_extraction_service),
     storage: StoragePort = Depends(get_storage),
     graph: GraphPort = Depends(get_graph),
 ) -> StorySubmissionResult:
@@ -189,6 +202,7 @@ async def submit_story(
         result = service.submit_story(request)
         background_tasks.add_task(_save_story_to_graph, result.story_id, storage, graph)
         background_tasks.add_task(entity_service.extract_for_story, result.story_id)
+        background_tasks.add_task(sentiment_service.extract_for_story, result.story_id)
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e

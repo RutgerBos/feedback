@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.domain.models import Story, TriadCoordinates, TriadPlacement
+from src.domain.models import SentimentAnalysis, Story, TriadCoordinates, TriadPlacement
 from src.ports.errors import LLMError, NotFoundError
 from src.ports.llm import EntityExtraction, LLMPort
 from src.ports.storage import StoragePort
@@ -48,6 +48,11 @@ class FakeStorage(StoragePort):
             raise NotFoundError(f"Story not found: {story_id}")
         self.updated[story_id] = (entities, themes, processing_status)
 
+    def update_story_sentiment(self, story_id: str, sentiment, processing_status: str) -> None:
+        if story_id not in self.stories:
+            raise NotFoundError(f"Story not found: {story_id}")
+        self.updated[story_id] = (sentiment, processing_status)
+
 
 class FakeLLM(LLMPort):
     """In-memory LLM fake that returns canned responses."""
@@ -65,6 +70,9 @@ class FakeLLM(LLMPort):
     def extract_relationships(self, story_text: str) -> list:
         return []
 
+    def extract_sentiment(self, story_text: str) -> SentimentAnalysis:
+        return SentimentAnalysis(emotion_markers=[], process_sentiment="neutral", outcome_sentiment="neutral")
+
 
 class FailingLLM(LLMPort):
     """LLM fake that always raises LLMError."""
@@ -76,6 +84,9 @@ class FailingLLM(LLMPort):
         raise LLMError("API unavailable")
 
     def extract_relationships(self, story_text: str) -> list:
+        raise LLMError("API unavailable")
+
+    def extract_sentiment(self, story_text: str) -> SentimentAnalysis:
         raise LLMError("API unavailable")
 
 

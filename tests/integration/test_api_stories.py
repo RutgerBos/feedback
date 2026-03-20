@@ -18,10 +18,12 @@ def test_db():
 
 @pytest.fixture
 def api_client(test_db):
-    """Provide a TestClient with storage overridden to use the test database."""
+    """Provide a TestClient with storage, LLM, and graph overridden to use test doubles."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_llm, get_storage
+    from src.api.stories import get_graph, get_llm, get_storage
+    from src.domain.models import SentimentAnalysis
+    from src.ports.graph import GraphPort
     from src.ports.llm import EntityExtraction, LLMPort
 
     class NoOpLLM(LLMPort):
@@ -34,14 +36,29 @@ def api_client(test_db):
         def extract_relationships(self, story_text: str) -> list:
             return []
 
+        def extract_sentiment(self, story_text: str) -> SentimentAnalysis:
+            return SentimentAnalysis(emotion_markers=[], process_sentiment="neutral", outcome_sentiment="neutral")
+
+    class NoOpGraph(GraphPort):
+        def save_story_node(self, story_id: str, triads, timestamp: str) -> None:
+            pass
+
+        def save_entity_nodes(self, story_id: str, entities: list) -> None:
+            pass
+
+        def save_theme_nodes(self, story_id: str, themes: list) -> None:
+            pass
+
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
+    app.dependency_overrides[get_graph] = lambda: NoOpGraph()
     try:
         with TestClient(app) as client:
             yield client
     finally:
         app.dependency_overrides.pop(get_storage, None)
         app.dependency_overrides.pop(get_llm, None)
+        app.dependency_overrides.pop(get_graph, None)
 
 
 def test_list_stories_rejects_invalid_pagination(test_db, api_client):
@@ -248,7 +265,9 @@ def test_submit_story_triggers_entity_extraction(test_db):
     """Submitting a story triggers background entity extraction via FakeLLM."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_llm, get_storage
+    from src.api.stories import get_graph, get_llm, get_storage
+    from src.domain.models import SentimentAnalysis
+    from src.ports.graph import GraphPort
     from src.ports.llm import EntityExtraction, LLMPort
 
     class FakeLLM(LLMPort):
@@ -263,8 +282,22 @@ def test_submit_story_triggers_entity_extraction(test_db):
         def extract_relationships(self, story_text: str) -> list:
             return []
 
+        def extract_sentiment(self, story_text: str) -> SentimentAnalysis:
+            return SentimentAnalysis(emotion_markers=[], process_sentiment="neutral", outcome_sentiment="neutral")
+
+    class NoOpGraph(GraphPort):
+        def save_story_node(self, story_id: str, triads, timestamp: str) -> None:
+            pass
+
+        def save_entity_nodes(self, story_id: str, entities: list) -> None:
+            pass
+
+        def save_theme_nodes(self, story_id: str, themes: list) -> None:
+            pass
+
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: FakeLLM()
+    app.dependency_overrides[get_graph] = lambda: NoOpGraph()
     try:
         with TestClient(app) as client:
             response = client.post(
@@ -283,6 +316,7 @@ def test_submit_story_triggers_entity_extraction(test_db):
     finally:
         app.dependency_overrides.pop(get_storage, None)
         app.dependency_overrides.pop(get_llm, None)
+        app.dependency_overrides.pop(get_graph, None)
 
     # Background task should have run; verify extraction results in DB
     doc = test_db.stories.find_one({"_id": story_id})
@@ -348,6 +382,8 @@ def test_submit_story_triggers_graph_node_creation(test_db):
 
     saved_nodes = []
 
+    from src.domain.models import SentimentAnalysis
+
     class FakeLLM(LLMPort):
         def extract_entities(self, story_text: str) -> EntityExtraction:
             return EntityExtraction(entities=[])
@@ -357,6 +393,9 @@ def test_submit_story_triggers_graph_node_creation(test_db):
 
         def extract_relationships(self, story_text: str) -> list:
             return []
+
+        def extract_sentiment(self, story_text: str) -> SentimentAnalysis:
+            return SentimentAnalysis(emotion_markers=[], process_sentiment="neutral", outcome_sentiment="neutral")
 
     class CapturingGraph(GraphPort):
         def save_story_node(self, story_id: str, triads, timestamp: str) -> None:

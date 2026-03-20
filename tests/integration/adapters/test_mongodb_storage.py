@@ -7,7 +7,7 @@ import pytest
 from pymongo import MongoClient
 
 from src.adapters.mongodb_storage import MongoDBStorageAdapter
-from src.domain.models import Story, StoryMetadata, TriadCoordinates, TriadPlacement
+from src.domain.models import SentimentAnalysis, Story, StoryMetadata, TriadCoordinates, TriadPlacement
 
 
 @pytest.fixture
@@ -304,3 +304,74 @@ def test_save_multiple_stories(storage_adapter):
     retrieved2 = storage_adapter.get_story(id2)
 
     assert retrieved1.story_text != retrieved2.story_text
+
+
+def test_update_story_sentiment_persists_and_round_trips(storage_adapter):
+    """update_story_sentiment persists sentiment and it survives a save/get cycle."""
+
+    story = Story(
+        id=str(uuid4()),
+        story_text="CI failures blocked our deployment repeatedly this sprint. " * 3,
+        triads=[
+            TriadPlacement(triad_id="t1", coordinates=TriadCoordinates(x=0.3, y=0.6)),
+            TriadPlacement(triad_id="t2", coordinates=TriadCoordinates(x=0.5, y=0.4)),
+            TriadPlacement(triad_id="t3", coordinates=TriadCoordinates(x=0.2, y=0.7)),
+        ],
+    )
+    storage_adapter.save_story(story)
+
+    sentiment = SentimentAnalysis(
+        emotion_markers=["frustration", "relief"],
+        process_sentiment="negative",
+        outcome_sentiment="positive",
+    )
+
+    storage_adapter.update_story_sentiment(
+        story_id=story.id,
+        sentiment=sentiment,
+        processing_status="processed",
+    )
+
+    retrieved = storage_adapter.get_story(story.id)
+    assert retrieved.sentiment is not None
+    assert retrieved.sentiment.emotion_markers == ["frustration", "relief"]
+    assert retrieved.sentiment.process_sentiment == "negative"
+    assert retrieved.sentiment.outcome_sentiment == "positive"
+    assert retrieved.processing_status == "processed"
+
+
+def test_update_story_sentiment_none_round_trips(storage_adapter):
+    """update_story_sentiment with None sentiment stores null and reads back as None."""
+
+    story = Story(
+        id=str(uuid4()),
+        story_text="CI failures blocked our deployment repeatedly this sprint. " * 3,
+        triads=[
+            TriadPlacement(triad_id="t1", coordinates=TriadCoordinates(x=0.3, y=0.6)),
+            TriadPlacement(triad_id="t2", coordinates=TriadCoordinates(x=0.5, y=0.4)),
+            TriadPlacement(triad_id="t3", coordinates=TriadCoordinates(x=0.2, y=0.7)),
+        ],
+    )
+    storage_adapter.save_story(story)
+
+    storage_adapter.update_story_sentiment(
+        story_id=story.id,
+        sentiment=None,
+        processing_status="failed",
+    )
+
+    retrieved = storage_adapter.get_story(story.id)
+    assert retrieved.sentiment is None
+    assert retrieved.processing_status == "failed"
+
+
+def test_update_story_sentiment_not_found_raises(storage_adapter):
+    """update_story_sentiment raises NotFoundError for a missing story."""
+    from src.ports.errors import NotFoundError
+
+    with pytest.raises(NotFoundError):
+        storage_adapter.update_story_sentiment(
+            story_id="does-not-exist",
+            sentiment=None,
+            processing_status="failed",
+        )

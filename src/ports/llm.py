@@ -7,7 +7,10 @@ EntityExtraction holds entity results only; themes are returned separately by ex
 """
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from src.domain.models import SentimentAnalysis
 
 
 class EntityExtraction:
@@ -33,10 +36,12 @@ class LLMPort(ABC):
     Responsibilities:
     - Extract entities from story text
     - Extract themes from story text
+    - Extract sentiment and emotional tone from story text
     - Provide LLM-powered analysis of narratives
 
     Collaborators:
     - EntityExtraction (result object)
+    - SentimentAnalysis (result object)
 
     Notes:
     - No knowledge of LLM provider (Claude, OpenAI, local, etc)
@@ -91,5 +96,21 @@ class LLMPort(ABC):
 
         Raises:
             LLMError: If LLM API call fails
+        """
+        pass
+
+    @abstractmethod
+    def extract_sentiment(self, story_text: str) -> "SentimentAnalysis":
+        """
+        Extract sentiment and emotional tone from story text.
+
+        Args:
+            story_text: The narrative text to analyze
+
+        Returns:
+            SentimentAnalysis: emotion markers, process sentiment, outcome sentiment
+
+        Raises:
+            LLMError: If LLM API call fails or response cannot be parsed
         """
         pass

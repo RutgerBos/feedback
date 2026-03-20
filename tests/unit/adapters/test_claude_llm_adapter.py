@@ -149,3 +149,85 @@ def test_claude_adapter_extract_relationships_returns_list_of_dicts():
     assert isinstance(result, list)
     assert result[0]["source"] == "CI pipeline"
     assert result[0]["relationship"] == "BLOCKS"
+
+
+def test_claude_adapter_extract_sentiment_returns_sentiment_analysis():
+    """extract_sentiment parses Anthropic JSON response into SentimentAnalysis."""
+    from src.adapters.claude_llm import ClaudeLLMAdapter
+    from src.domain.models import SentimentAnalysis
+
+    response = json.dumps({
+        "emotion_markers": ["frustration", "relief"],
+        "process_sentiment": "negative",
+        "outcome_sentiment": "positive",
+    })
+    adapter = ClaudeLLMAdapter(client=make_fake_anthropic_client(response))
+
+    result = adapter.extract_sentiment("I struggled with CI but eventually fixed it.")
+
+    assert isinstance(result, SentimentAnalysis)
+    assert result.emotion_markers == ["frustration", "relief"]
+    assert result.process_sentiment == "negative"
+    assert result.outcome_sentiment == "positive"
+
+
+def test_claude_adapter_extract_sentiment_raises_on_missing_key():
+    """extract_sentiment raises LLMError when expected keys are absent."""
+    from src.adapters.claude_llm import ClaudeLLMAdapter
+    from src.ports.errors import LLMError
+
+    adapter = ClaudeLLMAdapter(client=make_fake_anthropic_client("{}"))
+
+    with pytest.raises(LLMError):
+        adapter.extract_sentiment("some story text here")
+
+
+def test_claude_adapter_extract_sentiment_raises_on_non_string_emotion_markers():
+    """extract_sentiment raises LLMError when emotion_markers contains non-strings."""
+    from src.adapters.claude_llm import ClaudeLLMAdapter
+    from src.ports.errors import LLMError
+
+    bad_response = json.dumps({
+        "emotion_markers": ["frustration", 42],
+        "process_sentiment": "negative",
+        "outcome_sentiment": "positive",
+    })
+    adapter = ClaudeLLMAdapter(client=make_fake_anthropic_client(bad_response))
+
+    with pytest.raises(LLMError):
+        adapter.extract_sentiment("some story text here")
+
+
+def test_claude_adapter_extract_sentiment_raises_on_non_string_sentiments():
+    """extract_sentiment raises LLMError when process/outcome sentiment are not strings."""
+    from src.adapters.claude_llm import ClaudeLLMAdapter
+    from src.ports.errors import LLMError
+
+    bad_response = json.dumps({
+        "emotion_markers": [],
+        "process_sentiment": 123,
+        "outcome_sentiment": "positive",
+    })
+    adapter = ClaudeLLMAdapter(client=make_fake_anthropic_client(bad_response))
+
+    with pytest.raises(LLMError):
+        adapter.extract_sentiment("some story text here")
+
+
+def test_claude_adapter_extract_sentiment_handles_empty_emotion_markers():
+    """extract_sentiment accepts empty emotion_markers list."""
+    from src.adapters.claude_llm import ClaudeLLMAdapter
+    from src.domain.models import SentimentAnalysis
+
+    response = json.dumps({
+        "emotion_markers": [],
+        "process_sentiment": "neutral",
+        "outcome_sentiment": "neutral",
+    })
+    adapter = ClaudeLLMAdapter(client=make_fake_anthropic_client(response))
+
+    result = adapter.extract_sentiment("A routine day with nothing notable.")
+
+    assert isinstance(result, SentimentAnalysis)
+    assert result.emotion_markers == []
+    assert result.process_sentiment == "neutral"

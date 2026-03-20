@@ -8,7 +8,7 @@ from typing import Any
 
 from pymongo.database import Database
 
-from src.domain.models import Story, StoryMetadata, TriadCoordinates, TriadPlacement
+from src.domain.models import SentimentAnalysis, Story, StoryMetadata, TriadCoordinates, TriadPlacement
 from src.ports.errors import NotFoundError, StorageError
 from src.ports.storage import StoragePort
 
@@ -160,6 +160,41 @@ class MongoDBStorageAdapter(StoragePort):
         except Exception as e:
             raise StorageError(f"Failed to update story entities: {e}") from e
 
+    def update_story_sentiment(
+        self,
+        story_id: str,
+        sentiment: SentimentAnalysis | None,
+        processing_status: str,
+    ) -> None:
+        """
+        Update a story's sentiment analysis result and processing status in MongoDB.
+
+        Raises:
+            NotFoundError: If no story exists with the given ID
+            StorageError: If update fails
+        """
+        try:
+            sentiment_doc = None
+            if sentiment is not None:
+                sentiment_doc = {
+                    "emotion_markers": sentiment.emotion_markers,
+                    "process_sentiment": sentiment.process_sentiment,
+                    "outcome_sentiment": sentiment.outcome_sentiment,
+                }
+            result = self.collection.update_one(
+                {"_id": story_id},
+                {"$set": {
+                    "sentiment": sentiment_doc,
+                    "processing_status": processing_status,
+                }},
+            )
+            if result.matched_count == 0:
+                raise NotFoundError(f"Story not found: {story_id}")
+        except NotFoundError:
+            raise
+        except Exception as e:
+            raise StorageError(f"Failed to update story sentiment: {e}") from e
+
     def _story_to_document(self, story: Story) -> dict[str, Any]:
         """
         Convert Story domain model to MongoDB document.
@@ -192,6 +227,14 @@ class MongoDBStorageAdapter(StoragePort):
                 "tool_context": story.metadata.tool_context,
             }
 
+        sentiment_dict = None
+        if story.sentiment is not None:
+            sentiment_dict = {
+                "emotion_markers": story.sentiment.emotion_markers,
+                "process_sentiment": story.sentiment.process_sentiment,
+                "outcome_sentiment": story.sentiment.outcome_sentiment,
+            }
+
         return {
             "story_text": story.story_text,
             "triads": triads_list,
@@ -200,6 +243,7 @@ class MongoDBStorageAdapter(StoragePort):
             "processing_status": story.processing_status,
             "entities": story.entities,
             "themes": story.themes,
+            "sentiment": sentiment_dict,
         }
 
     def _document_to_story(self, document: dict[str, Any]) -> Story:
@@ -233,6 +277,16 @@ class MongoDBStorageAdapter(StoragePort):
                 tool_context=document["metadata"].get("tool_context"),
             )
 
+        # Convert sentiment if present
+        sentiment = None
+        if document.get("sentiment"):
+            s = document["sentiment"]
+            sentiment = SentimentAnalysis(
+                emotion_markers=s.get("emotion_markers", []),
+                process_sentiment=s["process_sentiment"],
+                outcome_sentiment=s["outcome_sentiment"],
+            )
+
         return Story(
             id=document["_id"],
             story_text=document["story_text"],
@@ -242,4 +296,5 @@ class MongoDBStorageAdapter(StoragePort):
             processing_status=document.get("processing_status", "pending"),
             entities=document.get("entities", []),
             themes=document.get("themes", []),
+            sentiment=sentiment,
         )

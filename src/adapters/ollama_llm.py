@@ -5,6 +5,7 @@ Ollama LLM adapter implementing LLMPort via a local ollama instance.
 import json
 from typing import Any
 
+from src.domain.models import SentimentAnalysis
 from src.ports.errors import LLMError
 from src.ports.llm import EntityExtraction, LLMPort
 
@@ -93,6 +94,35 @@ class OllamaLLMAdapter(LLMPort):
             return self._require_list(data, "relationships")
         except (json.JSONDecodeError, KeyError) as e:
             raise LLMError(f"Failed to parse relationship extraction response: {e}") from e
+
+    def extract_sentiment(self, story_text: str) -> SentimentAnalysis:
+        """Extract sentiment and emotional tone from story text via ollama."""
+        prompt = (
+            "Analyze the emotional tone of this story. "
+            "Identify specific emotion markers (e.g. frustration, relief, confusion), "
+            "the overall sentiment about the process experienced, "
+            "and the overall sentiment about the outcome achieved. "
+            "Respond with JSON only: "
+            '{"emotion_markers": ["..."], "process_sentiment": "...", "outcome_sentiment": "..."}\n\n'
+            f"Story: {story_text}"
+        )
+        raw = self._call(prompt)
+        try:
+            data = json.loads(raw)
+            emotion_markers = self._require_list(data, "emotion_markers")
+            if not all(isinstance(m, str) for m in emotion_markers):
+                raise LLMError("Expected all emotion_markers to be strings")
+            process_sentiment = data["process_sentiment"]
+            outcome_sentiment = data["outcome_sentiment"]
+            if not isinstance(process_sentiment, str) or not isinstance(outcome_sentiment, str):
+                raise LLMError("process_sentiment and outcome_sentiment must be strings")
+            return SentimentAnalysis(
+                emotion_markers=emotion_markers,
+                process_sentiment=process_sentiment,
+                outcome_sentiment=outcome_sentiment,
+            )
+        except (json.JSONDecodeError, KeyError) as e:
+            raise LLMError(f"Failed to parse sentiment extraction response: {e}") from e
 
     def _require_list(self, data: dict, key: str) -> list:
         """Extract a list value from parsed JSON, raising LLMError if missing or not a list."""

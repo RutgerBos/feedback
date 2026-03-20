@@ -45,6 +45,9 @@ class FakeStorage(StoragePort):
     def update_story_entities(self, story_id: str, entities: list, themes: list, processing_status: str) -> None:
         pass
 
+    def update_story_sentiment(self, story_id: str, sentiment, processing_status: str) -> None:
+        pass
+
 
 class FakeGraph(GraphPort):
     def __init__(self):
