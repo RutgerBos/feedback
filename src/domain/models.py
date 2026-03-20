@@ -125,6 +125,7 @@ class Story(BaseModel):
     processing_status: str = Field(default="pending")
     entities: list[dict[str, Any]] = Field(default_factory=list)
     themes: list[str] = Field(default_factory=list)
+    sentiment: SentimentAnalysis | None = None
 
     @field_validator("triads")
     @classmethod

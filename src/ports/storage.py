@@ -8,7 +8,7 @@ independent of the actual storage implementation (MongoDB, PostgreSQL, etc).
 from abc import ABC, abstractmethod
 from typing import Any
 
-from src.domain.models import Story
+from src.domain.models import SentimentAnalysis, Story
 
 
 class StoragePort(ABC):
@@ -106,6 +106,27 @@ class StoragePort(ABC):
             story_id: Unique identifier for the story
             entities: List of extracted entity dicts (name, type)
             themes: List of extracted theme strings
+            processing_status: New processing status ("processed" or "failed")
+
+        Raises:
+            NotFoundError: If no story exists with the given ID
+            StorageError: If update fails due to infrastructure issues
+        """
+        pass
+
+    @abstractmethod
+    def update_story_sentiment(
+        self,
+        story_id: str,
+        sentiment: SentimentAnalysis | None,
+        processing_status: str,
+    ) -> None:
+        """
+        Update a story's sentiment analysis result and processing status.
+
+        Args:
+            story_id: Unique identifier for the story
+            sentiment: SentimentAnalysis result, or None if extraction failed
             processing_status: New processing status ("processed" or "failed")
 
         Raises:
