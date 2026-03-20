@@ -329,6 +329,52 @@ class Neo4jGraphAdapter(GraphPort):
         except Exception as e:
             raise GraphError(f"Failed to find stories by entity pair: {e}") from e
 
+    def find_story_communities(self, triad_id: str) -> list[tuple[str, int]]:
+        """Run Louvain community detection on the proximity graph for one triad.
+
+        Uses a GDS Cypher projection scoped to NEAR_IN_SIGNIFIER_SPACE edges
+        for the given triad_id. The named graph is always dropped in a finally
+        block to prevent stale projections accumulating in GDS memory.
+        """
+        graph_name = f"proximity-{triad_id}"
+        try:
+            with self._driver.session() as session:
+                session.run(
+                    """
+                    CALL gds.graph.project.cypher(
+                        $graph_name,
+                        'MATCH (s:Story) RETURN id(s) AS id',
+                        'MATCH (a:Story)-[r:NEAR_IN_SIGNIFIER_SPACE]->(b:Story)
+                         WHERE r.triad_id = $triad_id
+                         RETURN id(a) AS source, id(b) AS target, r.weight AS weight',
+                        {parameters: {triad_id: $triad_id}}
+                    )
+                    """,
+                    graph_name=graph_name,
+                    triad_id=triad_id,
+                )
+                result = session.run(
+                    """
+                    CALL gds.louvain.stream($graph_name, {relationshipWeightProperty: 'weight'})
+                    YIELD nodeId, communityId
+                    MATCH (s:Story) WHERE id(s) = nodeId
+                    RETURN s.story_id AS story_id, communityId
+                    """,
+                    graph_name=graph_name,
+                )
+                return [(row["story_id"], row["communityId"]) for row in result.data()]
+        except Exception as e:
+            raise GraphError(f"Failed to find story communities: {e}") from e
+        finally:
+            try:
+                with self._driver.session() as session:
+                    session.run(
+                        "CALL gds.graph.drop($graph_name, false)",
+                        graph_name=graph_name,
+                    )
+            except Exception:
+                pass
+
     def count_stories_by_theme(self, theme_name: str) -> int:
         """Return total count of stories with the given theme."""
         try:

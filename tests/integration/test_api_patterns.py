@@ -80,6 +80,9 @@ def api_client(test_db):
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
             return []
 
+        def find_story_communities(self, triad_id):
+            return []
+
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
@@ -184,6 +187,9 @@ def test_query_by_entity_returns_503_on_graph_error(test_db):
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
             return []
 
+        def find_story_communities(self, triad_id):
+            return []
+
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
@@ -264,6 +270,9 @@ def test_query_by_entity_returns_stories_from_graph(test_db):
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
             return []
 
+        def find_story_communities(self, triad_id):
+            return []
+
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
@@ -341,6 +350,9 @@ def test_get_themes_returns_503_on_graph_error(test_db):
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
             return []
 
+        def find_story_communities(self, triad_id):
+            return []
+
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
@@ -390,6 +402,9 @@ def test_get_themes_returns_ranked_themes_with_sample_ids(test_db):
             return []
 
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
+            return []
+
+        def find_story_communities(self, triad_id):
             return []
 
 
@@ -454,6 +469,7 @@ def test_get_correlations_returns_503_on_graph_error(test_db):
         def find_entity_correlations(self, limit, threshold=0.0, entity_type=None):
             raise GraphError("Neo4j down")
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0): return []
+        def find_story_communities(self, triad_id): return []
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
@@ -501,6 +517,7 @@ def test_get_correlations_returns_ranked_pairs_with_sample_ids(test_db):
             return [("CI pipeline", "deployment", 5, 0.71)]
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
             return ["story-1"]
+        def find_story_communities(self, triad_id): return []
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
