@@ -5,7 +5,7 @@ LLM-powered insight synthesis from pattern queries.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from src.api.stories import get_graph, get_llm, get_storage
 from src.ports.errors import GraphError, LLMError, NotFoundError, StorageError
@@ -20,6 +20,13 @@ router = APIRouter(prefix="/api/insights", tags=["insights"])
 class SynthesizeRequest(BaseModel):
     entity_name: str = Field(min_length=1)
     query: str = Field(min_length=1)
+
+    @field_validator("entity_name", "query")
+    @classmethod
+    def must_not_be_whitespace_only(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("must not be blank or whitespace only")
+        return v
 
 
 class SentimentSummaryResponse(BaseModel):

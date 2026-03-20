@@ -192,11 +192,29 @@ def test_synthesize_rejects_blank_entity_name(test_db, api_client):
     assert response.status_code == 422
 
 
+def test_synthesize_rejects_whitespace_entity_name(test_db, api_client):
+    """POST /api/insights/synthesize returns 422 when entity_name is whitespace only."""
+    response = api_client.post(
+        "/api/insights/synthesize",
+        json={"entity_name": "   ", "query": "What patterns exist?"},
+    )
+    assert response.status_code == 422
+
+
 def test_synthesize_rejects_blank_query(test_db, api_client):
     """POST /api/insights/synthesize returns 422 when query is blank."""
     response = api_client.post(
         "/api/insights/synthesize",
         json={"entity_name": "CI pipeline", "query": ""},
+    )
+    assert response.status_code == 422
+
+
+def test_synthesize_rejects_whitespace_query(test_db, api_client):
+    """POST /api/insights/synthesize returns 422 when query is whitespace only."""
+    response = api_client.post(
+        "/api/insights/synthesize",
+        json={"entity_name": "CI pipeline", "query": "   "},
     )
     assert response.status_code == 422
 
