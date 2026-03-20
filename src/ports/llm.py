@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from src.domain.models import SentimentAnalysis
+    from src.domain.models import InsightContext, InsightOutput, SentimentAnalysis
 
 
 class EntityExtraction:
@@ -109,6 +109,23 @@ class LLMPort(ABC):
 
         Returns:
             SentimentAnalysis: emotion markers, process sentiment, outcome sentiment
+
+        Raises:
+            LLMError: If LLM API call fails or response cannot be parsed
+        """
+        pass
+
+    @abstractmethod
+    def synthesize_insights(self, context: "InsightContext") -> "InsightOutput":
+        """
+        Generate a narrative insight from structured pattern evidence.
+
+        Args:
+            context: InsightContext with query, entity, story excerpts, theme counts,
+                     and sentiment summary
+
+        Returns:
+            InsightOutput: narrative explanation and optional caveats
 
         Raises:
             LLMError: If LLM API call fails or response cannot be parsed

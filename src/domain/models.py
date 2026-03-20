@@ -98,6 +98,98 @@ class TriadProximity(BaseModel):
         return 1.0 - self.distance / _SQRT2
 
 
+class StoryExcerpt(BaseModel):
+    """
+    Responsibilities:
+    - Hold a brief excerpt and triad positions for one story
+    - Provide evidence context for LLM synthesis
+
+    Collaborators:
+    - None (value object)
+
+    Notes:
+    - Immutable value object
+    - text_excerpt is capped at 300 characters
+    - triad_positions: {triad_id: {x, y}} for spatial context
+    """
+
+    story_id: str
+    text_excerpt: str
+    triad_positions: dict[str, dict[str, float]]
+
+    model_config = {"frozen": True}
+
+
+class SentimentSummary(BaseModel):
+    """
+    Responsibilities:
+    - Hold aggregated sentiment counts across a set of stories
+    - Provide deterministic statistics for LLM synthesis context
+
+    Collaborators:
+    - None (value object)
+
+    Notes:
+    - Immutable value object
+    - Counts are absolute (not percentages) so the LLM can reason about scale
+    """
+
+    positive_process: int = 0
+    negative_process: int = 0
+    neutral_process: int = 0
+    positive_outcome: int = 0
+    negative_outcome: int = 0
+    neutral_outcome: int = 0
+
+    model_config = {"frozen": True}
+
+
+class InsightContext(BaseModel):
+    """
+    Responsibilities:
+    - Bundle all structured context for an LLM synthesis call
+    - Provide deterministic evidence: excerpts, theme counts, sentiment summary
+
+    Collaborators:
+    - StoryExcerpt (value object)
+    - SentimentSummary (value object)
+
+    Notes:
+    - Immutable value object
+    - theme_counts: {theme: count} computed before calling LLM
+    - total_stories is the full match count (not just sampled_stories)
+    - Capped at 20 story excerpts before reaching the LLM
+    """
+
+    query: str
+    entity_name: str
+    total_stories: int
+    excerpts: list[StoryExcerpt]
+    theme_counts: dict[str, int]
+    sentiment_summary: SentimentSummary
+
+    model_config = {"frozen": True}
+
+
+class InsightOutput(BaseModel):
+    """
+    Responsibilities:
+    - Hold structured LLM synthesis response
+
+    Collaborators:
+    - None (value object)
+
+    Notes:
+    - Immutable value object
+    - caveats: known limitations or low-confidence observations from the LLM
+    """
+
+    narrative: str
+    caveats: list[str] = Field(default_factory=list)
+
+    model_config = {"frozen": True}
+
+
 class StoryMetadata(BaseModel):
     """
     Responsibilities:

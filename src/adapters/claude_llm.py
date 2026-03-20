@@ -5,7 +5,8 @@ Claude LLM adapter implementing LLMPort via the Anthropic API.
 import json
 from typing import Any
 
-from src.domain.models import SentimentAnalysis
+from src.adapters._synthesis_prompt import _build_synthesis_prompt, _parse_synthesis_response
+from src.domain.models import InsightContext, InsightOutput, SentimentAnalysis
 from src.ports.errors import LLMError
 from src.ports.llm import EntityExtraction, LLMPort
 
@@ -112,6 +113,11 @@ class ClaudeLLMAdapter(LLMPort):
             )
         except (json.JSONDecodeError, KeyError) as e:
             raise LLMError(f"Failed to parse sentiment extraction response: {e}") from e
+
+    def synthesize_insights(self, context: InsightContext) -> InsightOutput:
+        """Synthesize a narrative insight from structured pattern evidence via Claude."""
+        raw = self._call(_build_synthesis_prompt(context))
+        return _parse_synthesis_response(raw)
 
     def _require_list(self, data: dict, key: str) -> list:
         """Extract a list value from parsed JSON, raising LLMError if missing or not a list."""

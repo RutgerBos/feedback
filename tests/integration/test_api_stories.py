@@ -39,6 +39,10 @@ def api_client(test_db):
         def extract_sentiment(self, story_text: str) -> SentimentAnalysis:
             return SentimentAnalysis(emotion_markers=[], process_sentiment="neutral", outcome_sentiment="neutral")
 
+        def synthesize_insights(self, context):  # type: ignore[override]
+            from src.domain.models import InsightOutput
+            return InsightOutput(narrative="")
+
     class NoOpGraph(GraphPort):
         def save_story_node(self, story_id: str, triads, timestamp: str) -> None:
             pass
@@ -294,6 +298,10 @@ def test_submit_story_triggers_entity_extraction(test_db):
         def extract_sentiment(self, story_text: str) -> SentimentAnalysis:
             return SentimentAnalysis(emotion_markers=[], process_sentiment="neutral", outcome_sentiment="neutral")
 
+        def synthesize_insights(self, context):  # type: ignore[override]
+            from src.domain.models import InsightOutput
+            return InsightOutput(narrative="")
+
     class NoOpGraph(GraphPort):
         def save_story_node(self, story_id: str, triads, timestamp: str) -> None:
             pass
@@ -414,6 +422,10 @@ def test_submit_story_triggers_graph_node_creation(test_db):
 
         def extract_sentiment(self, story_text: str) -> SentimentAnalysis:
             return SentimentAnalysis(emotion_markers=[], process_sentiment="neutral", outcome_sentiment="neutral")
+
+        def synthesize_insights(self, context):  # type: ignore[override]
+            from src.domain.models import InsightOutput
+            return InsightOutput(narrative="")
 
     class CapturingGraph(GraphPort):
         def save_story_node(self, story_id: str, triads, timestamp: str) -> None:

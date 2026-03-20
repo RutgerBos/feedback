@@ -28,6 +28,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo import MongoClient
 
+from src.api.insights import router as insights_router
 from src.api.patterns import router as patterns_router
 from src.api.stories import router as stories_router
 from src.config.settings import Settings
@@ -91,6 +92,7 @@ app.add_middleware(
 # Register routers
 app.include_router(stories_router)
 app.include_router(patterns_router)
+app.include_router(insights_router)
 
 
 @app.get("/health")

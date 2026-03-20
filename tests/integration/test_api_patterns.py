@@ -43,6 +43,10 @@ def api_client(test_db):
                 outcome_sentiment="neutral",
             )
 
+        def synthesize_insights(self, context):  # type: ignore[override]
+            from src.domain.models import InsightOutput
+            return InsightOutput(narrative="")
+
     class NoOpGraph(GraphPort):
         def save_story_node(self, story_id: str, triads, timestamp: str) -> None:
             pass
@@ -128,6 +132,10 @@ def test_query_by_entity_returns_503_on_graph_error(test_db):
                 outcome_sentiment="neutral",
             )
 
+        def synthesize_insights(self, context):  # type: ignore[override]
+            from src.domain.models import InsightOutput
+            return InsightOutput(narrative="")
+
     class FailingGraph(GraphPort):
         def save_story_node(self, story_id, triads, timestamp):
             pass
@@ -186,6 +194,10 @@ def test_query_by_entity_returns_stories_from_graph(test_db):
                 process_sentiment="neutral",
                 outcome_sentiment="neutral",
             )
+
+        def synthesize_insights(self, context):  # type: ignore[override]
+            from src.domain.models import InsightOutput
+            return InsightOutput(narrative="")
 
     story_ids = []
 

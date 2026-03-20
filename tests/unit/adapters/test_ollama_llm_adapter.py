@@ -212,3 +212,54 @@ def test_ollama_adapter_extract_sentiment_handles_empty_emotion_markers():
     assert isinstance(result, SentimentAnalysis)
     assert result.emotion_markers == []
     assert result.process_sentiment == "neutral"
+
+
+# ── synthesize_insights ────────────────────────────────────────────────────────
+
+
+def make_insight_context():
+    from src.domain.models import InsightContext, SentimentSummary, StoryExcerpt
+    return InsightContext(
+        query="Why do CI stories cluster here?",
+        entity_name="CI pipeline",
+        total_stories=1,
+        excerpts=[StoryExcerpt(story_id="s1", text_excerpt="Pipeline broke.", triad_positions={})],
+        theme_counts={"automation friction": 1},
+        sentiment_summary=SentimentSummary(negative_process=1),
+    )
+
+
+def test_ollama_adapter_synthesize_insights_returns_insight_output():
+    """synthesize_insights parses narrative and caveats from Ollama response."""
+    from src.adapters.ollama_llm import OllamaLLMAdapter
+    from src.domain.models import InsightOutput
+
+    response = json.dumps({"narrative": "CI issues cluster here.", "caveats": ["Small sample."]})
+    adapter = OllamaLLMAdapter(http_client=make_fake_http_client(response))
+
+    result = adapter.synthesize_insights(make_insight_context())
+
+    assert isinstance(result, InsightOutput)
+    assert result.narrative == "CI issues cluster here."
+    assert result.caveats == ["Small sample."]
+
+
+def test_ollama_adapter_synthesize_insights_raises_on_missing_narrative_key():
+    """synthesize_insights raises LLMError when narrative key is absent."""
+    from src.adapters.ollama_llm import OllamaLLMAdapter
+    from src.ports.errors import LLMError
+
+    response = json.dumps({"caveats": ["Caveat only."]})
+    adapter = OllamaLLMAdapter(http_client=make_fake_http_client(response))
+    with pytest.raises(LLMError, match="narrative"):
+        adapter.synthesize_insights(make_insight_context())
+
+
+def test_ollama_adapter_synthesize_insights_raises_on_bad_json():
+    """synthesize_insights raises LLMError when response is not valid JSON."""
+    from src.adapters.ollama_llm import OllamaLLMAdapter
+    from src.ports.errors import LLMError
+
+    adapter = OllamaLLMAdapter(http_client=make_fake_http_client("not json"))
+    with pytest.raises(LLMError):
+        adapter.synthesize_insights(make_insight_context())
