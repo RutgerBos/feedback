@@ -5,10 +5,10 @@ LLM-powered insight synthesis from pattern queries.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from src.api.stories import get_graph, get_llm, get_storage
-from src.ports.errors import GraphError, LLMError, NotFoundError
+from src.ports.errors import GraphError, LLMError, NotFoundError, StorageError
 from src.ports.graph import GraphPort
 from src.ports.llm import LLMPort
 from src.ports.storage import StoragePort
@@ -18,8 +18,8 @@ router = APIRouter(prefix="/api/insights", tags=["insights"])
 
 
 class SynthesizeRequest(BaseModel):
-    entity_name: str
-    query: str
+    entity_name: str = Field(min_length=1)
+    query: str = Field(min_length=1)
 
 
 class SentimentSummaryResponse(BaseModel):
@@ -114,5 +114,7 @@ async def synthesize_insights(
         raise HTTPException(status_code=503, detail="LLM unavailable") from e
     except NotFoundError as e:
         raise HTTPException(status_code=503, detail="Story data inconsistency — retry later") from e
+    except StorageError as e:
+        raise HTTPException(status_code=503, detail="Storage unavailable") from e
 
     return _to_response(result)

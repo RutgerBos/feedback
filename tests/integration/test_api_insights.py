@@ -183,6 +183,104 @@ def test_synthesize_returns_narrative_when_stories_exist(test_db):
         app.dependency_overrides.pop(get_graph, None)
 
 
+def test_synthesize_rejects_blank_entity_name(test_db, api_client):
+    """POST /api/insights/synthesize returns 422 when entity_name is blank."""
+    response = api_client.post(
+        "/api/insights/synthesize",
+        json={"entity_name": "", "query": "What patterns exist?"},
+    )
+    assert response.status_code == 422
+
+
+def test_synthesize_rejects_blank_query(test_db, api_client):
+    """POST /api/insights/synthesize returns 422 when query is blank."""
+    response = api_client.post(
+        "/api/insights/synthesize",
+        json={"entity_name": "CI pipeline", "query": ""},
+    )
+    assert response.status_code == 422
+
+
+def test_synthesize_returns_503_on_storage_error(test_db):
+    """StorageError during story hydration returns 503."""
+    from src.api.main import app
+    from src.api.stories import get_graph, get_llm, get_storage
+    from src.domain.models import InsightContext, InsightOutput, SentimentAnalysis, Story
+    from src.ports.errors import StorageError
+    from src.ports.graph import GraphPort
+    from src.ports.llm import EntityExtraction, LLMPort
+    from src.ports.storage import StoragePort
+
+    class NoOpLLM(LLMPort):
+        def extract_entities(self, story_text: str) -> EntityExtraction:
+            return EntityExtraction(entities=[])
+
+        def extract_themes(self, story_text: str) -> list:
+            return []
+
+        def extract_relationships(self, story_text: str) -> list:
+            return []
+
+        def extract_sentiment(self, story_text: str) -> SentimentAnalysis:
+            return SentimentAnalysis(emotion_markers=[], process_sentiment="neutral", outcome_sentiment="neutral")
+
+        def synthesize_insights(self, context: InsightContext) -> InsightOutput:
+            return InsightOutput(narrative="")
+
+    class OneIdGraph(GraphPort):
+        def save_story_node(self, story_id, triads, timestamp):
+            pass
+
+        def save_entity_nodes(self, story_id, entities):
+            pass
+
+        def save_theme_nodes(self, story_id, themes):
+            pass
+
+        def save_proximity_relationships(self, story_id, pairs):
+            pass
+
+        def find_story_ids_by_entity(self, entity_name, limit, offset):
+            return ["missing-id"]
+
+        def count_stories_by_entity(self, entity_name):
+            return 1
+
+    class ErrorStorage(StoragePort):
+        def save_story(self, story: Story) -> str:
+            return story.id
+
+        def get_story(self, story_id: str) -> Story:
+            raise StorageError("Mongo down")
+
+        def count_stories(self) -> int:
+            return 0
+
+        def list_stories(self, limit: int = 20, offset: int = 0) -> list:
+            return []
+
+        def update_story_entities(self, story_id, entities, themes, processing_status):
+            pass
+
+        def update_story_sentiment(self, story_id, sentiment, processing_status):
+            pass
+
+    app.dependency_overrides[get_storage] = lambda: ErrorStorage()
+    app.dependency_overrides[get_llm] = lambda: NoOpLLM()
+    app.dependency_overrides[get_graph] = lambda: OneIdGraph()
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/insights/synthesize",
+                json={"entity_name": "CI", "query": "Test?"},
+            )
+            assert response.status_code == 503
+    finally:
+        app.dependency_overrides.pop(get_storage, None)
+        app.dependency_overrides.pop(get_llm, None)
+        app.dependency_overrides.pop(get_graph, None)
+
+
 def test_synthesize_returns_503_on_graph_error(test_db):
     """GraphError from the graph returns 503."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter

@@ -303,6 +303,22 @@ def test_claude_adapter_synthesize_insights_raises_on_missing_narrative_key():
         adapter.synthesize_insights(make_insight_context())
 
 
+def test_claude_adapter_synthesize_insights_strips_code_fences_from_response():
+    """synthesize_insights accepts JSON wrapped in markdown code fences."""
+    import json
+
+    from src.adapters.claude_llm import ClaudeLLMAdapter
+    from src.domain.models import InsightOutput
+
+    fenced = "```json\n" + json.dumps({"narrative": "Fenced.", "caveats": []}) + "\n```"
+    adapter = ClaudeLLMAdapter(client=make_fake_anthropic_client(fenced))
+
+    result = adapter.synthesize_insights(make_insight_context())
+
+    assert isinstance(result, InsightOutput)
+    assert result.narrative == "Fenced."
+
+
 def test_claude_adapter_synthesize_insights_includes_triad_positions_in_prompt():
     """The prompt sent to Claude includes triad coordinate information."""
     import json

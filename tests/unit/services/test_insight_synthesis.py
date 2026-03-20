@@ -7,15 +7,13 @@ from src.domain.models import (
     InsightOutput,
     SentimentAnalysis,
     Story,
-    StoryMetadata,
     TriadCoordinates,
     TriadPlacement,
 )
-from src.ports.errors import GraphError, LLMError, NotFoundError
+from src.ports.errors import LLMError, NotFoundError
 from src.ports.graph import GraphPort
 from src.ports.llm import EntityExtraction, LLMPort
 from src.ports.storage import StoragePort
-
 
 # ── Fakes ─────────────────────────────────────────────────────────────────────
 
@@ -293,3 +291,25 @@ def test_synthesize_empty_result_when_no_stories():
     assert result.story_count == 0
     assert result.narrative == ""
     assert llm.calls == []  # LLM not called when no stories
+
+
+def test_synthesize_unknown_sentiment_labels_not_counted_as_neutral():
+    """Sentiment values other than positive/negative/neutral are not bucketed into neutral."""
+    from src.services.insight_synthesis import InsightSynthesisService
+
+    s1 = make_story("s1", sentiment=SentimentAnalysis(
+        emotion_markers=[], process_sentiment="mixed", outcome_sentiment="ambivalent"
+    ))
+    graph = FakeGraph(story_ids=["s1"], total=1)
+    storage = FakeStorage(stories={"s1": s1})
+    llm = FakeLLM()
+
+    service = InsightSynthesisService(graph=graph, storage=storage, llm=llm)
+    service.synthesize(entity_name="CI", query="Test?")
+
+    ctx = llm.calls[0]
+    s = ctx.sentiment_summary
+    assert s.neutral_process == 0
+    assert s.neutral_outcome == 0
+    assert s.positive_process == 0
+    assert s.negative_process == 0

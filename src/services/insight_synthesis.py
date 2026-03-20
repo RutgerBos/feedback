@@ -110,14 +110,14 @@ class InsightSynthesisService:
                 pos_proc += 1
             elif s == "negative":
                 neg_proc += 1
-            else:
+            elif s == "neutral":
                 neu_proc += 1
             o = story.sentiment.outcome_sentiment.lower()
             if o == "positive":
                 pos_out += 1
             elif o == "negative":
                 neg_out += 1
-            else:
+            elif o == "neutral":
                 neu_out += 1
 
         sentiment_summary = SentimentSummary(
