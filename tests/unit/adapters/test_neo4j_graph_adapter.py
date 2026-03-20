@@ -878,3 +878,80 @@ def test_find_story_ids_by_entity_pair_raises_graph_error_on_failure():
     adapter = Neo4jGraphAdapter(driver=FailingDriver())
     with pytest.raises(GraphError):
         adapter.find_story_ids_by_entity_pair("a", "b", limit=10)
+
+
+# ── Story 4.4: find_story_communities ────────────────────────────────────────
+
+
+def test_find_story_communities_projects_graph_then_runs_louvain():
+    """find_story_communities calls gds.graph.project.cypher then gds.louvain.stream."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.find_story_communities("workflow_nature")
+
+    queries = [q for q, _ in driver.session_instance.queries]
+    assert any("gds.graph.project" in q for q in queries), "Should call gds.graph.project"
+    assert any("gds.louvain.stream" in q for q in queries), "Should call gds.louvain.stream"
+
+
+def test_find_story_communities_drops_projection_after_stream():
+    """find_story_communities calls gds.graph.drop to clean up the named projection."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.find_story_communities("workflow_nature")
+
+    queries = [q for q, _ in driver.session_instance.queries]
+    assert any("gds.graph.drop" in q for q in queries), "Should drop the named projection"
+
+
+def test_find_story_communities_filters_edges_by_triad_id():
+    """find_story_communities passes triad_id to the Cypher projection query."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.find_story_communities("value_character")
+
+    all_params = {k: v for _, p in driver.session_instance.queries for k, v in p.items()}
+    assert all_params.get("triad_id") == "value_character"
+
+
+def test_find_story_communities_returns_story_id_community_tuples():
+    """find_story_communities returns (story_id, community_id) tuples."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    # Louvain stream returns nodeId + communityId; second query resolves story_id
+    rows = [
+        {"story_id": "s1", "communityId": 0},
+        {"story_id": "s2", "communityId": 0},
+        {"story_id": "s3", "communityId": 1},
+    ]
+    driver = FakeDriver(result=FakeResult(rows=rows))
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    result = adapter.find_story_communities("workflow_nature")
+    assert ("s1", 0) in result
+    assert ("s3", 1) in result
+
+
+def test_find_story_communities_raises_graph_error_on_failure():
+    """find_story_communities raises GraphError when the driver fails."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+    from src.ports.errors import GraphError
+
+    class FailingSession:
+        def run(self, *args, **kwargs):
+            raise RuntimeError("GDS not available")
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+
+    class FailingDriver:
+        def session(self): return FailingSession()
+
+    adapter = Neo4jGraphAdapter(driver=FailingDriver())
+    with pytest.raises(GraphError):
+        adapter.find_story_communities("workflow_nature")

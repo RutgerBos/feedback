@@ -188,6 +188,31 @@ class GraphPort(ABC):
         pass
 
     @abstractmethod
+    def find_story_communities(
+        self,
+        triad_id: str,
+    ) -> list[tuple[str, int]]:
+        """
+        Return community assignments for stories using Louvain community detection
+        on the NEAR_IN_SIGNIFIER_SPACE proximity graph for a specific triad.
+
+        Uses GDS Cypher projection filtered to the given triad_id, then runs
+        gds.louvain.stream weighted by proximity weight.
+
+        Args:
+            triad_id: Triad to cluster on (filters proximity edges by triad_id)
+
+        Returns:
+            List of (story_id, community_id) tuples. community_id is an
+            arbitrary integer assigned by Louvain — equal values indicate
+            the same cluster.
+
+        Raises:
+            GraphError: If the GDS query or projection fails
+        """
+        pass
+
+    @abstractmethod
     def count_stories_by_theme(self, theme_name: str) -> int:
         """
         Return total number of stories with the given theme (case-insensitive).

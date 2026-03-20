@@ -80,6 +80,9 @@ def api_client(test_db):
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
             return []
 
+        def find_story_communities(self, triad_id):
+            return []
+
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
@@ -184,6 +187,9 @@ def test_query_by_entity_returns_503_on_graph_error(test_db):
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
             return []
 
+        def find_story_communities(self, triad_id):
+            return []
+
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
@@ -264,6 +270,9 @@ def test_query_by_entity_returns_stories_from_graph(test_db):
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
             return []
 
+        def find_story_communities(self, triad_id):
+            return []
+
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
@@ -341,6 +350,9 @@ def test_get_themes_returns_503_on_graph_error(test_db):
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
             return []
 
+        def find_story_communities(self, triad_id):
+            return []
+
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
@@ -390,6 +402,9 @@ def test_get_themes_returns_ranked_themes_with_sample_ids(test_db):
             return []
 
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
+            return []
+
+        def find_story_communities(self, triad_id):
             return []
 
 
@@ -454,6 +469,7 @@ def test_get_correlations_returns_503_on_graph_error(test_db):
         def find_entity_correlations(self, limit, threshold=0.0, entity_type=None):
             raise GraphError("Neo4j down")
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0): return []
+        def find_story_communities(self, triad_id): return []
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
@@ -501,6 +517,7 @@ def test_get_correlations_returns_ranked_pairs_with_sample_ids(test_db):
             return [("CI pipeline", "deployment", 5, 0.71)]
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
             return ["story-1"]
+        def find_story_communities(self, triad_id): return []
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
@@ -517,6 +534,137 @@ def test_get_correlations_returns_ranked_pairs_with_sample_ids(test_db):
             assert pair["co_count"] == 5
             assert pair["jaccard"] == 0.71
             assert pair["sample_story_ids"] == ["story-1"]
+    finally:
+        app.dependency_overrides.pop(get_storage, None)
+        app.dependency_overrides.pop(get_llm, None)
+        app.dependency_overrides.pop(get_graph, None)
+
+
+# ── Story 4.4: GET /api/patterns/clusters ─────────────────────────────────────
+
+
+def test_get_clusters_returns_200_with_empty_list(test_db, api_client):
+    """GET /api/patterns/clusters returns 200 and empty clusters list when no proximity data."""
+    response = api_client.get("/api/patterns/clusters?triad_id=workflow_nature")
+    assert response.status_code == 200
+    assert response.json() == {"clusters": []}
+
+
+def test_get_clusters_returns_503_on_graph_error(test_db):
+    """GET /api/patterns/clusters returns 503 when GDS is unavailable."""
+    from src.adapters.mongodb_storage import MongoDBStorageAdapter
+    from src.api.main import app
+    from src.api.stories import get_graph, get_llm, get_storage
+    from src.domain.models import SentimentAnalysis
+    from src.ports.errors import GraphError
+    from src.ports.graph import GraphPort
+    from src.ports.llm import EntityExtraction, LLMPort
+
+    class NoOpLLM(LLMPort):
+        def extract_entities(self, story_text): return EntityExtraction(entities=[])
+        def extract_themes(self, story_text): return []
+        def extract_relationships(self, story_text): return []
+        def extract_sentiment(self, story_text):
+            return SentimentAnalysis(emotion_markers=[], process_sentiment="neutral", outcome_sentiment="neutral")
+        def synthesize_insights(self, context):
+            from src.domain.models import InsightOutput
+            return InsightOutput(narrative="")
+
+    class FailingGraph(GraphPort):
+        def save_story_node(self, story_id, triads, timestamp): pass
+        def save_entity_nodes(self, story_id, entities): pass
+        def save_theme_nodes(self, story_id, themes): pass
+        def save_proximity_relationships(self, story_id, pairs): pass
+        def find_story_ids_by_entity(self, entity_name, limit, offset): return []
+        def count_stories_by_entity(self, entity_name): return 0
+        def find_themes_ranked(self, limit, from_date=None, to_date=None): return []
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None): return []
+        def count_stories_by_theme(self, theme_name): return 0
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None): return []
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0): return []
+        def find_story_communities(self, triad_id): raise GraphError("GDS down")
+
+    app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
+    app.dependency_overrides[get_llm] = lambda: NoOpLLM()
+    app.dependency_overrides[get_graph] = lambda: FailingGraph()
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/patterns/clusters?triad_id=workflow_nature")
+            assert response.status_code == 503
+    finally:
+        app.dependency_overrides.pop(get_storage, None)
+        app.dependency_overrides.pop(get_llm, None)
+        app.dependency_overrides.pop(get_graph, None)
+
+
+def test_get_clusters_returns_cluster_data(test_db):
+    """GET /api/patterns/clusters returns clusters with story_ids, center, themes, entities."""
+    from src.adapters.mongodb_storage import MongoDBStorageAdapter
+    from src.api.main import app
+    from src.api.stories import get_graph, get_llm, get_storage
+    from src.domain.models import SentimentAnalysis, Story, TriadCoordinates, TriadPlacement
+    from src.ports.graph import GraphPort
+    from src.ports.llm import EntityExtraction, LLMPort
+
+    class NoOpLLM(LLMPort):
+        def extract_entities(self, story_text): return EntityExtraction(entities=[])
+        def extract_themes(self, story_text): return []
+        def extract_relationships(self, story_text): return []
+        def extract_sentiment(self, story_text):
+            return SentimentAnalysis(emotion_markers=[], process_sentiment="neutral", outcome_sentiment="neutral")
+        def synthesize_insights(self, context):
+            from src.domain.models import InsightOutput
+            return InsightOutput(narrative="")
+
+    story = Story(
+        id="s1",
+        story_text="CI failures blocked our deployment repeatedly this sprint. " * 3,
+        triads=[
+            TriadPlacement(triad_id="workflow_nature", coordinates=TriadCoordinates(x=0.3, y=0.6)),
+            TriadPlacement(triad_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.4)),
+            TriadPlacement(triad_id="value_character", coordinates=TriadCoordinates(x=0.2, y=0.7)),
+        ],
+        processing_status="processed",
+        themes=["automation friction"],
+        entities=[{"name": "CI pipeline", "type": "tool"}],
+    )
+    test_db.stories.insert_one({
+        "_id": "s1", "story_text": story.story_text,
+        "triads": [{"triad_id": p.triad_id, "coordinates": {"x": p.coordinates.x, "y": p.coordinates.y}} for p in story.triads],
+        "processing_status": "processed",
+        "themes": story.themes, "entities": story.entities,
+        "timestamp": "2026-03-20T10:00:00",
+    })
+
+    class ClusterGraph(GraphPort):
+        def save_story_node(self, story_id, triads, timestamp): pass
+        def save_entity_nodes(self, story_id, entities): pass
+        def save_theme_nodes(self, story_id, themes): pass
+        def save_proximity_relationships(self, story_id, pairs): pass
+        def find_story_ids_by_entity(self, entity_name, limit, offset): return []
+        def count_stories_by_entity(self, entity_name): return 0
+        def find_themes_ranked(self, limit, from_date=None, to_date=None): return []
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None): return []
+        def count_stories_by_theme(self, theme_name): return 0
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None): return []
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0): return []
+        def find_story_communities(self, triad_id): return [("s1", 0)]
+
+    app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
+    app.dependency_overrides[get_llm] = lambda: NoOpLLM()
+    app.dependency_overrides[get_graph] = lambda: ClusterGraph()
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/patterns/clusters?triad_id=workflow_nature")
+            assert response.status_code == 200
+            body = response.json()
+            assert len(body["clusters"]) == 1
+            cluster = body["clusters"][0]
+            assert "s1" in cluster["story_ids"]
+            assert "center_x" in cluster
+            assert "center_y" in cluster
+            assert "top_themes" in cluster
+            assert "top_entities" in cluster
     finally:
         app.dependency_overrides.pop(get_storage, None)
         app.dependency_overrides.pop(get_llm, None)

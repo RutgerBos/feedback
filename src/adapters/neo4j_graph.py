@@ -2,6 +2,7 @@
 Neo4j graph adapter implementing GraphPort.
 """
 
+import uuid
 from typing import Any
 
 from src.domain.models import TriadPlacement, TriadProximity
@@ -328,6 +329,61 @@ class Neo4jGraphAdapter(GraphPort):
                 return [row["story_id"] for row in result.data()]
         except Exception as e:
             raise GraphError(f"Failed to find stories by entity pair: {e}") from e
+
+    def find_story_communities(self, triad_id: str) -> list[tuple[str, int]]:
+        """Run Louvain community detection on the proximity graph for one triad.
+
+        Uses a GDS Cypher projection scoped to NEAR_IN_SIGNIFIER_SPACE edges
+        for the given triad_id. The named graph is always dropped in a finally
+        block to prevent stale projections accumulating in GDS memory.
+
+        Notes:
+        - A UUID suffix is appended to the graph name so concurrent requests
+          for the same triad do not race on the same named projection.
+        - The node query is scoped to stories participating in the triad's
+          proximity edges to prevent Louvain emitting singleton communities
+          for stories unrelated to this triad.
+        """
+        graph_name = f"proximity-{triad_id}-{uuid.uuid4().hex[:8]}"
+        try:
+            with self._driver.session() as session:
+                session.run(
+                    """
+                    CALL gds.graph.project.cypher(
+                        $graph_name,
+                        'MATCH (s:Story)-[r:NEAR_IN_SIGNIFIER_SPACE]-()
+                         WHERE r.triad_id = $triad_id
+                         RETURN DISTINCT id(s) AS id',
+                        'MATCH (a:Story)-[r:NEAR_IN_SIGNIFIER_SPACE]->(b:Story)
+                         WHERE r.triad_id = $triad_id
+                         RETURN id(a) AS source, id(b) AS target, r.weight AS weight',
+                        {parameters: {triad_id: $triad_id}}
+                    )
+                    """,
+                    graph_name=graph_name,
+                    triad_id=triad_id,
+                )
+                result = session.run(
+                    """
+                    CALL gds.louvain.stream($graph_name, {relationshipWeightProperty: 'weight'})
+                    YIELD nodeId, communityId
+                    MATCH (s:Story) WHERE id(s) = nodeId
+                    RETURN s.story_id AS story_id, communityId
+                    """,
+                    graph_name=graph_name,
+                )
+                return [(row["story_id"], row["communityId"]) for row in result.data()]
+        except Exception as e:
+            raise GraphError(f"Failed to find story communities: {e}") from e
+        finally:
+            try:
+                with self._driver.session() as session:
+                    session.run(
+                        "CALL gds.graph.drop($graph_name, false)",
+                        graph_name=graph_name,
+                    )
+            except Exception:
+                pass
 
     def count_stories_by_theme(self, theme_name: str) -> int:
         """Return total count of stories with the given theme."""

@@ -76,6 +76,9 @@ def api_client(test_db):
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
             return []
 
+        def find_story_communities(self, triad_id):
+            return []
+
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
@@ -350,6 +353,9 @@ def test_submit_story_triggers_entity_extraction(test_db):
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
             return []
 
+        def find_story_communities(self, triad_id):
+            return []
+
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: FakeLLM()
@@ -488,6 +494,9 @@ def test_submit_story_triggers_graph_node_creation(test_db):
             return []
 
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
+            return []
+
+        def find_story_communities(self, triad_id):
             return []
 
 

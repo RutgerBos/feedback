@@ -83,6 +83,9 @@ class FakeGraph(GraphPort):
         self.pair_find_calls.append({"entity_a": entity_a, "entity_b": entity_b})
         return self._pair_story_ids.get((entity_a, entity_b), [])[:limit]
 
+    def find_story_communities(self, triad_id):
+        return []
+
 
 
 class FakeStorage(StoragePort):

@@ -11,6 +11,7 @@ from src.api.stories import StoryListResponse, _story_to_response, get_graph, ge
 from src.ports.errors import GraphError, NotFoundError
 from src.ports.graph import GraphPort
 from src.ports.storage import StoragePort
+from src.services.clustering import ClusteringService
 from src.services.pattern_query import PatternQueryService
 
 router = APIRouter(prefix="/api/patterns", tags=["patterns"])
@@ -22,6 +23,26 @@ def get_pattern_query_service(
 ) -> PatternQueryService:
     """Dependency that provides the pattern query service."""
     return PatternQueryService(graph=graph, storage=storage)
+
+
+def get_clustering_service(
+    graph: GraphPort = Depends(get_graph),
+    storage: StoragePort = Depends(get_storage),
+) -> ClusteringService:
+    """Dependency that provides the clustering service."""
+    return ClusteringService(graph=graph, storage=storage)
+
+
+class ClusterEntry(BaseModel):
+    story_ids: list[str]
+    center_x: float
+    center_y: float
+    top_themes: list[str]
+    top_entities: list[str]
+
+
+class ClusterResponse(BaseModel):
+    clusters: list[ClusterEntry]
 
 
 class CorrelationPair(BaseModel):
@@ -114,6 +135,44 @@ async def get_correlations(
                 sample_story_ids=p.sample_story_ids,
             )
             for p in result.pairs
+        ]
+    )
+
+
+@router.get("/clusters", response_model=ClusterResponse)
+async def get_clusters(
+    triad_id: str = Query(...),
+    service: ClusteringService = Depends(get_clustering_service),
+) -> ClusterResponse:
+    """
+    Return Louvain community clusters for stories in the given triad's proximity graph.
+
+    Args:
+        triad_id: The triad whose proximity graph to cluster on
+
+    Returns:
+        ClusterResponse with one ClusterEntry per community
+
+    Raises:
+        HTTPException 503: If the GDS query fails
+    """
+    try:
+        result = service.cluster_by_triad(triad_id)
+    except GraphError as e:
+        raise HTTPException(status_code=503, detail="Graph database unavailable") from e
+    except NotFoundError as e:
+        raise HTTPException(status_code=503, detail="Story data inconsistency — retry later") from e
+
+    return ClusterResponse(
+        clusters=[
+            ClusterEntry(
+                story_ids=c.story_ids,
+                center_x=c.center_x,
+                center_y=c.center_y,
+                top_themes=c.top_themes,
+                top_entities=c.top_entities,
+            )
+            for c in result.clusters
         ]
     )
 
