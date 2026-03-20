@@ -74,10 +74,10 @@ class FakeStorage(StoragePort):
             raise NotFoundError(f"Story not found: {story_id}")
         return self._stories[story_id]
 
-    def count_stories(self) -> int:
+    def count_stories(self, from_date=None, to_date=None) -> int:
         return len(self._stories)
 
-    def list_stories(self, limit: int = 20, offset: int = 0) -> list:
+    def list_stories(self, limit: int = 20, offset: int = 0, from_date=None, to_date=None) -> list:
         return list(self._stories.values())[offset : offset + limit]
 
     def update_story_entities(self, story_id, entities, themes, processing_status):

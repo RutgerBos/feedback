@@ -271,10 +271,10 @@ def test_synthesize_returns_503_on_storage_error(test_db):
         def get_story(self, story_id: str) -> Story:
             raise StorageError("Mongo down")
 
-        def count_stories(self) -> int:
+        def count_stories(self, from_date=None, to_date=None) -> int:
             return 0
 
-        def list_stories(self, limit: int = 20, offset: int = 0) -> list:
+        def list_stories(self, limit: int = 20, offset: int = 0, from_date=None, to_date=None) -> list:
             return []
 
         def update_story_entities(self, story_id, entities, themes, processing_status):

@@ -20,10 +20,10 @@ def test_storage_port_has_save_story_method():
         def get_story(self, story_id: str):
             pass
 
-        def count_stories(self) -> int:
+        def count_stories(self, from_date=None, to_date=None) -> int:
             return 0
 
-        def list_stories(self, limit: int = 20, offset: int = 0) -> list:
+        def list_stories(self, limit: int = 20, offset: int = 0, from_date=None, to_date=None) -> list:
             return []
 
     with pytest.raises(TypeError, match="abstract"):
@@ -38,10 +38,10 @@ def test_storage_port_has_get_story_method():
         def save_story(self, story):
             pass
 
-        def count_stories(self) -> int:
+        def count_stories(self, from_date=None, to_date=None) -> int:
             return 0
 
-        def list_stories(self, limit: int = 20, offset: int = 0) -> list:
+        def list_stories(self, limit: int = 20, offset: int = 0, from_date=None, to_date=None) -> list:
             return []
 
     with pytest.raises(TypeError, match="abstract"):
@@ -59,7 +59,7 @@ def test_storage_port_has_list_stories_method():
         def get_story(self, story_id: str):
             pass
 
-        def count_stories(self) -> int:
+        def count_stories(self, from_date=None, to_date=None) -> int:
             return 0
 
     with pytest.raises(TypeError, match="abstract"):
@@ -77,7 +77,7 @@ def test_storage_port_has_count_stories_method():
         def get_story(self, story_id: str):
             pass
 
-        def list_stories(self, limit: int = 20, offset: int = 0) -> list:
+        def list_stories(self, limit: int = 20, offset: int = 0, from_date=None, to_date=None) -> list:
             return []
 
     with pytest.raises(TypeError, match="abstract"):
@@ -95,10 +95,10 @@ def test_storage_port_has_update_story_entities_method():
         def get_story(self, story_id: str):
             pass
 
-        def count_stories(self) -> int:
+        def count_stories(self, from_date=None, to_date=None) -> int:
             return 0
 
-        def list_stories(self, limit: int = 20, offset: int = 0) -> list:
+        def list_stories(self, limit: int = 20, offset: int = 0, from_date=None, to_date=None) -> list:
             return []
 
     with pytest.raises(TypeError, match="abstract"):
@@ -116,10 +116,10 @@ def test_storage_port_has_update_story_sentiment_method():
         def get_story(self, story_id: str):
             pass
 
-        def count_stories(self) -> int:
+        def count_stories(self, from_date=None, to_date=None) -> int:
             return 0
 
-        def list_stories(self, limit: int = 20, offset: int = 0) -> list:
+        def list_stories(self, limit: int = 20, offset: int = 0, from_date=None, to_date=None) -> list:
             return []
 
         def update_story_entities(self, story_id: str, entities: list, themes: list, processing_status: str) -> None:
@@ -141,10 +141,10 @@ def test_can_implement_storage_port():
         def get_story(self, story_id: str) -> Story:
             raise NotImplementedError()
 
-        def count_stories(self) -> int:
+        def count_stories(self, from_date=None, to_date=None) -> int:
             return 0
 
-        def list_stories(self, limit: int = 20, offset: int = 0) -> list[Story]:
+        def list_stories(self, limit: int = 20, offset: int = 0, from_date=None, to_date=None) -> list[Story]:
             return []
 
         def update_story_entities(self, story_id: str, entities: list, themes: list, processing_status: str) -> None:
