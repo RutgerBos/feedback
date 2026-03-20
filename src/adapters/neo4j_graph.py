@@ -176,8 +176,8 @@ class Neo4jGraphAdapter(GraphPort):
                     """
                     MATCH (e:Entity)<-[:MENTIONS]-(s:Story)
                     WHERE toLower(e.name) = toLower($entity_name)
-                    RETURN DISTINCT s.story_id AS story_id
-                    ORDER BY s.timestamp DESC, s.story_id DESC
+                    RETURN DISTINCT s.story_id AS story_id, s.timestamp AS ts
+                    ORDER BY ts DESC, story_id DESC
                     SKIP $offset LIMIT $limit
                     """,
                     entity_name=entity_name,
