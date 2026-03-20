@@ -72,7 +72,7 @@ class FakeGraph(GraphPort):
     def save_proximity_relationships(self, story_id: str, pairs: list) -> None:
         self.proximity_calls.append((story_id, list(pairs)))
 
-    def find_story_ids_by_entity(self, entity_name: str, limit: int, offset: int) -> list:
+    def find_story_ids_by_entity(self, entity_name: str, limit: int, offset: int, from_date=None, to_date=None) -> list:
         return []
 
     def count_stories_by_entity(self, entity_name: str) -> int:
@@ -91,6 +91,8 @@ class FakeGraph(GraphPort):
 
     def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
         return []
+    def find_theme_counts_by_window(self, window_size, from_date=None, to_date=None, theme=None): return []
+    def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None): return []
 
     def find_story_communities(self, triad_id):
         return []

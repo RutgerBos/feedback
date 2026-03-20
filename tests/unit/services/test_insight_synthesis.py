@@ -55,7 +55,7 @@ class FakeGraph(GraphPort):
     def save_proximity_relationships(self, story_id, pairs):
         pass
 
-    def find_story_ids_by_entity(self, entity_name: str, limit: int, offset: int) -> list[str]:
+    def find_story_ids_by_entity(self, entity_name: str, limit: int, offset: int, from_date=None, to_date=None) -> list[str]:
         return list(self._story_ids[:limit])
 
     def count_stories_by_entity(self, entity_name: str) -> int:
@@ -74,6 +74,8 @@ class FakeGraph(GraphPort):
 
     def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
         return []
+    def find_theme_counts_by_window(self, window_size, from_date=None, to_date=None, theme=None): return []
+    def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None): return []
 
     def find_story_communities(self, triad_id):
         return []

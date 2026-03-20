@@ -103,7 +103,12 @@ class GraphPort(ABC):
 
     @abstractmethod
     def find_story_ids_by_entity(
-        self, entity_name: str, limit: int, offset: int
+        self,
+        entity_name: str,
+        limit: int,
+        offset: int,
+        from_date: str | None = None,
+        to_date: str | None = None,
     ) -> list[str]:
         """
         Return story IDs for stories mentioning entity_name (case-insensitive).
@@ -112,6 +117,8 @@ class GraphPort(ABC):
             entity_name: Entity name to search for (matched case-insensitively)
             limit: Maximum number of IDs to return
             offset: Number of IDs to skip (for pagination)
+            from_date: ISO8601 string — only include stories on or after this date
+            to_date:   ISO8601 string — only include stories on or before this date
 
         Returns:
             list of story_id strings, ordered by timestamp descending
@@ -181,6 +188,58 @@ class GraphPort(ABC):
 
         Returns:
             List of story_id strings, ordered by timestamp DESC, story_id DESC
+
+        Raises:
+            GraphError: If the query fails
+        """
+        pass
+
+    @abstractmethod
+    def find_theme_counts_by_window(
+        self,
+        window_size: str,
+        from_date: str | None = None,
+        to_date: str | None = None,
+        theme: str | None = None,
+    ) -> list[tuple[str, str, int]]:
+        """
+        Return story counts per time window for themes.
+
+        Args:
+            window_size: "month" (YYYY-MM) or "day" (YYYY-MM-DD)
+            from_date:   ISO8601 string — include stories on or after this date
+            to_date:     ISO8601 string — include stories on or before this date
+            theme:       If given, restrict to this theme (case-insensitive)
+
+        Returns:
+            List of (window_label, theme_name, count) tuples,
+            ordered by window ASC, count DESC, theme ASC
+
+        Raises:
+            GraphError: If the query fails
+        """
+        pass
+
+    @abstractmethod
+    def find_entity_counts_by_window(
+        self,
+        window_size: str,
+        from_date: str | None = None,
+        to_date: str | None = None,
+        entity: str | None = None,
+    ) -> list[tuple[str, str, int]]:
+        """
+        Return story counts per time window for entities.
+
+        Args:
+            window_size: "month" (YYYY-MM) or "day" (YYYY-MM-DD)
+            from_date:   ISO8601 string — include stories on or after this date
+            to_date:     ISO8601 string — include stories on or before this date
+            entity:      If given, restrict to this entity name (case-insensitive)
+
+        Returns:
+            List of (window_label, entity_name, count) tuples,
+            ordered by window ASC, count DESC, entity ASC
 
         Raises:
             GraphError: If the query fails

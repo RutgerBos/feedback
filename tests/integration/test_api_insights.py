@@ -39,7 +39,7 @@ def api_client(test_db):
         def save_proximity_relationships(self, story_id, pairs):
             pass
 
-        def find_story_ids_by_entity(self, entity_name, limit, offset):
+        def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None):
             return []
 
         def count_stories_by_entity(self, entity_name):
@@ -58,6 +58,8 @@ def api_client(test_db):
 
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
             return []
+        def find_theme_counts_by_window(self, window_size, from_date=None, to_date=None, theme=None): return []
+        def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None): return []
 
         def find_story_communities(self, triad_id):
             return []
@@ -161,7 +163,7 @@ def test_synthesize_returns_narrative_when_stories_exist(test_db):
         def save_proximity_relationships(self, story_id, pairs):
             pass
 
-        def find_story_ids_by_entity(self, entity_name, limit, offset):
+        def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None):
             return list(story_ids)
 
         def count_stories_by_entity(self, entity_name):
@@ -180,6 +182,8 @@ def test_synthesize_returns_narrative_when_stories_exist(test_db):
 
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
             return []
+        def find_theme_counts_by_window(self, window_size, from_date=None, to_date=None, theme=None): return []
+        def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None): return []
 
         def find_story_communities(self, triad_id):
             return []
@@ -294,7 +298,7 @@ def test_synthesize_returns_503_on_storage_error(test_db):
         def save_proximity_relationships(self, story_id, pairs):
             pass
 
-        def find_story_ids_by_entity(self, entity_name, limit, offset):
+        def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None):
             return ["missing-id"]
 
         def count_stories_by_entity(self, entity_name):
@@ -313,6 +317,8 @@ def test_synthesize_returns_503_on_storage_error(test_db):
 
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
             return []
+        def find_theme_counts_by_window(self, window_size, from_date=None, to_date=None, theme=None): return []
+        def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None): return []
 
         def find_story_communities(self, triad_id):
             return []
@@ -392,7 +398,7 @@ def test_synthesize_returns_503_on_graph_error(test_db):
         def save_proximity_relationships(self, story_id, pairs):
             pass
 
-        def find_story_ids_by_entity(self, entity_name, limit, offset):
+        def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None):
             raise GraphError("Neo4j down")
 
         def count_stories_by_entity(self, entity_name):
@@ -411,6 +417,8 @@ def test_synthesize_returns_503_on_graph_error(test_db):
 
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
             return []
+        def find_theme_counts_by_window(self, window_size, from_date=None, to_date=None, theme=None): return []
+        def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None): return []
 
         def find_story_communities(self, triad_id):
             return []

@@ -168,7 +168,12 @@ class Neo4jGraphAdapter(GraphPort):
             raise GraphError(f"Failed to save proximity relationships: {e}") from e
 
     def find_story_ids_by_entity(
-        self, entity_name: str, limit: int, offset: int
+        self,
+        entity_name: str,
+        limit: int,
+        offset: int,
+        from_date: str | None = None,
+        to_date: str | None = None,
     ) -> list[str]:
         """Return story IDs for stories mentioning entity_name, newest first."""
         try:
@@ -177,11 +182,15 @@ class Neo4jGraphAdapter(GraphPort):
                     """
                     MATCH (e:Entity)<-[:MENTIONS]-(s:Story)
                     WHERE toLower(e.name) = toLower($entity_name)
+                      AND ($from_date IS NULL OR s.timestamp >= $from_date)
+                      AND ($to_date   IS NULL OR s.timestamp <= $to_date)
                     RETURN DISTINCT s.story_id AS story_id, s.timestamp AS ts
                     ORDER BY ts DESC, story_id DESC
                     SKIP $offset LIMIT $limit
                     """,
                     entity_name=entity_name,
+                    from_date=from_date,
+                    to_date=to_date,
                     offset=offset,
                     limit=limit,
                 )
@@ -384,6 +393,68 @@ class Neo4jGraphAdapter(GraphPort):
                     )
             except Exception:
                 pass
+
+    def find_theme_counts_by_window(
+        self,
+        window_size: str,
+        from_date: str | None = None,
+        to_date: str | None = None,
+        theme: str | None = None,
+    ) -> list[tuple[str, str, int]]:
+        """Return (window_label, theme_name, count) for themes bucketed by time window."""
+        window_len = 7 if window_size == "month" else 10
+        try:
+            with self._driver.session() as session:
+                result = session.run(
+                    """
+                    MATCH (s:Story)-[:HAS_THEME]->(t:Theme)
+                    WHERE ($from_date IS NULL OR s.timestamp >= $from_date)
+                      AND ($to_date   IS NULL OR s.timestamp <= $to_date)
+                      AND ($theme     IS NULL OR toLower(t.name) = toLower($theme))
+                    RETURN substring(s.timestamp, 0, $window_len) AS window,
+                           t.name AS theme,
+                           COUNT(DISTINCT s) AS count
+                    ORDER BY window ASC, count DESC, theme ASC
+                    """,
+                    from_date=from_date,
+                    to_date=to_date,
+                    theme=theme,
+                    window_len=window_len,
+                )
+                return [(row["window"], row["theme"], row["count"]) for row in result.data()]
+        except Exception as e:
+            raise GraphError(f"Failed to find theme counts by window: {e}") from e
+
+    def find_entity_counts_by_window(
+        self,
+        window_size: str,
+        from_date: str | None = None,
+        to_date: str | None = None,
+        entity: str | None = None,
+    ) -> list[tuple[str, str, int]]:
+        """Return (window_label, entity_name, count) for entities bucketed by time window."""
+        window_len = 7 if window_size == "month" else 10
+        try:
+            with self._driver.session() as session:
+                result = session.run(
+                    """
+                    MATCH (s:Story)-[:MENTIONS]->(e:Entity)
+                    WHERE ($from_date IS NULL OR s.timestamp >= $from_date)
+                      AND ($to_date   IS NULL OR s.timestamp <= $to_date)
+                      AND ($entity    IS NULL OR toLower(e.name) = toLower($entity))
+                    RETURN substring(s.timestamp, 0, $window_len) AS window,
+                           e.name AS entity,
+                           COUNT(DISTINCT s) AS count
+                    ORDER BY window ASC, count DESC, entity ASC
+                    """,
+                    from_date=from_date,
+                    to_date=to_date,
+                    entity=entity,
+                    window_len=window_len,
+                )
+                return [(row["window"], row["entity"], row["count"]) for row in result.data()]
+        except Exception as e:
+            raise GraphError(f"Failed to find entity counts by window: {e}") from e
 
     def count_stories_by_theme(self, theme_name: str) -> int:
         """Return total count of stories with the given theme."""

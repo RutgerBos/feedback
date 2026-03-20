@@ -56,7 +56,7 @@ class FakeGraph(GraphPort):
     def save_proximity_relationships(self, story_id, pairs):
         pass
 
-    def find_story_ids_by_entity(self, entity_name: str, limit: int, offset: int) -> list[str]:
+    def find_story_ids_by_entity(self, entity_name: str, limit: int, offset: int, from_date=None, to_date=None) -> list[str]:
         self.find_calls.append((entity_name, limit, offset))
         return self._story_ids
 
@@ -82,6 +82,8 @@ class FakeGraph(GraphPort):
     def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
         self.pair_find_calls.append({"entity_a": entity_a, "entity_b": entity_b})
         return self._pair_story_ids.get((entity_a, entity_b), [])[:limit]
+    def find_theme_counts_by_window(self, window_size, from_date=None, to_date=None, theme=None): return []
+    def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None): return []
 
     def find_story_communities(self, triad_id):
         return []
@@ -114,7 +116,7 @@ class FakeStorage(StoragePort):
 
 
 class FailingGraph(FakeGraph):
-    def find_story_ids_by_entity(self, entity_name, limit, offset):
+    def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None):
         raise GraphError("Neo4j down")
 
     def count_stories_by_entity(self, entity_name):

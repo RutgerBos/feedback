@@ -31,13 +31,15 @@ class FakeGraph(GraphPort):
     def save_entity_nodes(self, story_id, entities): pass
     def save_theme_nodes(self, story_id, themes): pass
     def save_proximity_relationships(self, story_id, pairs): pass
-    def find_story_ids_by_entity(self, entity_name, limit, offset): return []
+    def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None): return []
     def count_stories_by_entity(self, entity_name): return 0
     def find_themes_ranked(self, limit, from_date=None, to_date=None): return []
     def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None): return []
     def count_stories_by_theme(self, theme_name): return 0
     def find_entity_correlations(self, limit, threshold=0.0, entity_type=None): return []
     def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0): return []
+    def find_theme_counts_by_window(self, window_size, from_date=None, to_date=None, theme=None): return []
+    def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None): return []
     def find_story_communities(self, triad_id): return self._communities
 
 

@@ -13,6 +13,7 @@ from src.ports.graph import GraphPort
 from src.ports.storage import StoragePort
 from src.services.clustering import ClusteringService
 from src.services.pattern_query import PatternQueryService
+from src.services.temporal import TemporalService
 
 router = APIRouter(prefix="/api/patterns", tags=["patterns"])
 
@@ -31,6 +32,48 @@ def get_clustering_service(
 ) -> ClusteringService:
     """Dependency that provides the clustering service."""
     return ClusteringService(graph=graph, storage=storage)
+
+
+def get_temporal_service(
+    graph: GraphPort = Depends(get_graph),
+    storage: StoragePort = Depends(get_storage),
+) -> TemporalService:
+    """Dependency that provides the temporal analysis service."""
+    return TemporalService(graph=graph, storage=storage)
+
+
+class WindowedCount(BaseModel):
+    window: str
+    count: int
+
+
+class ThemeTimeline(BaseModel):
+    theme: str
+    windows: list[WindowedCount]
+
+
+class EntityTimeline(BaseModel):
+    entity: str
+    windows: list[WindowedCount]
+
+
+class WindowedCentroid(BaseModel):
+    window: str
+    center_x: float
+    center_y: float
+    story_count: int
+
+
+class TriadDrift(BaseModel):
+    triad_id: str
+    centroids: list[WindowedCentroid]
+
+
+class TemporalResponse(BaseModel):
+    windows: list[str]
+    theme_frequency: list[ThemeTimeline]
+    entity_frequency: list[EntityTimeline]
+    triad_drift: list[TriadDrift]
 
 
 class ClusterEntry(BaseModel):
@@ -174,6 +217,85 @@ async def get_clusters(
             )
             for c in result.clusters
         ]
+    )
+
+
+@router.get("/temporal", response_model=TemporalResponse)
+async def get_temporal(
+    from_date: str | None = Query(default=None),
+    to_date: str | None = Query(default=None),
+    window_size: str = Query(default="month", pattern="^(month|day)$"),
+    theme: str | None = Query(default=None),
+    entity: str | None = Query(default=None),
+    service: TemporalService = Depends(get_temporal_service),
+) -> TemporalResponse:
+    """
+    Return time-windowed theme/entity frequency and triad coordinate drift.
+
+    Args:
+        from_date:   ISO8601 lower bound (inclusive); bare YYYY-MM-DD normalised to start-of-day
+        to_date:     ISO8601 upper bound (inclusive); bare YYYY-MM-DD normalised to end-of-day
+        window_size: Bucket size — "month" (YYYY-MM) or "day" (YYYY-MM-DD)
+        theme:       Restrict theme_frequency and drift to this theme
+        entity:      Restrict entity_frequency and drift to this entity
+
+    Returns:
+        TemporalResponse with windows, theme_frequency, entity_frequency, triad_drift
+
+    Raises:
+        HTTPException 503: If the graph database is unavailable
+    """
+    if from_date and len(from_date) == 10:
+        from_date = from_date + "T00:00:00"
+    if to_date and len(to_date) == 10:
+        to_date = to_date + "T23:59:59"
+
+    try:
+        result = service.query_temporal(
+            from_date=from_date,
+            to_date=to_date,
+            window_size=window_size,
+            theme=theme,
+            entity=entity,
+        )
+    except GraphError as e:
+        raise HTTPException(status_code=503, detail="Graph database unavailable") from e
+    except NotFoundError as e:
+        raise HTTPException(status_code=503, detail="Story data inconsistency — retry later") from e
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=f"Invalid date format: {e}") from e
+
+    return TemporalResponse(
+        windows=result.windows,
+        theme_frequency=[
+            ThemeTimeline(
+                theme=t.theme,
+                windows=[WindowedCount(window=w.window, count=w.count) for w in t.windows],
+            )
+            for t in result.theme_frequency
+        ],
+        entity_frequency=[
+            EntityTimeline(
+                entity=e.entity,
+                windows=[WindowedCount(window=w.window, count=w.count) for w in e.windows],
+            )
+            for e in result.entity_frequency
+        ],
+        triad_drift=[
+            TriadDrift(
+                triad_id=d.triad_id,
+                centroids=[
+                    WindowedCentroid(
+                        window=c.window,
+                        center_x=c.center_x,
+                        center_y=c.center_y,
+                        story_count=c.story_count,
+                    )
+                    for c in d.centroids
+                ],
+            )
+            for d in result.triad_drift
+        ],
     )
 
 
