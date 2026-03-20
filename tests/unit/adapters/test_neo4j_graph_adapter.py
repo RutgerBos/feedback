@@ -955,3 +955,79 @@ def test_find_story_communities_raises_graph_error_on_failure():
     adapter = Neo4jGraphAdapter(driver=FailingDriver())
     with pytest.raises(GraphError):
         adapter.find_story_communities("workflow_nature")
+
+
+# ── Story 4.5: find_theme_counts_by_window / find_entity_counts_by_window ─────
+
+
+def test_find_theme_counts_by_window_uses_month_substring():
+    """find_theme_counts_by_window passes window_len=7 for month windows."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    rows = [{"window": "2026-01", "theme": "automation friction", "count": 3}]
+    driver = FakeDriver(result=FakeResult(rows=rows))
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    result = adapter.find_theme_counts_by_window("month", None, None)
+
+    query, params = driver.session_instance.queries[0]
+    assert "substring" in query.lower()
+    assert params["window_len"] == 7
+    assert result == [("2026-01", "automation friction", 3)]
+
+
+def test_find_theme_counts_by_window_uses_day_substring():
+    """find_theme_counts_by_window passes window_len=10 for day windows."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver(result=FakeResult(rows=[]))
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    adapter.find_theme_counts_by_window("day", None, None)
+
+    _, params = driver.session_instance.queries[0]
+    assert params["window_len"] == 10
+
+
+def test_find_theme_counts_by_window_filters_by_theme():
+    """find_theme_counts_by_window includes theme filter in WHERE when theme is given."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver(result=FakeResult(rows=[]))
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    adapter.find_theme_counts_by_window("month", None, None, theme="automation friction")
+
+    query, params = driver.session_instance.queries[0]
+    assert "theme" in query.lower()
+    assert params.get("theme") == "automation friction"
+
+
+def test_find_entity_counts_by_window_uses_month_substring():
+    """find_entity_counts_by_window passes window_len=7 for month windows."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    rows = [{"window": "2026-01", "entity": "CI pipeline", "count": 2}]
+    driver = FakeDriver(result=FakeResult(rows=rows))
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    result = adapter.find_entity_counts_by_window("month", None, None)
+
+    query, params = driver.session_instance.queries[0]
+    assert "substring" in query.lower()
+    assert params["window_len"] == 7
+    assert result == [("2026-01", "CI pipeline", 2)]
+
+
+def test_find_entity_counts_by_window_filters_by_entity():
+    """find_entity_counts_by_window includes entity filter in WHERE when entity is given."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver(result=FakeResult(rows=[]))
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    adapter.find_entity_counts_by_window("month", None, None, entity="CI pipeline")
+
+    query, params = driver.session_instance.queries[0]
+    assert "entity" in query.lower()
+    assert params.get("entity") == "CI pipeline"
