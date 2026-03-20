@@ -55,6 +55,9 @@ def _to_dict(data: DashboardData) -> dict:
         "top_themes": data.top_themes,
         "top_entities": data.top_entities,
         "recent_story_ids": data.recent_story_ids,
+        "distinct_theme_count": data.distinct_theme_count,
+        "distinct_entity_count": data.distinct_entity_count,
+        "sample_capped": data.sample_capped,
     }
 
 

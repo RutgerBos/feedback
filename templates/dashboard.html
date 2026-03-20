@@ -21,10 +21,10 @@
         <button type="submit">Filter</button>
     </form>
 
-    <!-- Export buttons -->
+    <!-- Export buttons — URLs updated by JS to include current filter -->
     <div class="export-bar">
-        <a href="/api/dashboard?format=json" class="btn-export">↓ Export JSON</a>
-        <a href="/api/dashboard?format=csv"  class="btn-export">↓ Export CSV</a>
+        <a id="export-json" href="/api/dashboard?format=json" class="btn-export">↓ Export JSON</a>
+        <a id="export-csv"  href="/api/dashboard?format=csv"  class="btn-export">↓ Export CSV</a>
     </div>
 
     <!-- Dynamic data panel — loaded by HTMX on page load -->
@@ -50,6 +50,21 @@
             renderCharts();
         }
     });
+
+    // Keep export links in sync with the active date filter
+    function updateExportLinks() {
+        var from = document.querySelector('[name="from_date"]').value;
+        var to   = document.querySelector('[name="to_date"]').value;
+        ['json', 'csv'].forEach(function (fmt) {
+            var params = new URLSearchParams({ format: fmt });
+            if (from) params.set('from_date', from);
+            if (to)   params.set('to_date', to);
+            document.getElementById('export-' + fmt).href = '/api/dashboard?' + params.toString();
+        });
+    }
+
+    document.querySelector('[name="from_date"]').addEventListener('change', updateExportLinks);
+    document.querySelector('[name="to_date"]').addEventListener('change', updateExportLinks);
 
     function renderCharts() {
         var themesCanvas = document.getElementById('themes-chart');

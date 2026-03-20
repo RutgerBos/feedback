@@ -7,7 +7,13 @@ import pytest
 from pymongo import MongoClient
 
 from src.adapters.mongodb_storage import MongoDBStorageAdapter
-from src.domain.models import SentimentAnalysis, Story, StoryMetadata, TriadCoordinates, TriadPlacement
+from src.domain.models import (
+    SentimentAnalysis,
+    Story,
+    StoryMetadata,
+    TriadCoordinates,
+    TriadPlacement,
+)
 
 
 @pytest.fixture

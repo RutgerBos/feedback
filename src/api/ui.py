@@ -53,8 +53,16 @@ async def dashboard_data(
     from_date_str = request.query_params.get("from_date")
     to_date_str = request.query_params.get("to_date")
 
-    from_date = datetime.fromisoformat(from_date_str) if from_date_str else None
-    to_date = datetime.fromisoformat(to_date_str) if to_date_str else None
+    try:
+        from_date = datetime.fromisoformat(from_date_str) if from_date_str else None
+        to_date = datetime.fromisoformat(to_date_str) if to_date_str else None
+    except ValueError:
+        return _templates.TemplateResponse(
+            request=request,
+            name="_error.html",
+            context={"error": "Invalid date format. Use YYYY-MM-DD."},
+            status_code=400,
+        )
 
     data = service.get_data(from_date=from_date, to_date=to_date)
     return _templates.TemplateResponse(

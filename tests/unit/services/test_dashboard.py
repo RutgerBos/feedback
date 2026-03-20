@@ -189,3 +189,33 @@ def test_dashboard_recent_stories_included():
 
     assert len(data.recent_story_ids) > 0
     assert len(data.recent_story_ids) <= 5
+
+
+def test_dashboard_distinct_counts_reflect_full_set_not_cap():
+    """distinct_theme_count and distinct_entity_count are the true uniques, not capped at 10."""
+    from src.services.dashboard import DashboardService
+
+    themes_per_story = [f"theme-{i}" for i in range(15)]
+    entities_per_story = [{"name": f"entity-{i}", "type": "tool"} for i in range(12)]
+    stories = [make_story("s1", themes=themes_per_story, entities=entities_per_story)]
+    service = DashboardService(storage=FakeStorage(stories))
+
+    data = service.get_data()
+
+    assert data.distinct_theme_count == 15
+    assert data.distinct_entity_count == 12
+    assert len(data.top_themes) == 10   # still capped
+    assert len(data.top_entities) == 10  # still capped
+
+
+def test_dashboard_to_date_midnight_includes_full_day():
+    """to_date at midnight (00:00:00) is treated as end-of-day so same-day stories are included."""
+    from src.services.dashboard import DashboardService
+
+    story = make_story("s1", timestamp=datetime(2026, 3, 15, 14, 0, 0, tzinfo=UTC))
+    service = DashboardService(storage=FakeStorage([story]))
+
+    # to_date is midnight of March 15 — should still include 14:00 story
+    data = service.get_data(to_date=datetime(2026, 3, 15, 0, 0, 0, tzinfo=UTC))
+
+    assert data.total_stories == 1

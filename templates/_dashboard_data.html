@@ -1,17 +1,21 @@
 <div class="stats-row">
     <div class="stat-card">
         <span class="stat-value">{{ data.total_stories }}</span>
-        <span class="stat-label">Total Stories</span>
+        <span class="stat-label">Stories{% if data.sample_capped %} (sample){% endif %}</span>
     </div>
     <div class="stat-card">
-        <span class="stat-value">{{ data.top_themes | length }}</span>
+        <span class="stat-value">{{ data.distinct_theme_count }}</span>
         <span class="stat-label">Distinct Themes</span>
     </div>
     <div class="stat-card">
-        <span class="stat-value">{{ data.top_entities | length }}</span>
+        <span class="stat-value">{{ data.distinct_entity_count }}</span>
         <span class="stat-label">Distinct Entities</span>
     </div>
 </div>
+
+{% if data.sample_capped %}
+<p class="sample-note">Showing statistics for the most recent 500 stories.</p>
+{% endif %}
 
 {% if data.total_stories == 0 %}
 <p class="empty-state">No stories match the selected date range. <a href="/">Submit one?</a></p>
@@ -51,7 +55,7 @@
                 hx-post="/ui/insights"
                 hx-target="#insight-panel"
                 hx-swap="innerHTML"
-                hx-vals='{"entity_name": "{{ entity.name }}", "query": "What patterns emerge for {{ entity.name }}?"}'
+                hx-vals="{{ {"entity_name": entity.name, "query": "What patterns emerge for " ~ entity.name ~ "?"} | tojson }}"
                 hx-indicator="#insight-indicator">
             {{ entity.name }} <span class="chip-count">{{ entity.count }}</span>
         </button>
