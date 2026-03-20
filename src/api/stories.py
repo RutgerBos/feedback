@@ -18,6 +18,7 @@ from src.ports.llm import EntityExtraction, LLMPort
 from src.ports.storage import StoragePort
 from src.services.entity_extraction import EntityExtractionService
 from src.services.graph_projection import GraphProjectionService
+from src.services.proximity import ProximityCalculationService
 from src.services.sentiment_extraction import SentimentExtractionService
 from src.services.story_submission import (
     StorySubmissionRequest,
@@ -118,12 +119,23 @@ def get_graph(request: Request) -> GraphPort:
     return Neo4jGraphAdapter(driver=driver)
 
 
+def get_proximity_service(
+    request: Request,
+    storage: StoragePort = Depends(get_storage),
+    graph: GraphPort = Depends(get_graph),
+) -> ProximityCalculationService:
+    """Dependency that provides proximity calculation service."""
+    threshold = request.app.state.settings.proximity_threshold
+    return ProximityCalculationService(storage=storage, graph=graph, threshold=threshold)
+
+
 def get_graph_projection_service(
     storage: StoragePort = Depends(get_storage),
     graph: GraphPort = Depends(get_graph),
+    proximity: ProximityCalculationService = Depends(get_proximity_service),
 ) -> GraphProjectionService:
     """Dependency that provides graph projection service."""
-    return GraphProjectionService(storage=storage, graph=graph)
+    return GraphProjectionService(storage=storage, graph=graph, proximity=proximity)
 
 
 def get_entity_extraction_service(
