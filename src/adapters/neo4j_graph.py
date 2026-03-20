@@ -168,7 +168,12 @@ class Neo4jGraphAdapter(GraphPort):
             raise GraphError(f"Failed to save proximity relationships: {e}") from e
 
     def find_story_ids_by_entity(
-        self, entity_name: str, limit: int, offset: int
+        self,
+        entity_name: str,
+        limit: int,
+        offset: int,
+        from_date: str | None = None,
+        to_date: str | None = None,
     ) -> list[str]:
         """Return story IDs for stories mentioning entity_name, newest first."""
         try:
@@ -177,11 +182,15 @@ class Neo4jGraphAdapter(GraphPort):
                     """
                     MATCH (e:Entity)<-[:MENTIONS]-(s:Story)
                     WHERE toLower(e.name) = toLower($entity_name)
+                      AND ($from_date IS NULL OR s.timestamp >= $from_date)
+                      AND ($to_date   IS NULL OR s.timestamp <= $to_date)
                     RETURN DISTINCT s.story_id AS story_id, s.timestamp AS ts
                     ORDER BY ts DESC, story_id DESC
                     SKIP $offset LIMIT $limit
                     """,
                     entity_name=entity_name,
+                    from_date=from_date,
+                    to_date=to_date,
                     offset=offset,
                     limit=limit,
                 )

@@ -31,7 +31,7 @@ class FakeGraph(GraphPort):
     def save_entity_nodes(self, story_id, entities): pass
     def save_theme_nodes(self, story_id, themes): pass
     def save_proximity_relationships(self, story_id, pairs): pass
-    def find_story_ids_by_entity(self, entity_name, limit, offset): return []
+    def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None): return []
     def count_stories_by_entity(self, entity_name): return 0
     def find_themes_ranked(self, limit, from_date=None, to_date=None): return []
     def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None): return []

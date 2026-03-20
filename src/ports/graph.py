@@ -103,7 +103,12 @@ class GraphPort(ABC):
 
     @abstractmethod
     def find_story_ids_by_entity(
-        self, entity_name: str, limit: int, offset: int
+        self,
+        entity_name: str,
+        limit: int,
+        offset: int,
+        from_date: str | None = None,
+        to_date: str | None = None,
     ) -> list[str]:
         """
         Return story IDs for stories mentioning entity_name (case-insensitive).
@@ -112,6 +117,8 @@ class GraphPort(ABC):
             entity_name: Entity name to search for (matched case-insensitively)
             limit: Maximum number of IDs to return
             offset: Number of IDs to skip (for pagination)
+            from_date: ISO8601 string — only include stories on or after this date
+            to_date:   ISO8601 string — only include stories on or before this date
 
         Returns:
             list of story_id strings, ordered by timestamp descending

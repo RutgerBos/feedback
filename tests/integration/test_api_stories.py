@@ -56,7 +56,7 @@ def api_client(test_db):
         def save_proximity_relationships(self, story_id: str, pairs: list) -> None:
             pass
 
-        def find_story_ids_by_entity(self, entity_name: str, limit: int, offset: int) -> list:
+        def find_story_ids_by_entity(self, entity_name: str, limit: int, offset: int, from_date=None, to_date=None) -> list:
             return []
 
         def count_stories_by_entity(self, entity_name: str) -> int:
@@ -333,7 +333,7 @@ def test_submit_story_triggers_entity_extraction(test_db):
         def save_proximity_relationships(self, story_id: str, pairs: list) -> None:
             pass
 
-        def find_story_ids_by_entity(self, entity_name: str, limit: int, offset: int) -> list:
+        def find_story_ids_by_entity(self, entity_name: str, limit: int, offset: int, from_date=None, to_date=None) -> list:
             return []
 
         def count_stories_by_entity(self, entity_name: str) -> int:
@@ -476,7 +476,7 @@ def test_submit_story_triggers_graph_node_creation(test_db):
         def save_proximity_relationships(self, story_id: str, pairs: list) -> None:
             pass
 
-        def find_story_ids_by_entity(self, entity_name: str, limit: int, offset: int) -> list:
+        def find_story_ids_by_entity(self, entity_name: str, limit: int, offset: int, from_date=None, to_date=None) -> list:
             return []
 
         def count_stories_by_entity(self, entity_name: str) -> int:

@@ -60,7 +60,7 @@ def api_client(test_db):
         def save_proximity_relationships(self, story_id: str, pairs: list) -> None:
             pass
 
-        def find_story_ids_by_entity(self, entity_name: str, limit: int, offset: int) -> list:
+        def find_story_ids_by_entity(self, entity_name: str, limit: int, offset: int, from_date=None, to_date=None) -> list:
             return []
 
         def count_stories_by_entity(self, entity_name: str) -> int:
@@ -167,7 +167,7 @@ def test_query_by_entity_returns_503_on_graph_error(test_db):
         def save_proximity_relationships(self, story_id, pairs):
             pass
 
-        def find_story_ids_by_entity(self, entity_name, limit, offset):
+        def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None):
             raise GraphError("Neo4j unavailable")
 
         def count_stories_by_entity(self, entity_name):
@@ -250,7 +250,7 @@ def test_query_by_entity_returns_stories_from_graph(test_db):
         def save_proximity_relationships(self, story_id: str, pairs: list) -> None:
             pass
 
-        def find_story_ids_by_entity(self, entity_name: str, limit: int, offset: int) -> list:
+        def find_story_ids_by_entity(self, entity_name: str, limit: int, offset: int, from_date=None, to_date=None) -> list:
             return list(story_ids)
 
         def count_stories_by_entity(self, entity_name: str) -> int:
@@ -338,7 +338,7 @@ def test_get_themes_returns_503_on_graph_error(test_db):
         def save_entity_nodes(self, story_id, entities): pass
         def save_theme_nodes(self, story_id, themes): pass
         def save_proximity_relationships(self, story_id, pairs): pass
-        def find_story_ids_by_entity(self, entity_name, limit, offset): return []
+        def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None): return []
         def count_stories_by_entity(self, entity_name): return 0
         def find_themes_ranked(self, limit, from_date=None, to_date=None):
             raise GraphError("Neo4j unavailable")
@@ -391,7 +391,7 @@ def test_get_themes_returns_ranked_themes_with_sample_ids(test_db):
         def save_entity_nodes(self, story_id, entities): pass
         def save_theme_nodes(self, story_id, themes): pass
         def save_proximity_relationships(self, story_id, pairs): pass
-        def find_story_ids_by_entity(self, entity_name, limit, offset): return []
+        def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None): return []
         def count_stories_by_entity(self, entity_name): return 0
         def find_themes_ranked(self, limit, from_date=None, to_date=None):
             return [("automation friction", 5), ("tooling", 2)]
@@ -461,7 +461,7 @@ def test_get_correlations_returns_503_on_graph_error(test_db):
         def save_entity_nodes(self, story_id, entities): pass
         def save_theme_nodes(self, story_id, themes): pass
         def save_proximity_relationships(self, story_id, pairs): pass
-        def find_story_ids_by_entity(self, entity_name, limit, offset): return []
+        def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None): return []
         def count_stories_by_entity(self, entity_name): return 0
         def find_themes_ranked(self, limit, from_date=None, to_date=None): return []
         def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None): return []
@@ -508,7 +508,7 @@ def test_get_correlations_returns_ranked_pairs_with_sample_ids(test_db):
         def save_entity_nodes(self, story_id, entities): pass
         def save_theme_nodes(self, story_id, themes): pass
         def save_proximity_relationships(self, story_id, pairs): pass
-        def find_story_ids_by_entity(self, entity_name, limit, offset): return []
+        def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None): return []
         def count_stories_by_entity(self, entity_name): return 0
         def find_themes_ranked(self, limit, from_date=None, to_date=None): return []
         def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None): return []
@@ -575,7 +575,7 @@ def test_get_clusters_returns_503_on_graph_error(test_db):
         def save_entity_nodes(self, story_id, entities): pass
         def save_theme_nodes(self, story_id, themes): pass
         def save_proximity_relationships(self, story_id, pairs): pass
-        def find_story_ids_by_entity(self, entity_name, limit, offset): return []
+        def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None): return []
         def count_stories_by_entity(self, entity_name): return 0
         def find_themes_ranked(self, limit, from_date=None, to_date=None): return []
         def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None): return []
@@ -641,7 +641,7 @@ def test_get_clusters_returns_cluster_data(test_db):
         def save_entity_nodes(self, story_id, entities): pass
         def save_theme_nodes(self, story_id, themes): pass
         def save_proximity_relationships(self, story_id, pairs): pass
-        def find_story_ids_by_entity(self, entity_name, limit, offset): return []
+        def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None): return []
         def count_stories_by_entity(self, entity_name): return 0
         def find_themes_ranked(self, limit, from_date=None, to_date=None): return []
         def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None): return []
