@@ -687,3 +687,142 @@ def test_get_clusters_returns_cluster_data(test_db):
         app.dependency_overrides.pop(get_storage, None)
         app.dependency_overrides.pop(get_llm, None)
         app.dependency_overrides.pop(get_graph, None)
+
+
+# ── Story 4.5: GET /api/patterns/temporal ─────────────────────────────────────
+
+
+def test_get_temporal_returns_200_with_empty_result(test_db, api_client):
+    """GET /api/patterns/temporal returns 200 and empty lists when no data."""
+    response = api_client.get("/api/patterns/temporal")
+    assert response.status_code == 200
+    body = response.json()
+    assert "windows" in body
+    assert "theme_frequency" in body
+    assert "entity_frequency" in body
+    assert "triad_drift" in body
+    assert body["theme_frequency"] == []
+    assert body["entity_frequency"] == []
+    assert body["triad_drift"] == []
+
+
+def test_get_temporal_returns_503_on_graph_error(test_db):
+    """GET /api/patterns/temporal returns 503 when graph is unavailable."""
+    from src.adapters.mongodb_storage import MongoDBStorageAdapter
+    from src.api.main import app
+    from src.api.stories import get_graph, get_llm, get_storage
+    from src.domain.models import SentimentAnalysis
+    from src.ports.errors import GraphError
+    from src.ports.graph import GraphPort
+    from src.ports.llm import EntityExtraction, LLMPort
+
+    class NoOpLLM(LLMPort):
+        def extract_entities(self, story_text): return EntityExtraction(entities=[])
+        def extract_themes(self, story_text): return []
+        def extract_relationships(self, story_text): return []
+        def extract_sentiment(self, story_text):
+            return SentimentAnalysis(emotion_markers=[], process_sentiment="neutral", outcome_sentiment="neutral")
+        def synthesize_insights(self, context):
+            from src.domain.models import InsightOutput
+            return InsightOutput(narrative="")
+
+    class FailingGraph(GraphPort):
+        def save_story_node(self, story_id, triads, timestamp): pass
+        def save_entity_nodes(self, story_id, entities): pass
+        def save_theme_nodes(self, story_id, themes): pass
+        def save_proximity_relationships(self, story_id, pairs): pass
+        def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None): return []
+        def count_stories_by_entity(self, entity_name): return 0
+        def find_themes_ranked(self, limit, from_date=None, to_date=None): return []
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None): return []
+        def count_stories_by_theme(self, theme_name): return 0
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None): return []
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0): return []
+        def find_story_communities(self, triad_id): return []
+        def find_theme_counts_by_window(self, window_size, from_date=None, to_date=None, theme=None):
+            raise GraphError("graph down")
+        def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None): return []
+
+    app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
+    app.dependency_overrides[get_llm] = lambda: NoOpLLM()
+    app.dependency_overrides[get_graph] = lambda: FailingGraph()
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/patterns/temporal")
+            assert response.status_code == 503
+    finally:
+        app.dependency_overrides.pop(get_storage, None)
+        app.dependency_overrides.pop(get_llm, None)
+        app.dependency_overrides.pop(get_graph, None)
+
+
+def test_get_temporal_returns_theme_and_drift_data(test_db):
+    """GET /api/patterns/temporal returns theme timelines and triad drift from storage."""
+    from datetime import datetime, UTC
+    from src.adapters.mongodb_storage import MongoDBStorageAdapter
+    from src.api.main import app
+    from src.api.stories import get_graph, get_llm, get_storage
+    from src.domain.models import SentimentAnalysis
+    from src.ports.graph import GraphPort
+    from src.ports.llm import EntityExtraction, LLMPort
+
+    class NoOpLLM(LLMPort):
+        def extract_entities(self, story_text): return EntityExtraction(entities=[])
+        def extract_themes(self, story_text): return []
+        def extract_relationships(self, story_text): return []
+        def extract_sentiment(self, story_text):
+            return SentimentAnalysis(emotion_markers=[], process_sentiment="neutral", outcome_sentiment="neutral")
+        def synthesize_insights(self, context):
+            from src.domain.models import InsightOutput
+            return InsightOutput(narrative="")
+
+    class TemporalGraph(GraphPort):
+        def save_story_node(self, story_id, triads, timestamp): pass
+        def save_entity_nodes(self, story_id, entities): pass
+        def save_theme_nodes(self, story_id, themes): pass
+        def save_proximity_relationships(self, story_id, pairs): pass
+        def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None): return []
+        def count_stories_by_entity(self, entity_name): return 0
+        def find_themes_ranked(self, limit, from_date=None, to_date=None): return []
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None): return []
+        def count_stories_by_theme(self, theme_name): return 0
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None): return []
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0): return []
+        def find_story_communities(self, triad_id): return []
+        def find_theme_counts_by_window(self, window_size, from_date=None, to_date=None, theme=None):
+            return [("2026-01", "automation friction", 2)]
+        def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None):
+            return [("2026-01", "CI pipeline", 1)]
+
+    # Insert a story into MongoDB so drift can be computed
+    test_db.stories.insert_one({
+        "_id": "s1",
+        "story_text": "CI failures blocked our deployment repeatedly this sprint. " * 3,
+        "triads": [
+            {"triad_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}},
+            {"triad_id": "understanding_quality", "coordinates": {"x": 0.5, "y": 0.4}},
+            {"triad_id": "value_character", "coordinates": {"x": 0.2, "y": 0.7}},
+        ],
+        "processing_status": "processed",
+        "themes": ["automation friction"],
+        "entities": [{"name": "CI pipeline", "type": "tool"}],
+        "timestamp": datetime(2026, 1, 15, 10, 0, tzinfo=UTC).replace(tzinfo=None),
+    })
+
+    app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
+    app.dependency_overrides[get_llm] = lambda: NoOpLLM()
+    app.dependency_overrides[get_graph] = lambda: TemporalGraph()
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/patterns/temporal")
+            assert response.status_code == 200
+            body = response.json()
+            assert len(body["theme_frequency"]) == 1
+            assert body["theme_frequency"][0]["theme"] == "automation friction"
+            assert len(body["entity_frequency"]) == 1
+            assert body["entity_frequency"][0]["entity"] == "CI pipeline"
+            assert len(body["triad_drift"]) > 0
+    finally:
+        app.dependency_overrides.pop(get_storage, None)
+        app.dependency_overrides.pop(get_llm, None)
+        app.dependency_overrides.pop(get_graph, None)
