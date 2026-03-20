@@ -1,8 +1,20 @@
-"""Tests for SentimentAnalysis domain model."""
+"""Tests for SentimentAnalysis domain model and Story.sentiment field."""
 
 import pytest
 
-from src.domain.models import SentimentAnalysis
+from src.domain.models import SentimentAnalysis, Story, TriadCoordinates, TriadPlacement
+
+
+def make_story(story_id: str = "s-1") -> Story:
+    return Story(
+        id=story_id,
+        story_text="I had to restart the CI pipeline three times today due to flaky tests. " * 3,
+        triads=[
+            TriadPlacement(triad_id="workflow_nature", coordinates=TriadCoordinates(x=0.3, y=0.6)),
+            TriadPlacement(triad_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.4)),
+            TriadPlacement(triad_id="value_character", coordinates=TriadCoordinates(x=0.2, y=0.7)),
+        ],
+    )
 
 
 # ── Test 1: can create SentimentAnalysis ──────────────────────────────────────
@@ -59,3 +71,26 @@ def test_sentiment_analysis_is_immutable():
 
     with pytest.raises(Exception):
         sa.process_sentiment = "positive"  # type: ignore[misc]
+
+
+# ── Story.sentiment field ──────────────────────────────────────────────────────
+
+def test_story_sentiment_defaults_to_none():
+    """Story.sentiment is None by default."""
+    story = make_story()
+
+    assert story.sentiment is None
+
+
+def test_story_sentiment_can_be_set():
+    """Story can be created with a SentimentAnalysis value."""
+    sa = SentimentAnalysis(
+        emotion_markers=["frustration"],
+        process_sentiment="negative",
+        outcome_sentiment="positive",
+    )
+    story = make_story()
+    story_with_sentiment = story.model_copy(update={"sentiment": sa})
+
+    assert story_with_sentiment.sentiment is not None
+    assert story_with_sentiment.sentiment.process_sentiment == "negative"
