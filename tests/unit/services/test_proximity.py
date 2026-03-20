@@ -72,6 +72,12 @@ class FakeGraph(GraphPort):
     def save_proximity_relationships(self, story_id: str, pairs: list) -> None:
         self.proximity_calls.append((story_id, list(pairs)))
 
+    def find_story_ids_by_entity(self, entity_name: str, limit: int, offset: int) -> list:
+        return []
+
+    def count_stories_by_entity(self, entity_name: str) -> int:
+        return 0
+
 
 # ── Test 1: no pairs when only one story ──────────────────────────────────────
 

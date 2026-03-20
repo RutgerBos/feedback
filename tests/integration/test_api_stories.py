@@ -52,6 +52,12 @@ def api_client(test_db):
         def save_proximity_relationships(self, story_id: str, pairs: list) -> None:
             pass
 
+        def find_story_ids_by_entity(self, entity_name: str, limit: int, offset: int) -> list:
+            return []
+
+        def count_stories_by_entity(self, entity_name: str) -> int:
+            return 0
+
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
     app.dependency_overrides[get_graph] = lambda: NoOpGraph()
@@ -301,6 +307,12 @@ def test_submit_story_triggers_entity_extraction(test_db):
         def save_proximity_relationships(self, story_id: str, pairs: list) -> None:
             pass
 
+        def find_story_ids_by_entity(self, entity_name: str, limit: int, offset: int) -> list:
+            return []
+
+        def count_stories_by_entity(self, entity_name: str) -> int:
+            return 0
+
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: FakeLLM()
     app.dependency_overrides[get_graph] = lambda: NoOpGraph()
@@ -415,6 +427,12 @@ def test_submit_story_triggers_graph_node_creation(test_db):
 
         def save_proximity_relationships(self, story_id: str, pairs: list) -> None:
             pass
+
+        def find_story_ids_by_entity(self, entity_name: str, limit: int, offset: int) -> list:
+            return []
+
+        def count_stories_by_entity(self, entity_name: str) -> int:
+            return 0
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: FakeLLM()

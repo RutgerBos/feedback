@@ -165,3 +165,42 @@ class Neo4jGraphAdapter(GraphPort):
                 session.execute_write(_replace)
         except Exception as e:
             raise GraphError(f"Failed to save proximity relationships: {e}") from e
+
+    def find_story_ids_by_entity(
+        self, entity_name: str, limit: int, offset: int
+    ) -> list[str]:
+        """Return story IDs for stories mentioning entity_name, newest first."""
+        try:
+            with self._driver.session() as session:
+                result = session.run(
+                    """
+                    MATCH (e:Entity)<-[:MENTIONS]-(s:Story)
+                    WHERE toLower(e.name) = toLower($entity_name)
+                    RETURN DISTINCT s.story_id AS story_id, s.timestamp AS ts
+                    ORDER BY ts DESC, story_id DESC
+                    SKIP $offset LIMIT $limit
+                    """,
+                    entity_name=entity_name,
+                    offset=offset,
+                    limit=limit,
+                )
+                return [row["story_id"] for row in result.data()]
+        except Exception as e:
+            raise GraphError(f"Failed to find stories by entity: {e}") from e
+
+    def count_stories_by_entity(self, entity_name: str) -> int:
+        """Return total count of stories mentioning entity_name."""
+        try:
+            with self._driver.session() as session:
+                result = session.run(
+                    """
+                    MATCH (e:Entity)<-[:MENTIONS]-(s:Story)
+                    WHERE toLower(e.name) = toLower($entity_name)
+                    RETURN COUNT(DISTINCT s) AS count
+                    """,
+                    entity_name=entity_name,
+                )
+                record = result.single()
+                return record["count"] if record else 0
+        except Exception as e:
+            raise GraphError(f"Failed to count stories by entity: {e}") from e
