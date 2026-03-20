@@ -14,6 +14,16 @@ TRIADS = [
 ]
 
 
+class FakeResult:
+    """Fake Neo4j query result supporting .data() and .single()."""
+
+    def data(self) -> list:
+        return []
+
+    def single(self):
+        return {"count": 0}
+
+
 class FakeSession:
     """Records Cypher queries and parameters for inspection.
 
@@ -24,8 +34,9 @@ class FakeSession:
     def __init__(self):
         self.queries = []  # list of (query, params)
 
-    def run(self, query: str, **params) -> None:
+    def run(self, query: str, **params) -> "FakeResult":
         self.queries.append((query, params))
+        return FakeResult()
 
     def execute_write(self, tx_func) -> None:
         """Run tx_func with self as the transaction object (records queries)."""
@@ -415,3 +426,86 @@ def test_save_proximity_relationships_raises_graph_error_on_failure():
 
     with pytest.raises(GraphError):
         adapter.save_proximity_relationships(story_id="story-aaa", pairs=[pair])
+
+
+# ── Story 4.1: find_story_ids_by_entity ──────────────────────────────────────
+
+def test_find_story_ids_by_entity_emits_cypher_with_skip_limit():
+    """find_story_ids_by_entity runs a Cypher query with SKIP and LIMIT."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.find_story_ids_by_entity("CI pipeline", limit=10, offset=20)
+
+    assert len(driver.session_instance.queries) == 1
+    query, params = driver.session_instance.queries[0]
+    assert "SKIP" in query
+    assert "LIMIT" in query
+    assert params.get("limit") == 10
+    assert params.get("offset") == 20
+
+
+def test_find_story_ids_by_entity_case_insensitive():
+    """Entity name lookup is case-insensitive."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.find_story_ids_by_entity("CI Pipeline", limit=10, offset=0)
+
+    query, params = driver.session_instance.queries[0]
+    assert "toLower" in query
+
+
+def test_find_story_ids_by_entity_raises_graph_error_on_failure():
+    """find_story_ids_by_entity raises GraphError when driver fails."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+    from src.ports.errors import GraphError
+
+    class FailingSession:
+        def run(self, query, **params):
+            raise Exception("Neo4j down")
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+
+    class FailingDriver:
+        def session(self): return FailingSession()
+
+    adapter = Neo4jGraphAdapter(driver=FailingDriver())
+    with pytest.raises(GraphError):
+        adapter.find_story_ids_by_entity("anything", limit=10, offset=0)
+
+
+# ── Story 4.1: count_stories_by_entity ────────────────────────────────────────
+
+def test_count_stories_by_entity_emits_count_query():
+    """count_stories_by_entity runs a COUNT query."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.count_stories_by_entity("CI pipeline")
+
+    assert len(driver.session_instance.queries) == 1
+    query, _ = driver.session_instance.queries[0]
+    assert "COUNT" in query.upper()
+
+
+def test_count_stories_by_entity_raises_graph_error_on_failure():
+    """count_stories_by_entity raises GraphError when driver fails."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+    from src.ports.errors import GraphError
+
+    class FailingSession:
+        def run(self, query, **params):
+            raise Exception("Neo4j down")
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+
+    class FailingDriver:
+        def session(self): return FailingSession()
+
+    adapter = Neo4jGraphAdapter(driver=FailingDriver())
+    with pytest.raises(GraphError):
+        adapter.count_stories_by_entity("anything")

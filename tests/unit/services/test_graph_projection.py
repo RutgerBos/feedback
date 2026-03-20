@@ -66,6 +66,12 @@ class FakeGraph(GraphPort):
     def save_proximity_relationships(self, story_id: str, pairs: list) -> None:
         pass
 
+    def find_story_ids_by_entity(self, entity_name: str, limit: int, offset: int) -> list:
+        return []
+
+    def count_stories_by_entity(self, entity_name: str) -> int:
+        return 0
+
 
 class FailingGraph(GraphPort):
     def save_story_node(self, story_id: str, triads, timestamp: str) -> None:
@@ -79,6 +85,12 @@ class FailingGraph(GraphPort):
 
     def save_proximity_relationships(self, story_id: str, pairs: list) -> None:
         raise GraphError("Neo4j unavailable")
+
+    def find_story_ids_by_entity(self, entity_name: str, limit: int, offset: int) -> list:
+        return []
+
+    def count_stories_by_entity(self, entity_name: str) -> int:
+        return 0
 
 
 # ── Test 1: can instantiate ────────────────────────────────────────────────────
@@ -239,6 +251,12 @@ def test_project_story_continues_themes_after_entity_graph_error():
 
         def save_proximity_relationships(self, story_id, pairs):
             pass
+
+        def find_story_ids_by_entity(self, entity_name, limit, offset):
+            return []
+
+        def count_stories_by_entity(self, entity_name):
+            return 0
 
     story = make_story()
     story.themes = ["some theme"]

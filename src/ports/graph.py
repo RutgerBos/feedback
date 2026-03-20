@@ -18,7 +18,8 @@ class GraphPort(ABC):
     - Create entity and theme nodes
     - Create relationships between nodes
     - Create proximity relationships between stories
-    - Support graph queries (added as needed)
+    - Query stories by entity or theme
+    - Count matching stories for pagination
 
     Collaborators:
     - TriadPlacement (domain model)
@@ -97,5 +98,41 @@ class GraphPort(ABC):
 
         Raises:
             GraphError: If deletion or creation fails
+        """
+        pass
+
+    @abstractmethod
+    def find_story_ids_by_entity(
+        self, entity_name: str, limit: int, offset: int
+    ) -> list[str]:
+        """
+        Return story IDs for stories mentioning entity_name (case-insensitive).
+
+        Args:
+            entity_name: Entity name to search for (matched case-insensitively)
+            limit: Maximum number of IDs to return
+            offset: Number of IDs to skip (for pagination)
+
+        Returns:
+            list of story_id strings, ordered by timestamp descending
+
+        Raises:
+            GraphError: If the query fails
+        """
+        pass
+
+    @abstractmethod
+    def count_stories_by_entity(self, entity_name: str) -> int:
+        """
+        Return total number of stories mentioning entity_name (case-insensitive).
+
+        Args:
+            entity_name: Entity name to count (matched case-insensitively)
+
+        Returns:
+            Total count of matching stories
+
+        Raises:
+            GraphError: If the query fails
         """
         pass
