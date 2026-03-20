@@ -13,7 +13,12 @@
  *
  * Normalisation: x = (svgX - 10) / 180, y = (svgY - 10) / 160
  * Clamped to [0, 1].
+ *
+ * Initial marker position: cx=100, cy=90 → normalised (0.5, 0.5)
  */
+
+// Exported so the page can call resetTriadMarkers() after form reset
+var resetTriadMarkers;  // eslint-disable-line no-var
 
 (function () {
     // Bounding box of the triangle used for coordinate normalisation
@@ -116,4 +121,12 @@
             dragging = false;
         });
     });
+
+    // Reset all markers to initial position (0.5, 0.5) → cx=100, cy=90
+    resetTriadMarkers = function () {
+        document.querySelectorAll('.triad-canvas').forEach(function (svg) {
+            var marker = svg.querySelector('.triad-marker');
+            moveMarker(svg, marker, 100, 90);
+        });
+    };
 }());

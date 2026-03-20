@@ -11,7 +11,7 @@
     </p>
 
     <form id="story-form"
-          hx-post="/api/stories"
+          hx-post="/ui/submit"
           hx-target="#result"
           hx-swap="innerHTML"
           hx-indicator="#submit-indicator">
@@ -55,10 +55,10 @@
                         <text x="4"   y="180" class="vertex-label bottom-left">{{ triad.vertices[1].label }}</text>
                         <text x="196" y="180" class="vertex-label bottom-right">{{ triad.vertices[2].label }}</text>
 
-                        <!-- Draggable marker — starts at centroid -->
+                        <!-- Draggable marker — starts at bounding-box centre (0.5, 0.5) -->
                         <circle
                             class="triad-marker"
-                            cx="100" cy="117"
+                            cx="100" cy="90"
                             r="8"
                         />
                     </svg>
@@ -91,13 +91,12 @@
         counter.textContent = textarea.value.length;
     });
 
-    // HTMX: after successful submission, show confirmation
+    // HTMX: reset form and markers on successful submission
     document.body.addEventListener('htmx:afterRequest', function(evt) {
-        if (evt.detail.elt.id === 'story-form' && evt.detail.successful) {
-            document.getElementById('result').innerHTML =
-                '<div class="confirmation">✓ Story submitted. Thank you!</div>';
+        if (evt.detail.elt.id === 'story-form' && evt.detail.xhr.status < 400) {
             evt.detail.elt.reset();
             document.getElementById('char-count').textContent = '0';
+            if (typeof resetTriadMarkers === 'function') resetTriadMarkers();
         }
     });
 </script>

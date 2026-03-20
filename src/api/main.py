@@ -92,7 +92,8 @@ app.add_middleware(
 )
 
 # Static files and UI
-app.mount("/static", StaticFiles(directory="static"), name="static")
+_static_dir = str(Path(__file__).parent.parent.parent / "static")
+app.mount("/static", StaticFiles(directory=_static_dir), name="static")
 app.include_router(ui_router)
 
 # API routers
