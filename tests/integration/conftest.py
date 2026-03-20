@@ -7,19 +7,24 @@ rather than failing slowly with connection timeouts.
 
 import pytest
 from pymongo import MongoClient
-from pymongo.errors import ServerSelectionTimeoutError
+from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 
 MONGO_URL = "mongodb://admin:password@localhost:27017/"
 _PING_TIMEOUT_MS = 1000
 
 
 def _mongo_is_reachable() -> bool:
+    """Return True only if MongoDB responds to a ping.
+
+    Skips on connectivity failures (host unreachable, timeout).
+    Lets auth/config errors propagate so they surface as real failures.
+    """
     try:
         client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=_PING_TIMEOUT_MS)
         client.admin.command("ping")
         client.close()
         return True
-    except ServerSelectionTimeoutError:
+    except (ConnectionFailure, ServerSelectionTimeoutError):
         return False
 
 

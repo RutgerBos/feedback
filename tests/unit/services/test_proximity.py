@@ -235,3 +235,68 @@ def test_calculate_for_story_skips_missing_triad():
     triad_ids = {p.triad_id for p in pairs}
     assert "value_character" not in triad_ids
     assert "workflow_nature" in triad_ids
+
+
+# ── Test 8: pagination across _PAGE_SIZE boundary ────────────────────────────
+
+def test_calculate_for_story_finds_pairs_across_page_boundary():
+    """Proximity pairs are found even when candidates span multiple storage pages."""
+    from src.services.proximity import ProximityCalculationService, _PAGE_SIZE
+
+    # Create _PAGE_SIZE + 1 stories so pagination is exercised
+    stories = {}
+    target = make_story("story-target", x=0.1, y=0.1)
+    stories["story-target"] = target
+
+    for i in range(_PAGE_SIZE):
+        s = make_story(f"story-{i:04d}", x=0.1, y=0.15)  # distance 0.05 — close
+        stories[s.id] = s
+
+    storage = FakeStorage(stories=stories)
+    graph = FakeGraph()
+
+    service = ProximityCalculationService(storage=storage, graph=graph, threshold=THRESHOLD)
+    service.calculate_for_story("story-target")
+
+    _, pairs = graph.proximity_calls[0]
+    # All _PAGE_SIZE candidates × 3 triads should be in pairs
+    assert len(pairs) == _PAGE_SIZE * 3
+
+
+# ── Test 9: exact triad cardinality for reordered-triad case ─────────────────
+
+def test_calculate_for_story_exact_triad_set_regardless_of_order():
+    """Exactly the matching triads are returned, no more, no less."""
+    from src.services.proximity import ProximityCalculationService
+
+    story_a = Story(
+        id="story-a",
+        story_text="CI failures blocked our deployment repeatedly this sprint. " * 3,
+        triads=[
+            TriadPlacement(triad_id="workflow_nature", coordinates=TriadCoordinates(x=0.1, y=0.1)),
+            TriadPlacement(triad_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.5)),
+            TriadPlacement(triad_id="value_character", coordinates=TriadCoordinates(x=0.1, y=0.1)),
+        ],
+        processing_status="processed",
+    )
+    # story_b has triads in reverse order; value_character is far away
+    story_b = Story(
+        id="story-b",
+        story_text="CI failures blocked our deployment repeatedly this sprint. " * 3,
+        triads=[
+            TriadPlacement(triad_id="value_character", coordinates=TriadCoordinates(x=0.9, y=0.05)),  # far
+            TriadPlacement(triad_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.55)),  # close
+            TriadPlacement(triad_id="workflow_nature", coordinates=TriadCoordinates(x=0.1, y=0.15)),  # close
+        ],
+        processing_status="processed",
+    )
+    storage = FakeStorage(stories={"story-a": story_a, "story-b": story_b})
+    graph = FakeGraph()
+
+    service = ProximityCalculationService(storage=storage, graph=graph, threshold=THRESHOLD)
+    service.calculate_for_story("story-a")
+
+    _, pairs = graph.proximity_calls[0]
+    triad_ids = [p.triad_id for p in pairs]
+    # Only the two close triads should appear, exactly once each
+    assert sorted(triad_ids) == ["understanding_quality", "workflow_nature"]

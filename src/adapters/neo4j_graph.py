@@ -129,30 +129,27 @@ class Neo4jGraphAdapter(GraphPort):
         - triad_id is part of the relationship identity to allow one edge per triad pair.
         - distance and weight are overwritten on every reprojection.
         """
-        try:
-            with self._driver.session() as session:
-                # Step 1: delete all stale proximity edges for this story
-                session.run(
-                    """
-                    MATCH (s:Story {story_id: $story_id})-[r:NEAR_IN_SIGNIFIER_SPACE]-()
-                    DELETE r
-                    """,
-                    story_id=story_id,
-                )
-                if not pairs:
-                    return
-                # Step 2: write new qualifying pairs
-                pairs_data = [
-                    {
-                        "story_id_a": p.story_id_a,
-                        "story_id_b": p.story_id_b,
-                        "triad_id": p.triad_id,
-                        "distance": p.distance,
-                        "weight": p.weight,
-                    }
-                    for p in pairs
-                ]
-                session.run(
+        pairs_data = [
+            {
+                "story_id_a": p.story_id_a,
+                "story_id_b": p.story_id_b,
+                "triad_id": p.triad_id,
+                "distance": p.distance,
+                "weight": p.weight,
+            }
+            for p in pairs
+        ]
+
+        def _replace(tx: Any) -> None:
+            tx.run(
+                """
+                MATCH (s:Story {story_id: $story_id})-[r:NEAR_IN_SIGNIFIER_SPACE]-()
+                DELETE r
+                """,
+                story_id=story_id,
+            )
+            if pairs_data:
+                tx.run(
                     """
                     UNWIND $pairs AS pair
                     MATCH (a:Story {story_id: pair.story_id_a})
@@ -162,5 +159,9 @@ class Neo4jGraphAdapter(GraphPort):
                     """,
                     pairs=pairs_data,
                 )
+
+        try:
+            with self._driver.session() as session:
+                session.execute_write(_replace)
         except Exception as e:
             raise GraphError(f"Failed to save proximity relationships: {e}") from e

@@ -15,13 +15,21 @@ TRIADS = [
 
 
 class FakeSession:
-    """Records Cypher queries and parameters for inspection."""
+    """Records Cypher queries and parameters for inspection.
+
+    Supports both direct session.run() and session.execute_write(tx_func)
+    so that transactional and non-transactional adapters can both be tested.
+    """
 
     def __init__(self):
         self.queries = []  # list of (query, params)
 
     def run(self, query: str, **params) -> None:
         self.queries.append((query, params))
+
+    def execute_write(self, tx_func) -> None:
+        """Run tx_func with self as the transaction object (records queries)."""
+        tx_func(self)
 
     def __enter__(self):
         return self
