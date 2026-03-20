@@ -69,43 +69,42 @@
     function renderCharts() {
         var themesCanvas = document.getElementById('themes-chart');
         var entitiesCanvas = document.getElementById('entities-chart');
-        if (!themesCanvas || !entitiesCanvas) return;
 
-        var themesData = JSON.parse(themesCanvas.dataset.values || '[]');
-        var entitiesData = JSON.parse(entitiesCanvas.dataset.values || '[]');
-
-        ['themes-chart-instance', 'entities-chart-instance'].forEach(function (id) {
-            var existing = Chart.getChart(id);
+        if (themesCanvas) {
+            var existing = Chart.getChart(themesCanvas);
             if (existing) existing.destroy();
-        });
+            var themesData = JSON.parse(themesCanvas.dataset.values || '[]');
+            new Chart(themesCanvas, {
+                type: 'bar',
+                data: {
+                    labels: themesData.map(function (d) { return d.name; }),
+                    datasets: [{
+                        label: 'Stories',
+                        data: themesData.map(function (d) { return d.count; }),
+                        backgroundColor: 'rgba(44,62,80,0.7)',
+                    }]
+                },
+                options: { indexAxis: 'y', plugins: { legend: { display: false } }, responsive: true }
+            });
+        }
 
-        new Chart(themesCanvas, {
-            id: 'themes-chart-instance',
-            type: 'bar',
-            data: {
-                labels: themesData.map(function (d) { return d.name; }),
-                datasets: [{
-                    label: 'Stories',
-                    data: themesData.map(function (d) { return d.count; }),
-                    backgroundColor: 'rgba(44,62,80,0.7)',
-                }]
-            },
-            options: { indexAxis: 'y', plugins: { legend: { display: false } }, responsive: true }
-        });
-
-        new Chart(entitiesCanvas, {
-            id: 'entities-chart-instance',
-            type: 'bar',
-            data: {
-                labels: entitiesData.map(function (d) { return d.name; }),
-                datasets: [{
-                    label: 'Stories',
-                    data: entitiesData.map(function (d) { return d.count; }),
-                    backgroundColor: 'rgba(231,76,60,0.7)',
-                }]
-            },
-            options: { indexAxis: 'y', plugins: { legend: { display: false } }, responsive: true }
-        });
+        if (entitiesCanvas) {
+            var existing = Chart.getChart(entitiesCanvas);
+            if (existing) existing.destroy();
+            var entitiesData = JSON.parse(entitiesCanvas.dataset.values || '[]');
+            new Chart(entitiesCanvas, {
+                type: 'bar',
+                data: {
+                    labels: entitiesData.map(function (d) { return d.name; }),
+                    datasets: [{
+                        label: 'Stories',
+                        data: entitiesData.map(function (d) { return d.count; }),
+                        backgroundColor: 'rgba(231,76,60,0.7)',
+                    }]
+                },
+                options: { indexAxis: 'y', plugins: { legend: { display: false } }, responsive: true }
+            });
+        }
     }
 </script>
 {% endblock %}
