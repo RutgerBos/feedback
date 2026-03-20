@@ -95,19 +95,21 @@ class DashboardService:
         if not stories:
             return DashboardData(total_stories=0, sample_capped=sample_capped)
 
-        # Aggregate themes
+        # Aggregate themes — count stories, not occurrences
         theme_counts: dict[str, int] = {}
         for story in stories:
-            for theme in story.themes:
+            for theme in set(story.themes):
                 theme_counts[theme] = theme_counts.get(theme, 0) + 1
 
-        # Aggregate entities (by name)
+        # Aggregate entities (by name) — count stories, not occurrences
         entity_counts: dict[str, int] = {}
         for story in stories:
+            seen: set[str] = set()
             for entity in story.entities:
                 name = entity.get("name", "")
-                if name:
+                if name and name not in seen:
                     entity_counts[name] = entity_counts.get(name, 0) + 1
+                    seen.add(name)
 
         sorted_themes = sorted(theme_counts.items(), key=lambda x: -x[1])
         sorted_entities = sorted(entity_counts.items(), key=lambda x: -x[1])

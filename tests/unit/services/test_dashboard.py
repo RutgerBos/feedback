@@ -242,3 +242,22 @@ def test_dashboard_to_date_midnight_includes_full_day():
     data = service.get_data(to_date=datetime(2026, 3, 15, 0, 0, 0, tzinfo=UTC))
 
     assert data.total_stories == 1
+
+
+def test_dashboard_counts_stories_not_occurrences():
+    """A theme or entity appearing twice in one story counts as 1, not 2."""
+    from src.services.dashboard import DashboardService
+
+    story = make_story(
+        "s1",
+        themes=["automation friction", "automation friction"],
+        entities=[{"name": "CI pipeline", "type": "tool"}, {"name": "CI pipeline", "type": "tool"}],
+    )
+    service = DashboardService(storage=FakeStorage([story]))
+
+    data = service.get_data()
+
+    theme = next(t for t in data.top_themes if t["name"] == "automation friction")
+    entity = next(e for e in data.top_entities if e["name"] == "CI pipeline")
+    assert theme["count"] == 1
+    assert entity["count"] == 1
