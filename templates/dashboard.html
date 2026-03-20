@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Pattern Dashboard{% endblock %}
+
+{% block content %}
+<section class="dashboard">
+    <div class="dashboard-header">
+        <h2>Pattern Exploration Dashboard</h2>
+        <a href="/" class="btn-secondary">+ Submit Story</a>
+    </div>
+
+    <!-- Date range filter -->
+    <form class="filter-bar"
+          hx-get="/dashboard/data"
+          hx-target="#dashboard-data"
+          hx-swap="innerHTML"
+          hx-trigger="submit, change delay:300ms"
+          hx-include="[name='from_date'],[name='to_date']">
+        <label>From <input type="date" name="from_date"></label>
+        <label>To   <input type="date" name="to_date"></label>
+        <button type="submit">Filter</button>
+    </form>
+
+    <!-- Export buttons -->
+    <div class="export-bar">
+        <a href="/api/dashboard?format=json" class="btn-export">↓ Export JSON</a>
+        <a href="/api/dashboard?format=csv"  class="btn-export">↓ Export CSV</a>
+    </div>
+
+    <!-- Dynamic data panel — loaded by HTMX on page load -->
+    <div id="dashboard-data"
+         hx-get="/dashboard/data"
+         hx-trigger="load"
+         hx-swap="innerHTML"
+         hx-include="[name='from_date'],[name='to_date']">
+        <p class="loading">Loading…</p>
+    </div>
+
+    <!-- Insight panel — populated when user clicks an entity -->
+    <div id="insight-panel"></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script>
+    // Re-render charts whenever HTMX swaps new data into #dashboard-data
+    document.body.addEventListener('htmx:afterSettle', function (evt) {
+        if (evt.detail.target && evt.detail.target.id === 'dashboard-data') {
+            renderCharts();
+        }
+    });
+
+    function renderCharts() {
+        var themesCanvas = document.getElementById('themes-chart');
+        var entitiesCanvas = document.getElementById('entities-chart');
+        if (!themesCanvas || !entitiesCanvas) return;
+
+        var themesData = JSON.parse(themesCanvas.dataset.values || '[]');
+        var entitiesData = JSON.parse(entitiesCanvas.dataset.values || '[]');
+
+        ['themes-chart-instance', 'entities-chart-instance'].forEach(function (id) {
+            var existing = Chart.getChart(id);
+            if (existing) existing.destroy();
+        });
+
+        new Chart(themesCanvas, {
+            id: 'themes-chart-instance',
+            type: 'bar',
+            data: {
+                labels: themesData.map(function (d) { return d.name; }),
+                datasets: [{
+                    label: 'Stories',
+                    data: themesData.map(function (d) { return d.count; }),
+                    backgroundColor: 'rgba(44,62,80,0.7)',
+                }]
+            },
+            options: { indexAxis: 'y', plugins: { legend: { display: false } }, responsive: true }
+        });
+
+        new Chart(entitiesCanvas, {
+            id: 'entities-chart-instance',
+            type: 'bar',
+            data: {
+                labels: entitiesData.map(function (d) { return d.name; }),
+                datasets: [{
+                    label: 'Stories',
+                    data: entitiesData.map(function (d) { return d.count; }),
+                    backgroundColor: 'rgba(231,76,60,0.7)',
+                }]
+            },
+            options: { indexAxis: 'y', plugins: { legend: { display: false } }, responsive: true }
+        });
+    }
+</script>
+{% endblock %}

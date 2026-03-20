@@ -1,0 +1,12 @@
+<div class="insight-result">
+    <h4>Insights: {{ entity_name }}</h4>
+    <p class="narrative">{{ result.narrative }}</p>
+    {% if result.caveats %}
+    <ul class="caveats">
+        {% for caveat in result.caveats %}
+        <li>{{ caveat }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    <p class="story-count">Based on {{ result.story_count }} matching {{ "story" if result.story_count == 1 else "stories" }}.</p>
+</div>
