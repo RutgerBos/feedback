@@ -4,6 +4,7 @@ MongoDB storage adapter implementing StoragePort.
 This adapter provides concrete MongoDB implementation of the StoragePort interface.
 """
 
+from datetime import datetime
 from typing import Any
 
 from pymongo.database import Database
@@ -104,30 +105,36 @@ class MongoDBStorageAdapter(StoragePort):
         except Exception as e:
             raise StorageError(f"Failed to retrieve story: {e}") from e
 
-    def count_stories(self) -> int:
-        """Return the total number of stories in the collection."""
+    def count_stories(
+        self,
+        from_date: datetime | None = None,
+        to_date: datetime | None = None,
+    ) -> int:
+        """Return the number of stories matching the optional date filter."""
         try:
-            return self.collection.count_documents({})
+            return self.collection.count_documents(
+                self._date_filter(from_date, to_date)
+            )
         except Exception as e:
             raise StorageError(f"Failed to count stories: {e}") from e
 
-    def list_stories(self, limit: int = 20, offset: int = 0) -> list[Story]:
+    def list_stories(
+        self,
+        limit: int = 20,
+        offset: int = 0,
+        from_date: datetime | None = None,
+        to_date: datetime | None = None,
+    ) -> list[Story]:
         """
-        Retrieve a paginated list of stories from MongoDB, newest first.
-
-        Args:
-            limit: Maximum number of stories to return
-            offset: Number of stories to skip
-
-        Returns:
-            List[Story]: List of story domain objects
+        Retrieve a paginated list of stories from MongoDB, newest first,
+        optionally filtered by date range.
 
         Raises:
             StorageError: If retrieval fails
         """
         try:
             cursor = (
-                self.collection.find()
+                self.collection.find(self._date_filter(from_date, to_date))
                 .sort("timestamp", -1)
                 .skip(offset)
                 .limit(limit)
@@ -135,6 +142,21 @@ class MongoDBStorageAdapter(StoragePort):
             return [self._document_to_story(doc) for doc in cursor]
         except Exception as e:
             raise StorageError(f"Failed to list stories: {e}") from e
+
+    @staticmethod
+    def _date_filter(
+        from_date: datetime | None,
+        to_date: datetime | None,
+    ) -> dict:
+        """Build a MongoDB timestamp filter from optional date bounds."""
+        if from_date is None and to_date is None:
+            return {}
+        ts: dict = {}
+        if from_date is not None:
+            ts["$gte"] = from_date
+        if to_date is not None:
+            ts["$lte"] = to_date
+        return {"timestamp": ts}
 
     def update_story_entities(
         self,

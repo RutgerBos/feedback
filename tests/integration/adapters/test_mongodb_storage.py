@@ -208,6 +208,69 @@ def test_list_stories_respects_limit_and_offset(storage_adapter):
     assert len(page_two) == 2
 
 
+def test_list_stories_filters_by_from_date(storage_adapter):
+    """list_stories excludes stories before from_date."""
+    base_text = "A story long enough to pass validation. " * 3
+    triads = [
+        TriadPlacement(triad_id="t1", coordinates=TriadCoordinates(x=0.3, y=0.6)),
+        TriadPlacement(triad_id="t2", coordinates=TriadCoordinates(x=0.5, y=0.4)),
+        TriadPlacement(triad_id="t3", coordinates=TriadCoordinates(x=0.2, y=0.7)),
+    ]
+    old = Story(id=str(uuid4()), story_text=base_text, triads=triads,
+                timestamp=datetime(2026, 1, 1, tzinfo=UTC))
+    new = Story(id=str(uuid4()), story_text=base_text, triads=triads,
+                timestamp=datetime(2026, 3, 15, tzinfo=UTC))
+    storage_adapter.save_story(old)
+    storage_adapter.save_story(new)
+
+    results = storage_adapter.list_stories(from_date=datetime(2026, 3, 1))
+    ids = [s.id for s in results]
+    assert new.id in ids
+    assert old.id not in ids
+
+
+def test_list_stories_filters_by_to_date(storage_adapter):
+    """list_stories excludes stories after to_date."""
+    base_text = "A story long enough to pass validation. " * 3
+    triads = [
+        TriadPlacement(triad_id="t1", coordinates=TriadCoordinates(x=0.3, y=0.6)),
+        TriadPlacement(triad_id="t2", coordinates=TriadCoordinates(x=0.5, y=0.4)),
+        TriadPlacement(triad_id="t3", coordinates=TriadCoordinates(x=0.2, y=0.7)),
+    ]
+    old = Story(id=str(uuid4()), story_text=base_text, triads=triads,
+                timestamp=datetime(2026, 1, 1, tzinfo=UTC))
+    new = Story(id=str(uuid4()), story_text=base_text, triads=triads,
+                timestamp=datetime(2026, 3, 15, tzinfo=UTC))
+    storage_adapter.save_story(old)
+    storage_adapter.save_story(new)
+
+    results = storage_adapter.list_stories(to_date=datetime(2026, 2, 1))
+    ids = [s.id for s in results]
+    assert old.id in ids
+    assert new.id not in ids
+
+
+def test_count_stories_filters_by_date_range(storage_adapter):
+    """count_stories respects from_date and to_date."""
+    base_text = "A story long enough to pass validation. " * 3
+    triads = [
+        TriadPlacement(triad_id="t1", coordinates=TriadCoordinates(x=0.3, y=0.6)),
+        TriadPlacement(triad_id="t2", coordinates=TriadCoordinates(x=0.5, y=0.4)),
+        TriadPlacement(triad_id="t3", coordinates=TriadCoordinates(x=0.2, y=0.7)),
+    ]
+    for ts in [datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 2, 1, tzinfo=UTC),
+               datetime(2026, 3, 15, tzinfo=UTC)]:
+        storage_adapter.save_story(Story(id=str(uuid4()), story_text=base_text,
+                                         triads=triads, timestamp=ts))
+
+    assert storage_adapter.count_stories() == 3
+    assert storage_adapter.count_stories(from_date=datetime(2026, 2, 1)) == 2
+    assert storage_adapter.count_stories(to_date=datetime(2026, 1, 31)) == 1
+    assert storage_adapter.count_stories(
+        from_date=datetime(2026, 2, 1), to_date=datetime(2026, 2, 28)
+    ) == 1
+
+
 def test_update_story_entities_persists_and_round_trips(storage_adapter):
     """update_story_entities persists entities/themes and they survive a save/get cycle."""
 

@@ -6,6 +6,7 @@ independent of the actual storage implementation (MongoDB, PostgreSQL, etc).
 """
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Any
 
 from src.domain.models import SentimentAnalysis, Story
@@ -62,12 +63,20 @@ class StoragePort(ABC):
         pass
 
     @abstractmethod
-    def count_stories(self) -> int:
+    def count_stories(
+        self,
+        from_date: datetime | None = None,
+        to_date: datetime | None = None,
+    ) -> int:
         """
-        Return the total number of stories in storage.
+        Return the number of stories in storage, optionally filtered by date range.
+
+        Args:
+            from_date: Inclusive lower bound on story timestamp (UTC-naive)
+            to_date:   Inclusive upper bound on story timestamp (UTC-naive)
 
         Returns:
-            int: Total story count
+            int: Story count matching the filter
 
         Raises:
             StorageError: If the count fails due to infrastructure issues
@@ -75,13 +84,21 @@ class StoragePort(ABC):
         pass
 
     @abstractmethod
-    def list_stories(self, limit: int = 20, offset: int = 0) -> list[Story]:
+    def list_stories(
+        self,
+        limit: int = 20,
+        offset: int = 0,
+        from_date: datetime | None = None,
+        to_date: datetime | None = None,
+    ) -> list[Story]:
         """
-        Retrieve a paginated list of stories, newest first.
+        Retrieve a paginated list of stories, newest first, optionally filtered by date.
 
         Args:
-            limit: Maximum number of stories to return (default 20)
-            offset: Number of stories to skip (default 0)
+            limit:     Maximum number of stories to return (default 20)
+            offset:    Number of stories to skip (default 0)
+            from_date: Inclusive lower bound on story timestamp (UTC-naive)
+            to_date:   Inclusive upper bound on story timestamp (UTC-naive)
 
         Returns:
             List[Story]: List of story domain objects

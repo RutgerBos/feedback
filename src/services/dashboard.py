@@ -6,12 +6,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
 
 from src.ports.storage import StoragePort
-
-if TYPE_CHECKING:
-    from src.domain.models import Story
 
 _MAX_STORIES = 500  # upper bound for aggregation scan
 _TOP_N = 10        # max items in top_themes / top_entities
@@ -79,29 +75,22 @@ class DashboardService:
         Returns:
             DashboardData with totals, top themes, top entities, recent IDs
         """
-        total_in_store = self._storage.count_stories()
-        stories = self._storage.list_stories(limit=_MAX_STORIES, offset=0)
-        sample_capped = total_in_store > _MAX_STORIES
-
-        # Normalise a datetime to UTC-naive for comparison
+        # Normalise a datetime to UTC-naive for storage comparison
         def _to_utc_naive(dt: datetime) -> datetime:
             if dt.tzinfo is not None:
                 dt = dt.astimezone(UTC).replace(tzinfo=None)
             return dt
 
-        def _story_ts(s: Story) -> datetime:
-            return _to_utc_naive(s.timestamp)
+        fd = _to_utc_naive(from_date) if from_date is not None else None
+        td = _to_utc_naive(to_date) if to_date is not None else None
 
-        # Apply date filter
-        if from_date is not None:
-            fd = _to_utc_naive(from_date)
-            stories = [s for s in stories if _story_ts(s) >= fd]
-        if to_date is not None:
-            td = _to_utc_naive(to_date)
-            # Treat midnight as end-of-day so date-only inputs include the full day
-            if td.hour == 0 and td.minute == 0 and td.second == 0:
-                td = td + timedelta(days=1) - timedelta(seconds=1)
-            stories = [s for s in stories if _story_ts(s) <= td]
+        # Treat midnight to_date as end-of-day so date-only inputs include the full day
+        if td is not None and td.hour == 0 and td.minute == 0 and td.second == 0:
+            td = td + timedelta(days=1) - timedelta(seconds=1)
+
+        total_in_range = self._storage.count_stories(from_date=fd, to_date=td)
+        stories = self._storage.list_stories(limit=_MAX_STORIES, offset=0, from_date=fd, to_date=td)
+        sample_capped = total_in_range > _MAX_STORIES
 
         if not stories:
             return DashboardData(total_stories=0, sample_capped=sample_capped)
@@ -127,7 +116,7 @@ class DashboardService:
         top_entities = [{"name": n, "count": c} for n, c in sorted_entities[:_TOP_N]]
 
         return DashboardData(
-            total_stories=len(stories),
+            total_stories=total_in_range,
             top_themes=top_themes,
             top_entities=top_entities,
             recent_story_ids=[s.id for s in stories[:5]],

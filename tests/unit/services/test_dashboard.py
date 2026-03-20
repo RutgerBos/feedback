@@ -33,6 +33,12 @@ def make_story(
     )
 
 
+def _to_naive(dt: datetime) -> datetime:
+    if dt.tzinfo is not None:
+        return dt.astimezone(UTC).replace(tzinfo=None)
+    return dt
+
+
 class FakeStorage(StoragePort):
     def __init__(self, stories: list[Story] | None = None):
         self._stories = stories or []
@@ -46,11 +52,28 @@ class FakeStorage(StoragePort):
                 return s
         raise KeyError(story_id)
 
-    def count_stories(self) -> int:
-        return len(self._stories)
+    def count_stories(
+        self,
+        from_date: datetime | None = None,
+        to_date: datetime | None = None,
+    ) -> int:
+        return len(self.list_stories(limit=len(self._stories) + 1, from_date=from_date, to_date=to_date))
 
-    def list_stories(self, limit: int = 20, offset: int = 0) -> list[Story]:
-        return self._stories[offset: offset + limit]
+    def list_stories(
+        self,
+        limit: int = 20,
+        offset: int = 0,
+        from_date: datetime | None = None,
+        to_date: datetime | None = None,
+    ) -> list[Story]:
+        stories = self._stories
+        if from_date is not None:
+            fd = _to_naive(from_date)
+            stories = [s for s in stories if _to_naive(s.timestamp) >= fd]
+        if to_date is not None:
+            td = _to_naive(to_date)
+            stories = [s for s in stories if _to_naive(s.timestamp) <= td]
+        return stories[offset: offset + limit]
 
     def update_story_entities(self, story_id, entities, themes, processing_status):
         pass
