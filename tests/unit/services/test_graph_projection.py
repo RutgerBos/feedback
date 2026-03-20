@@ -80,6 +80,12 @@ class FakeGraph(GraphPort):
 
     def count_stories_by_theme(self, theme_name):
         return 0
+    def find_entity_correlations(self, limit, threshold=0.0, entity_type=None):
+        return []
+
+    def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
+        return []
+
 
 
 class FailingGraph(GraphPort):
@@ -109,6 +115,12 @@ class FailingGraph(GraphPort):
 
     def count_stories_by_theme(self, theme_name):
         return 0
+    def find_entity_correlations(self, limit, threshold=0.0, entity_type=None):
+        return []
+
+    def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
+        return []
+
 
 
 # ── Test 1: can instantiate ────────────────────────────────────────────────────
@@ -284,6 +296,12 @@ def test_project_story_continues_themes_after_entity_graph_error():
 
         def count_stories_by_theme(self, theme_name):
             return 0
+
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None):
+            return []
+
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
+            return []
 
     story = make_story()
     story.themes = ["some theme"]

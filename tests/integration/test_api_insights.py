@@ -53,6 +53,12 @@ def api_client(test_db):
 
         def count_stories_by_theme(self, theme_name):
             return 0
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None):
+            return []
+
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
+            return []
+
 
     class FixedInsightLLM(LLMPort):
         def extract_entities(self, story_text: str) -> EntityExtraction:
@@ -166,6 +172,12 @@ def test_synthesize_returns_narrative_when_stories_exist(test_db):
 
         def count_stories_by_theme(self, theme_name):
             return 0
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None):
+            return []
+
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
+            return []
+
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: FixedInsightLLM()
@@ -290,6 +302,12 @@ def test_synthesize_returns_503_on_storage_error(test_db):
 
         def count_stories_by_theme(self, theme_name):
             return 0
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None):
+            return []
+
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
+            return []
+
 
     class ErrorStorage(StoragePort):
         def save_story(self, story: Story) -> str:
@@ -379,6 +397,12 @@ def test_synthesize_returns_503_on_graph_error(test_db):
 
         def count_stories_by_theme(self, theme_name):
             return 0
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None):
+            return []
+
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0):
+            return []
+
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()

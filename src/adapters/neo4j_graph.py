@@ -262,6 +262,73 @@ class Neo4jGraphAdapter(GraphPort):
         except Exception as e:
             raise GraphError(f"Failed to find stories by theme: {e}") from e
 
+    def find_entity_correlations(
+        self,
+        limit: int,
+        threshold: float = 0.0,
+        entity_type: str | None = None,
+    ) -> list[tuple[str, str, int, float]]:
+        """Return entity pairs ranked by Jaccard co-occurrence strength."""
+        type_filter = "WHERE a.type = $entity_type AND b.type = $entity_type" if entity_type else ""
+        try:
+            with self._driver.session() as session:
+                result = session.run(
+                    f"""
+                    MATCH (a:Entity)<-[:MENTIONS]-(s:Story)-[:MENTIONS]->(b:Entity)
+                    WHERE a.name < b.name
+                    {type_filter}
+                    WITH a, b, COUNT(DISTINCT s) AS both_count
+                    MATCH (a)<-[:MENTIONS]-(sa:Story)
+                    WITH a, b, both_count, COUNT(DISTINCT sa) AS a_count
+                    MATCH (b)<-[:MENTIONS]-(sb:Story)
+                    WITH a, b, both_count, a_count, COUNT(DISTINCT sb) AS b_count
+                    WITH a, b, both_count,
+                         toFloat(both_count) / (a_count + b_count - both_count) AS jaccard
+                    WHERE jaccard >= $threshold
+                    RETURN a.name AS entity_a, b.name AS entity_b,
+                           both_count, jaccard
+                    ORDER BY jaccard DESC, entity_a ASC, entity_b ASC
+                    LIMIT $limit
+                    """,
+                    threshold=threshold,
+                    limit=limit,
+                    **( {"entity_type": entity_type} if entity_type else {}),
+                )
+                return [
+                    (row["entity_a"], row["entity_b"], row["both_count"], row["jaccard"])
+                    for row in result.data()
+                ]
+        except Exception as e:
+            raise GraphError(f"Failed to find entity correlations: {e}") from e
+
+    def find_story_ids_by_entity_pair(
+        self,
+        entity_a: str,
+        entity_b: str,
+        limit: int,
+        offset: int = 0,
+    ) -> list[str]:
+        """Return story IDs for stories mentioning both entity_a and entity_b."""
+        try:
+            with self._driver.session() as session:
+                result = session.run(
+                    """
+                    MATCH (a:Entity)<-[:MENTIONS]-(s:Story)-[:MENTIONS]->(b:Entity)
+                    WHERE toLower(a.name) = toLower($entity_a)
+                      AND toLower(b.name) = toLower($entity_b)
+                    RETURN DISTINCT s.story_id AS story_id, s.timestamp AS ts
+                    ORDER BY ts DESC, story_id DESC
+                    SKIP $offset LIMIT $limit
+                    """,
+                    entity_a=entity_a,
+                    entity_b=entity_b,
+                    offset=offset,
+                    limit=limit,
+                )
+                return [row["story_id"] for row in result.data()]
+        except Exception as e:
+            raise GraphError(f"Failed to find stories by entity pair: {e}") from e
+
     def count_stories_by_theme(self, theme_name: str) -> int:
         """Return total count of stories with the given theme."""
         try:

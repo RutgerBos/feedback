@@ -734,3 +734,143 @@ def test_find_themes_ranked_has_stable_secondary_sort():
     query, _ = driver.session_instance.queries[0]
     order_section = query.upper().split("ORDER BY")[-1]
     assert "NAME" in order_section
+
+
+# ── Story 4.3: find_entity_correlations ──────────────────────────────────────
+
+
+def test_find_entity_correlations_emits_cypher_with_jaccard():
+    """find_entity_correlations runs a Cypher query computing Jaccard co-occurrence."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.find_entity_correlations(limit=10)
+
+    assert len(driver.session_instance.queries) == 1
+    query, params = driver.session_instance.queries[0]
+    assert "MENTIONS" in query
+    assert "jaccard" in query.lower() or "toFloat" in query or "toFloat".lower() in query.lower()
+    assert params.get("limit") == 10
+
+
+def test_find_entity_correlations_returns_tuples():
+    """find_entity_correlations returns (entity_a, entity_b, co_count, jaccard) tuples."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    rows = [
+        {"entity_a": "CI pipeline", "entity_b": "deployment", "both_count": 5, "jaccard": 0.71},
+        {"entity_a": "CI pipeline", "entity_b": "testing", "both_count": 3, "jaccard": 0.5},
+    ]
+    driver = FakeDriver(result=FakeResult(rows=rows))
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    result = adapter.find_entity_correlations(limit=10)
+    assert result == [
+        ("CI pipeline", "deployment", 5, 0.71),
+        ("CI pipeline", "testing", 3, 0.5),
+    ]
+
+
+def test_find_entity_correlations_applies_threshold():
+    """find_entity_correlations passes threshold as a query parameter."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.find_entity_correlations(limit=10, threshold=0.3)
+
+    _, params = driver.session_instance.queries[0]
+    assert params.get("threshold") == 0.3
+
+
+def test_find_entity_correlations_applies_entity_type_filter():
+    """find_entity_correlations includes entity_type in query when provided."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.find_entity_correlations(limit=10, entity_type="tool")
+
+    query, params = driver.session_instance.queries[0]
+    assert "entity_type" in params or "type" in query.lower()
+
+
+def test_find_entity_correlations_has_stable_sort():
+    """find_entity_correlations sorts by jaccard DESC then entity names ASC."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.find_entity_correlations(limit=10)
+
+    query, _ = driver.session_instance.queries[0]
+    order_section = query.upper().split("ORDER BY")[-1]
+    assert "JACCARD" in order_section
+    assert "ENTITY_A" in order_section or "entity_a".upper() in order_section
+
+
+def test_find_entity_correlations_raises_graph_error_on_failure():
+    """find_entity_correlations raises GraphError when the driver fails."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+    from src.ports.errors import GraphError
+
+    class FailingSession:
+        def run(self, *args, **kwargs):
+            raise RuntimeError("boom")
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+
+    class FailingDriver:
+        def session(self): return FailingSession()
+
+    adapter = Neo4jGraphAdapter(driver=FailingDriver())
+    with pytest.raises(GraphError):
+        adapter.find_entity_correlations(limit=10)
+
+
+# ── Story 4.3: find_story_ids_by_entity_pair ─────────────────────────────────
+
+
+def test_find_story_ids_by_entity_pair_returns_story_ids():
+    """find_story_ids_by_entity_pair returns story IDs mentioning both entities."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    rows = [{"story_id": "s1"}, {"story_id": "s2"}]
+    driver = FakeDriver(result=FakeResult(rows=rows))
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    result = adapter.find_story_ids_by_entity_pair("CI pipeline", "deployment", limit=10)
+    assert result == ["s1", "s2"]
+
+
+def test_find_story_ids_by_entity_pair_has_stable_secondary_sort():
+    """find_story_ids_by_entity_pair uses story_id as secondary sort key."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.find_story_ids_by_entity_pair("a", "b", limit=10)
+
+    query, _ = driver.session_instance.queries[0]
+    order_section = query.upper().split("ORDER BY")[-1]
+    assert "STORY_ID" in order_section
+
+
+def test_find_story_ids_by_entity_pair_raises_graph_error_on_failure():
+    """find_story_ids_by_entity_pair raises GraphError when the driver fails."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+    from src.ports.errors import GraphError
+
+    class FailingSession:
+        def run(self, *args, **kwargs):
+            raise RuntimeError("boom")
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+
+    class FailingDriver:
+        def session(self): return FailingSession()
+
+    adapter = Neo4jGraphAdapter(driver=FailingDriver())
+    with pytest.raises(GraphError):
+        adapter.find_story_ids_by_entity_pair("a", "b", limit=10)
