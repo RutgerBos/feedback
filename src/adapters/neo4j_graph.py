@@ -4,7 +4,7 @@ Neo4j graph adapter implementing GraphPort.
 
 from typing import Any
 
-from src.domain.models import TriadPlacement
+from src.domain.models import TriadPlacement, TriadProximity
 from src.ports.errors import GraphError
 from src.ports.graph import GraphPort
 
@@ -115,3 +115,52 @@ class Neo4jGraphAdapter(GraphPort):
                 )
         except Exception as e:
             raise GraphError(f"Failed to save story node: {e}") from e
+
+    def save_proximity_relationships(
+        self, story_id: str, pairs: list[TriadProximity]
+    ) -> None:
+        """Replace NEAR_IN_SIGNIFIER_SPACE edges for a story.
+
+        Deletes all existing proximity edges touching story_id, then writes
+        the new qualifying pairs. Empty pairs list still removes stale edges.
+
+        Notes:
+        - Relationship is directed (a)->(b) where story_id_a < story_id_b (canonical).
+        - triad_id is part of the relationship identity to allow one edge per triad pair.
+        - distance and weight are overwritten on every reprojection.
+        """
+        try:
+            with self._driver.session() as session:
+                # Step 1: delete all stale proximity edges for this story
+                session.run(
+                    """
+                    MATCH (s:Story {story_id: $story_id})-[r:NEAR_IN_SIGNIFIER_SPACE]-()
+                    DELETE r
+                    """,
+                    story_id=story_id,
+                )
+                if not pairs:
+                    return
+                # Step 2: write new qualifying pairs
+                pairs_data = [
+                    {
+                        "story_id_a": p.story_id_a,
+                        "story_id_b": p.story_id_b,
+                        "triad_id": p.triad_id,
+                        "distance": p.distance,
+                        "weight": p.weight,
+                    }
+                    for p in pairs
+                ]
+                session.run(
+                    """
+                    UNWIND $pairs AS pair
+                    MATCH (a:Story {story_id: pair.story_id_a})
+                    MATCH (b:Story {story_id: pair.story_id_b})
+                    MERGE (a)-[r:NEAR_IN_SIGNIFIER_SPACE {triad_id: pair.triad_id}]->(b)
+                    SET r.distance = pair.distance, r.weight = pair.weight
+                    """,
+                    pairs=pairs_data,
+                )
+        except Exception as e:
+            raise GraphError(f"Failed to save proximity relationships: {e}") from e

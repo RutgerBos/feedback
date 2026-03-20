@@ -63,6 +63,9 @@ class FakeGraph(GraphPort):
     def save_theme_nodes(self, story_id: str, themes: list) -> None:
         self.saved_theme_calls.append((story_id, themes))
 
+    def save_proximity_relationships(self, story_id: str, pairs: list) -> None:
+        pass
+
 
 class FailingGraph(GraphPort):
     def save_story_node(self, story_id: str, triads, timestamp: str) -> None:
@@ -72,6 +75,9 @@ class FailingGraph(GraphPort):
         raise GraphError("Neo4j unavailable")
 
     def save_theme_nodes(self, story_id: str, themes: list) -> None:
+        raise GraphError("Neo4j unavailable")
+
+    def save_proximity_relationships(self, story_id: str, pairs: list) -> None:
         raise GraphError("Neo4j unavailable")
 
 
@@ -230,6 +236,9 @@ def test_project_story_continues_themes_after_entity_graph_error():
 
         def save_theme_nodes(self, story_id, themes):
             self.saved_theme_calls.append((story_id, themes))
+
+        def save_proximity_relationships(self, story_id, pairs):
+            pass
 
     story = make_story()
     story.themes = ["some theme"]
