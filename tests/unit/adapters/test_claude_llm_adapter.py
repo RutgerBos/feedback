@@ -253,6 +253,7 @@ def make_insight_context():
 def test_claude_adapter_synthesize_insights_returns_insight_output():
     """synthesize_insights parses narrative and caveats from Claude response."""
     import json
+
     from src.adapters.claude_llm import ClaudeLLMAdapter
 
     response = json.dumps({"narrative": "CI issues cluster in friction zone.", "caveats": ["Small sample."]})
@@ -279,6 +280,7 @@ def test_claude_adapter_synthesize_insights_raises_on_bad_json():
 def test_claude_adapter_synthesize_insights_raises_on_non_string_narrative():
     """synthesize_insights raises LLMError when narrative is not a string."""
     import json
+
     from src.adapters.claude_llm import ClaudeLLMAdapter
     from src.ports.errors import LLMError
 
@@ -286,3 +288,57 @@ def test_claude_adapter_synthesize_insights_raises_on_non_string_narrative():
     adapter = ClaudeLLMAdapter(client=make_fake_anthropic_client(response))
     with pytest.raises(LLMError):
         adapter.synthesize_insights(make_insight_context())
+
+
+def test_claude_adapter_synthesize_insights_raises_on_missing_narrative_key():
+    """synthesize_insights raises LLMError when narrative key is absent from response."""
+    import json
+
+    from src.adapters.claude_llm import ClaudeLLMAdapter
+    from src.ports.errors import LLMError
+
+    response = json.dumps({"caveats": ["Only caveat."]})  # no "narrative" key
+    adapter = ClaudeLLMAdapter(client=make_fake_anthropic_client(response))
+    with pytest.raises(LLMError, match="narrative"):
+        adapter.synthesize_insights(make_insight_context())
+
+
+def test_claude_adapter_synthesize_insights_includes_triad_positions_in_prompt():
+    """The prompt sent to Claude includes triad coordinate information."""
+    import json
+
+    from src.adapters.claude_llm import ClaudeLLMAdapter
+    from src.domain.models import InsightContext, SentimentSummary, StoryExcerpt
+
+    captured_prompts = []
+
+    class CapturingMessages:
+        def create(self, **kwargs):
+            captured_prompts.append(kwargs["messages"][0]["content"])
+
+            class FakeMsg:
+                class FakeContent:
+                    text = json.dumps({"narrative": "Test.", "caveats": []})
+                content = [FakeContent()]
+            return FakeMsg()
+
+    class CapturingClient:
+        messages = CapturingMessages()
+
+    ctx = InsightContext(
+        query="q", entity_name="CI",
+        total_stories=1,
+        excerpts=[StoryExcerpt(
+            story_id="s1", text_excerpt="text",
+            triad_positions={"workflow": {"x": 0.3, "y": 0.6}},
+        )],
+        theme_counts={}, sentiment_summary=SentimentSummary(),
+    )
+    adapter = ClaudeLLMAdapter(client=CapturingClient())
+    adapter.synthesize_insights(ctx)
+
+    assert len(captured_prompts) == 1
+    prompt = captured_prompts[0]
+    assert "0.30" in prompt
+    assert "0.60" in prompt
+    assert "workflow" in prompt
