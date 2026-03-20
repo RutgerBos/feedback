@@ -73,6 +73,10 @@ class FakeLLM(LLMPort):
     def extract_sentiment(self, story_text: str) -> SentimentAnalysis:
         return SentimentAnalysis(emotion_markers=[], process_sentiment="neutral", outcome_sentiment="neutral")
 
+    def synthesize_insights(self, context):
+        from src.domain.models import InsightOutput
+        return InsightOutput(narrative="")
+
 
 class FailingLLM(LLMPort):
     """LLM fake that always raises LLMError."""
@@ -87,6 +91,9 @@ class FailingLLM(LLMPort):
         raise LLMError("API unavailable")
 
     def extract_sentiment(self, story_text: str) -> SentimentAnalysis:
+        raise LLMError("API unavailable")
+
+    def synthesize_insights(self, context):
         raise LLMError("API unavailable")
 
 

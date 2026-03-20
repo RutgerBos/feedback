@@ -231,3 +231,58 @@ def test_claude_adapter_extract_sentiment_handles_empty_emotion_markers():
     assert isinstance(result, SentimentAnalysis)
     assert result.emotion_markers == []
     assert result.process_sentiment == "neutral"
+
+
+# ── synthesize_insights ────────────────────────────────────────────────────────
+
+
+def make_insight_context():
+    from src.domain.models import InsightContext, SentimentSummary, StoryExcerpt
+    return InsightContext(
+        query="Why do CI stories cluster here?",
+        entity_name="CI pipeline",
+        total_stories=3,
+        excerpts=[
+            StoryExcerpt(story_id="s1", text_excerpt="Pipeline broke again.", triad_positions={}),
+        ],
+        theme_counts={"automation friction": 2},
+        sentiment_summary=SentimentSummary(negative_process=2),
+    )
+
+
+def test_claude_adapter_synthesize_insights_returns_insight_output():
+    """synthesize_insights parses narrative and caveats from Claude response."""
+    import json
+    from src.adapters.claude_llm import ClaudeLLMAdapter
+
+    response = json.dumps({"narrative": "CI issues cluster in friction zone.", "caveats": ["Small sample."]})
+    adapter = ClaudeLLMAdapter(client=make_fake_anthropic_client(response))
+
+    from src.domain.models import InsightOutput
+    result = adapter.synthesize_insights(make_insight_context())
+
+    assert isinstance(result, InsightOutput)
+    assert result.narrative == "CI issues cluster in friction zone."
+    assert result.caveats == ["Small sample."]
+
+
+def test_claude_adapter_synthesize_insights_raises_on_bad_json():
+    """synthesize_insights raises LLMError when response is not valid JSON."""
+    from src.adapters.claude_llm import ClaudeLLMAdapter
+    from src.ports.errors import LLMError
+
+    adapter = ClaudeLLMAdapter(client=make_fake_anthropic_client("not json"))
+    with pytest.raises(LLMError):
+        adapter.synthesize_insights(make_insight_context())
+
+
+def test_claude_adapter_synthesize_insights_raises_on_non_string_narrative():
+    """synthesize_insights raises LLMError when narrative is not a string."""
+    import json
+    from src.adapters.claude_llm import ClaudeLLMAdapter
+    from src.ports.errors import LLMError
+
+    response = json.dumps({"narrative": 42, "caveats": []})
+    adapter = ClaudeLLMAdapter(client=make_fake_anthropic_client(response))
+    with pytest.raises(LLMError):
+        adapter.synthesize_insights(make_insight_context())

@@ -95,6 +95,9 @@ class _NoOpLLM(LLMPort):
     def extract_sentiment(self, story_text: str) -> SentimentAnalysis:
         raise LLMError("No LLM provider configured")
 
+    def synthesize_insights(self, context):  # type: ignore[override]
+        raise LLMError("No LLM provider configured — override get_llm dependency")
+
 
 def get_llm() -> LLMPort:
     """

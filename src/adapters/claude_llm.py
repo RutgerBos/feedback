@@ -5,7 +5,7 @@ Claude LLM adapter implementing LLMPort via the Anthropic API.
 import json
 from typing import Any
 
-from src.domain.models import SentimentAnalysis
+from src.domain.models import InsightContext, InsightOutput, SentimentAnalysis
 from src.ports.errors import LLMError
 from src.ports.llm import EntityExtraction, LLMPort
 
@@ -112,6 +112,47 @@ class ClaudeLLMAdapter(LLMPort):
             )
         except (json.JSONDecodeError, KeyError) as e:
             raise LLMError(f"Failed to parse sentiment extraction response: {e}") from e
+
+    def synthesize_insights(self, context: InsightContext) -> InsightOutput:
+        """Synthesize a narrative insight from structured pattern evidence via Claude."""
+        excerpt_lines = "\n".join(
+            f'- [{e.story_id}] "{e.text_excerpt}"'
+            for e in context.excerpts
+        )
+        theme_lines = "\n".join(
+            f"  {theme}: {count} stories" for theme, count in sorted(
+                context.theme_counts.items(), key=lambda x: -x[1]
+            )
+        )
+        s = context.sentiment_summary
+        sentiment_line = (
+            f"Process — positive: {s.positive_process}, negative: {s.negative_process}, neutral: {s.neutral_process}; "
+            f"Outcome — positive: {s.positive_outcome}, negative: {s.negative_outcome}, neutral: {s.neutral_outcome}"
+        )
+        prompt = (
+            f"You are analyzing feedback stories about '{context.entity_name}'.\n"
+            f"User question: {context.query}\n\n"
+            f"Total matching stories: {context.total_stories} "
+            f"(showing {len(context.excerpts)} excerpts)\n\n"
+            f"Story excerpts:\n{excerpt_lines}\n\n"
+            f"Theme distribution:\n{theme_lines if theme_lines else '  (no themes extracted)'}\n\n"
+            f"Sentiment summary: {sentiment_line}\n\n"
+            "Write a clear, concise narrative (3-5 sentences) explaining what patterns emerge "
+            "from these stories. Include any important caveats about data quality or sample size.\n"
+            'Respond with JSON only: {"narrative": "...", "caveats": ["..."]}'
+        )
+        raw = self._call(prompt)
+        try:
+            data = json.loads(raw)
+            narrative = data.get("narrative", "")
+            caveats = data.get("caveats", [])
+            if not isinstance(narrative, str):
+                raise LLMError("Expected 'narrative' to be a string")
+            if not isinstance(caveats, list) or not all(isinstance(c, str) for c in caveats):
+                raise LLMError("Expected 'caveats' to be a list of strings")
+            return InsightOutput(narrative=narrative, caveats=caveats)
+        except (json.JSONDecodeError, KeyError) as e:
+            raise LLMError(f"Failed to parse insight synthesis response: {e}") from e
 
     def _require_list(self, data: dict, key: str) -> list:
         """Extract a list value from parsed JSON, raising LLMError if missing or not a list."""
