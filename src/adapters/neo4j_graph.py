@@ -220,7 +220,7 @@ class Neo4jGraphAdapter(GraphPort):
                     WHERE ($from_date IS NULL OR s.timestamp >= $from_date)
                       AND ($to_date   IS NULL OR s.timestamp <= $to_date)
                     RETURN t.name AS name, COUNT(DISTINCT s) AS story_count
-                    ORDER BY story_count DESC
+                    ORDER BY story_count DESC, name ASC
                     LIMIT $limit
                     """,
                     from_date=from_date,

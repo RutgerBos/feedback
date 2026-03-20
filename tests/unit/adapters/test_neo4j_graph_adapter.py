@@ -721,3 +721,16 @@ def test_count_stories_by_theme_raises_graph_error_on_failure():
     adapter = Neo4jGraphAdapter(driver=FailingDriver())
     with pytest.raises(GraphError):
         adapter.count_stories_by_theme("anything")
+
+
+def test_find_themes_ranked_has_stable_secondary_sort():
+    """find_themes_ranked uses theme name as secondary sort for deterministic ordering on ties."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.find_themes_ranked(limit=10)
+
+    query, _ = driver.session_instance.queries[0]
+    order_section = query.upper().split("ORDER BY")[-1]
+    assert "NAME" in order_section
