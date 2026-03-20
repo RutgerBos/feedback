@@ -8,7 +8,6 @@ import pytest
 
 from src.domain.models import TriadCoordinates, TriadProximity
 
-
 # --- TriadCoordinates.distance_to ---
 
 def test_distance_to_identical_coordinates_is_zero():

@@ -2,13 +2,11 @@
 Tests for ProximityCalculationService (Story 3.4).
 """
 
-import pytest
 
 from src.domain.models import Story, TriadCoordinates, TriadPlacement, TriadProximity
-from src.ports.errors import GraphError, NotFoundError
+from src.ports.errors import NotFoundError
 from src.ports.graph import GraphPort
 from src.ports.storage import StoragePort
-
 
 THRESHOLD = 0.3
 
@@ -241,7 +239,7 @@ def test_calculate_for_story_skips_missing_triad():
 
 def test_calculate_for_story_finds_pairs_across_page_boundary():
     """Proximity pairs are found even when candidates span multiple storage pages."""
-    from src.services.proximity import ProximityCalculationService, _PAGE_SIZE
+    from src.services.proximity import _PAGE_SIZE, ProximityCalculationService
 
     # Create _PAGE_SIZE + 1 stories so pagination is exercised
     stories = {}

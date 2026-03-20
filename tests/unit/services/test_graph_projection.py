@@ -257,7 +257,6 @@ def test_project_story_continues_themes_after_entity_graph_error():
 def test_project_story_calls_proximity_calculation():
     """project_story calls proximity calculation after entity and theme projection."""
     from src.services.graph_projection import GraphProjectionService
-    from src.services.proximity import ProximityCalculationService
 
     story = make_story()
     storage = FakeStorage(stories={story.id: story})
