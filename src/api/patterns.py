@@ -160,6 +160,8 @@ async def get_clusters(
         result = service.cluster_by_triad(triad_id)
     except GraphError as e:
         raise HTTPException(status_code=503, detail="Graph database unavailable") from e
+    except NotFoundError as e:
+        raise HTTPException(status_code=503, detail="Story data inconsistency — retry later") from e
 
     return ClusterResponse(
         clusters=[

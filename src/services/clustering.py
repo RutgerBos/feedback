@@ -108,7 +108,7 @@ class ClusteringService:
             for s in stories:
                 for t in set(s.themes or []):
                     theme_counts[t] += 1
-            top_themes = [t for t, _ in theme_counts.most_common()]
+            top_themes = [t for t, _ in sorted(theme_counts.items(), key=lambda kv: (-kv[1], kv[0]))]
 
             # Aggregate entities (ranked by frequency)
             entity_counts: Counter = Counter()
@@ -119,7 +119,7 @@ class ClusteringService:
                     if name and name not in seen:
                         entity_counts[name] += 1
                         seen.add(name)
-            top_entities = [e for e, _ in entity_counts.most_common()]
+            top_entities = [e for e, _ in sorted(entity_counts.items(), key=lambda kv: (-kv[1], kv[0]))]
 
             clusters.append(Cluster(
                 story_ids=story_ids,

@@ -2,6 +2,7 @@
 Neo4j graph adapter implementing GraphPort.
 """
 
+import uuid
 from typing import Any
 
 from src.domain.models import TriadPlacement, TriadProximity
@@ -335,15 +336,24 @@ class Neo4jGraphAdapter(GraphPort):
         Uses a GDS Cypher projection scoped to NEAR_IN_SIGNIFIER_SPACE edges
         for the given triad_id. The named graph is always dropped in a finally
         block to prevent stale projections accumulating in GDS memory.
+
+        Notes:
+        - A UUID suffix is appended to the graph name so concurrent requests
+          for the same triad do not race on the same named projection.
+        - The node query is scoped to stories participating in the triad's
+          proximity edges to prevent Louvain emitting singleton communities
+          for stories unrelated to this triad.
         """
-        graph_name = f"proximity-{triad_id}"
+        graph_name = f"proximity-{triad_id}-{uuid.uuid4().hex[:8]}"
         try:
             with self._driver.session() as session:
                 session.run(
                     """
                     CALL gds.graph.project.cypher(
                         $graph_name,
-                        'MATCH (s:Story) RETURN id(s) AS id',
+                        'MATCH (s:Story)-[r:NEAR_IN_SIGNIFIER_SPACE]-()
+                         WHERE r.triad_id = $triad_id
+                         RETURN DISTINCT id(s) AS id',
                         'MATCH (a:Story)-[r:NEAR_IN_SIGNIFIER_SPACE]->(b:Story)
                          WHERE r.triad_id = $triad_id
                          RETURN id(a) AS source, id(b) AS target, r.weight AS weight',
