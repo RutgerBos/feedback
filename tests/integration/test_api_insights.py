@@ -45,6 +45,15 @@ def api_client(test_db):
         def count_stories_by_entity(self, entity_name):
             return 0
 
+        def find_themes_ranked(self, limit, from_date=None, to_date=None):
+            return []
+
+        def find_story_ids_by_theme(self, theme_name, limit, offset):
+            return []
+
+        def count_stories_by_theme(self, theme_name):
+            return 0
+
     class FixedInsightLLM(LLMPort):
         def extract_entities(self, story_text: str) -> EntityExtraction:
             return EntityExtraction(entities=[])
@@ -148,6 +157,15 @@ def test_synthesize_returns_narrative_when_stories_exist(test_db):
 
         def count_stories_by_entity(self, entity_name):
             return len(story_ids)
+
+        def find_themes_ranked(self, limit, from_date=None, to_date=None):
+            return []
+
+        def find_story_ids_by_theme(self, theme_name, limit, offset):
+            return []
+
+        def count_stories_by_theme(self, theme_name):
+            return 0
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: FixedInsightLLM()
@@ -264,6 +282,15 @@ def test_synthesize_returns_503_on_storage_error(test_db):
         def count_stories_by_entity(self, entity_name):
             return 1
 
+        def find_themes_ranked(self, limit, from_date=None, to_date=None):
+            return []
+
+        def find_story_ids_by_theme(self, theme_name, limit, offset):
+            return []
+
+        def count_stories_by_theme(self, theme_name):
+            return 0
+
     class ErrorStorage(StoragePort):
         def save_story(self, story: Story) -> str:
             return story.id
@@ -343,6 +370,15 @@ def test_synthesize_returns_503_on_graph_error(test_db):
 
         def count_stories_by_entity(self, entity_name):
             raise GraphError("Neo4j down")
+
+        def find_themes_ranked(self, limit, from_date=None, to_date=None):
+            return []
+
+        def find_story_ids_by_theme(self, theme_name, limit, offset):
+            return []
+
+        def count_stories_by_theme(self, theme_name):
+            return 0
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()

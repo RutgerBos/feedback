@@ -48,6 +48,15 @@ class FakeGraph(GraphPort):
         self.count_calls.append(entity_name)
         return self._total
 
+    def find_themes_ranked(self, limit, from_date=None, to_date=None):
+        return []
+
+    def find_story_ids_by_theme(self, theme_name, limit, offset):
+        return []
+
+    def count_stories_by_theme(self, theme_name):
+        return 0
+
 
 class FakeStorage(StoragePort):
     def __init__(self, stories: dict | None = None):
@@ -80,6 +89,15 @@ class FailingGraph(FakeGraph):
 
     def count_stories_by_entity(self, entity_name):
         raise GraphError("Neo4j down")
+
+    def find_themes_ranked(self, limit, from_date=None, to_date=None):
+        return []
+
+    def find_story_ids_by_theme(self, theme_name, limit, offset):
+        return []
+
+    def count_stories_by_theme(self, theme_name):
+        return 0
 
 
 # ── Test 1: returns story objects for matching entity ─────────────────────────

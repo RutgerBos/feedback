@@ -62,6 +62,15 @@ def api_client(test_db):
         def count_stories_by_entity(self, entity_name: str) -> int:
             return 0
 
+        def find_themes_ranked(self, limit, from_date=None, to_date=None):
+            return []
+
+        def find_story_ids_by_theme(self, theme_name, limit, offset):
+            return []
+
+        def count_stories_by_theme(self, theme_name):
+            return 0
+
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
     app.dependency_overrides[get_graph] = lambda: NoOpGraph()
@@ -321,6 +330,15 @@ def test_submit_story_triggers_entity_extraction(test_db):
         def count_stories_by_entity(self, entity_name: str) -> int:
             return 0
 
+        def find_themes_ranked(self, limit, from_date=None, to_date=None):
+            return []
+
+        def find_story_ids_by_theme(self, theme_name, limit, offset):
+            return []
+
+        def count_stories_by_theme(self, theme_name):
+            return 0
+
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: FakeLLM()
     app.dependency_overrides[get_graph] = lambda: NoOpGraph()
@@ -444,6 +462,15 @@ def test_submit_story_triggers_graph_node_creation(test_db):
             return []
 
         def count_stories_by_entity(self, entity_name: str) -> int:
+            return 0
+
+        def find_themes_ranked(self, limit, from_date=None, to_date=None):
+            return []
+
+        def find_story_ids_by_theme(self, theme_name, limit, offset):
+            return []
+
+        def count_stories_by_theme(self, theme_name):
             return 0
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)

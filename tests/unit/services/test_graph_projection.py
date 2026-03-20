@@ -72,6 +72,15 @@ class FakeGraph(GraphPort):
     def count_stories_by_entity(self, entity_name: str) -> int:
         return 0
 
+    def find_themes_ranked(self, limit, from_date=None, to_date=None):
+        return []
+
+    def find_story_ids_by_theme(self, theme_name, limit, offset):
+        return []
+
+    def count_stories_by_theme(self, theme_name):
+        return 0
+
 
 class FailingGraph(GraphPort):
     def save_story_node(self, story_id: str, triads, timestamp: str) -> None:
@@ -90,6 +99,15 @@ class FailingGraph(GraphPort):
         return []
 
     def count_stories_by_entity(self, entity_name: str) -> int:
+        return 0
+
+    def find_themes_ranked(self, limit, from_date=None, to_date=None):
+        return []
+
+    def find_story_ids_by_theme(self, theme_name, limit, offset):
+        return []
+
+    def count_stories_by_theme(self, theme_name):
         return 0
 
 
@@ -256,6 +274,15 @@ def test_project_story_continues_themes_after_entity_graph_error():
             return []
 
         def count_stories_by_entity(self, entity_name):
+            return 0
+
+        def find_themes_ranked(self, limit, from_date=None, to_date=None):
+            return []
+
+        def find_story_ids_by_theme(self, theme_name, limit, offset):
+            return []
+
+        def count_stories_by_theme(self, theme_name):
             return 0
 
     story = make_story()

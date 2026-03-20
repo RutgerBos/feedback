@@ -111,8 +111,8 @@ class DashboardService:
                     entity_counts[name] = entity_counts.get(name, 0) + 1
                     seen.add(name)
 
-        sorted_themes = sorted(theme_counts.items(), key=lambda x: -x[1])
-        sorted_entities = sorted(entity_counts.items(), key=lambda x: -x[1])
+        sorted_themes = sorted(theme_counts.items(), key=lambda x: (-x[1], x[0]))
+        sorted_entities = sorted(entity_counts.items(), key=lambda x: (-x[1], x[0]))
 
         top_themes = [{"name": n, "count": c} for n, c in sorted_themes[:_TOP_N]]
         top_entities = [{"name": n, "count": c} for n, c in sorted_entities[:_TOP_N]]

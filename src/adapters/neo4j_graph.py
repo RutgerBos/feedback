@@ -204,3 +204,68 @@ class Neo4jGraphAdapter(GraphPort):
                 return record["count"] if record else 0
         except Exception as e:
             raise GraphError(f"Failed to count stories by entity: {e}") from e
+
+    def find_themes_ranked(
+        self,
+        limit: int,
+        from_date: str | None = None,
+        to_date: str | None = None,
+    ) -> list[tuple[str, int]]:
+        """Return themes sorted by story count descending, optionally filtered by date."""
+        try:
+            with self._driver.session() as session:
+                result = session.run(
+                    """
+                    MATCH (s:Story)-[:HAS_THEME]->(t:Theme)
+                    WHERE ($from_date IS NULL OR s.timestamp >= $from_date)
+                      AND ($to_date   IS NULL OR s.timestamp <= $to_date)
+                    RETURN t.name AS name, COUNT(DISTINCT s) AS story_count
+                    ORDER BY story_count DESC
+                    LIMIT $limit
+                    """,
+                    from_date=from_date,
+                    to_date=to_date,
+                    limit=limit,
+                )
+                return [(row["name"], row["story_count"]) for row in result.data()]
+        except Exception as e:
+            raise GraphError(f"Failed to find ranked themes: {e}") from e
+
+    def find_story_ids_by_theme(
+        self, theme_name: str, limit: int, offset: int
+    ) -> list[str]:
+        """Return story IDs for stories with the given theme, newest first."""
+        try:
+            with self._driver.session() as session:
+                result = session.run(
+                    """
+                    MATCH (s:Story)-[:HAS_THEME]->(t:Theme)
+                    WHERE toLower(t.name) = toLower($theme_name)
+                    RETURN s.story_id AS story_id
+                    ORDER BY s.timestamp DESC
+                    SKIP $offset LIMIT $limit
+                    """,
+                    theme_name=theme_name,
+                    offset=offset,
+                    limit=limit,
+                )
+                return [row["story_id"] for row in result.data()]
+        except Exception as e:
+            raise GraphError(f"Failed to find stories by theme: {e}") from e
+
+    def count_stories_by_theme(self, theme_name: str) -> int:
+        """Return total count of stories with the given theme."""
+        try:
+            with self._driver.session() as session:
+                result = session.run(
+                    """
+                    MATCH (s:Story)-[:HAS_THEME]->(t:Theme)
+                    WHERE toLower(t.name) = toLower($theme_name)
+                    RETURN COUNT(DISTINCT s) AS count
+                    """,
+                    theme_name=theme_name,
+                )
+                record = result.single()
+                return record["count"] if record else 0
+        except Exception as e:
+            raise GraphError(f"Failed to count stories by theme: {e}") from e
