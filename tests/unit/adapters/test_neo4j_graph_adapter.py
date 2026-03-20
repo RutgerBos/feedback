@@ -537,3 +537,200 @@ def test_count_stories_by_entity_returns_count_from_result():
 
     count = adapter.count_stories_by_entity("CI pipeline")
     assert count == 7
+
+
+# ── Story 4.2: find_themes_ranked ─────────────────────────────────────────────
+
+def test_find_themes_ranked_emits_cypher_with_count_and_order():
+    """find_themes_ranked runs a Cypher query returning themes sorted by count."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.find_themes_ranked(limit=10)
+
+    assert len(driver.session_instance.queries) == 1
+    query, params = driver.session_instance.queries[0]
+    assert "Theme" in query
+    assert "COUNT" in query.upper()
+    assert "ORDER" in query.upper()
+    assert params.get("limit") == 10
+
+
+def test_find_themes_ranked_returns_name_count_tuples():
+    """find_themes_ranked returns list of (name, count) tuples."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    rows = [{"name": "automation friction", "story_count": 5},
+            {"name": "tooling", "story_count": 3}]
+    driver = FakeDriver(result=FakeResult(rows=rows))
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    result = adapter.find_themes_ranked(limit=10)
+    assert result == [("automation friction", 5), ("tooling", 3)]
+
+
+def test_find_themes_ranked_with_from_date_includes_date_filter():
+    """find_themes_ranked passes from_date to the Cypher query."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.find_themes_ranked(limit=10, from_date="2026-03-01T00:00:00")
+
+    query, params = driver.session_instance.queries[0]
+    assert "from_date" in params
+    assert params["from_date"] == "2026-03-01T00:00:00"
+
+
+def test_find_themes_ranked_raises_graph_error_on_failure():
+    """find_themes_ranked raises GraphError when driver fails."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+    from src.ports.errors import GraphError
+
+    class FailingSession:
+        def run(self, query, **params):
+            raise Exception("Neo4j down")
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+
+    class FailingDriver:
+        def session(self): return FailingSession()
+
+    adapter = Neo4jGraphAdapter(driver=FailingDriver())
+    with pytest.raises(GraphError):
+        adapter.find_themes_ranked(limit=10)
+
+
+# ── Story 4.2: find_story_ids_by_theme ────────────────────────────────────────
+
+def test_find_story_ids_by_theme_emits_cypher_with_skip_limit():
+    """find_story_ids_by_theme runs a Cypher query with SKIP and LIMIT."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.find_story_ids_by_theme("automation friction", limit=5, offset=0)
+
+    query, params = driver.session_instance.queries[0]
+    assert "SKIP" in query
+    assert "LIMIT" in query
+    assert "Theme" in query
+    assert params.get("limit") == 5
+
+
+def test_find_story_ids_by_theme_has_stable_secondary_sort():
+    """find_story_ids_by_theme uses story_id as secondary sort for stable pagination."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.find_story_ids_by_theme("automation friction", limit=5, offset=0)
+
+    query, _ = driver.session_instance.queries[0]
+    order_section = query.upper().split("ORDER BY")[-1]
+    assert "STORY_ID" in order_section
+
+
+def test_find_story_ids_by_theme_passes_date_params():
+    """find_story_ids_by_theme forwards from_date and to_date to Cypher."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.find_story_ids_by_theme(
+        "automation friction", limit=5, offset=0,
+        from_date="2026-01-01T00:00:00", to_date="2026-03-31T23:59:59",
+    )
+
+    query, params = driver.session_instance.queries[0]
+    assert params.get("from_date") == "2026-01-01T00:00:00"
+    assert params.get("to_date") == "2026-03-31T23:59:59"
+
+
+def test_find_story_ids_by_theme_returns_ids_from_result():
+    """find_story_ids_by_theme returns story_id values from the query result."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    rows = [{"story_id": "abc"}, {"story_id": "def"}]
+    driver = FakeDriver(result=FakeResult(rows=rows))
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    ids = adapter.find_story_ids_by_theme("automation friction", limit=5, offset=0)
+    assert ids == ["abc", "def"]
+
+
+def test_find_story_ids_by_theme_raises_graph_error_on_failure():
+    """find_story_ids_by_theme raises GraphError when driver fails."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+    from src.ports.errors import GraphError
+
+    class FailingSession:
+        def run(self, query, **params):
+            raise Exception("Neo4j down")
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+
+    class FailingDriver:
+        def session(self): return FailingSession()
+
+    adapter = Neo4jGraphAdapter(driver=FailingDriver())
+    with pytest.raises(GraphError):
+        adapter.find_story_ids_by_theme("anything", limit=5, offset=0)
+
+
+# ── Story 4.2: count_stories_by_theme ─────────────────────────────────────────
+
+def test_count_stories_by_theme_emits_count_query():
+    """count_stories_by_theme runs a COUNT query."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.count_stories_by_theme("automation friction")
+
+    query, _ = driver.session_instance.queries[0]
+    assert "COUNT" in query.upper()
+    assert "Theme" in query
+
+
+def test_count_stories_by_theme_returns_count_from_result():
+    """count_stories_by_theme returns the count from the query result."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver(result=FakeResult(single_row={"count": 4}))
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    assert adapter.count_stories_by_theme("automation friction") == 4
+
+
+def test_count_stories_by_theme_raises_graph_error_on_failure():
+    """count_stories_by_theme raises GraphError when driver fails."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+    from src.ports.errors import GraphError
+
+    class FailingSession:
+        def run(self, query, **params):
+            raise Exception("Neo4j down")
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+
+    class FailingDriver:
+        def session(self): return FailingSession()
+
+    adapter = Neo4jGraphAdapter(driver=FailingDriver())
+    with pytest.raises(GraphError):
+        adapter.count_stories_by_theme("anything")
+
+
+def test_find_themes_ranked_has_stable_secondary_sort():
+    """find_themes_ranked uses theme name as secondary sort for deterministic ordering on ties."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.find_themes_ranked(limit=10)
+
+    query, _ = driver.session_instance.queries[0]
+    order_section = query.upper().split("ORDER BY")[-1]
+    assert "NAME" in order_section

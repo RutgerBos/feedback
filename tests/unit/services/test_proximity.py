@@ -78,6 +78,15 @@ class FakeGraph(GraphPort):
     def count_stories_by_entity(self, entity_name: str) -> int:
         return 0
 
+    def find_themes_ranked(self, limit, from_date=None, to_date=None):
+        return []
+
+    def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None):
+        return []
+
+    def count_stories_by_theme(self, theme_name):
+        return 0
+
 
 # ── Test 1: no pairs when only one story ──────────────────────────────────────
 

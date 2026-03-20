@@ -35,6 +35,15 @@ def test_can_implement_graph_port():
         def count_stories_by_entity(self, entity_name: str) -> int:
             return 0
 
+        def find_themes_ranked(self, limit, from_date=None, to_date=None):
+            return []
+
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None):
+            return []
+
+        def count_stories_by_theme(self, theme_name):
+            return 0
+
     graph = FakeGraph()
     assert graph is not None
     assert isinstance(graph, GraphPort)

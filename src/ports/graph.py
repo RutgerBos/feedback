@@ -136,3 +136,69 @@ class GraphPort(ABC):
             GraphError: If the query fails
         """
         pass
+
+    @abstractmethod
+    def find_themes_ranked(
+        self,
+        limit: int,
+        from_date: str | None = None,
+        to_date: str | None = None,
+    ) -> list[tuple[str, int]]:
+        """
+        Return themes sorted by story count descending.
+
+        Args:
+            limit:     Maximum number of themes to return
+            from_date: ISO8601 string — only count stories on or after this date
+            to_date:   ISO8601 string — only count stories on or before this date
+
+        Returns:
+            List of (theme_name, story_count) tuples, sorted by count desc
+
+        Raises:
+            GraphError: If the query fails
+        """
+        pass
+
+    @abstractmethod
+    def find_story_ids_by_theme(
+        self,
+        theme_name: str,
+        limit: int,
+        offset: int,
+        from_date: str | None = None,
+        to_date: str | None = None,
+    ) -> list[str]:
+        """
+        Return story IDs for stories with the given theme, newest first.
+
+        Args:
+            theme_name: Theme name to match (case-insensitive)
+            limit:      Maximum number of IDs to return
+            offset:     Number of IDs to skip
+            from_date:  ISO8601 string — only include stories on or after this date
+            to_date:    ISO8601 string — only include stories on or before this date
+
+        Returns:
+            List of story_id strings, ordered by timestamp DESC, story_id DESC
+
+        Raises:
+            GraphError: If the query fails
+        """
+        pass
+
+    @abstractmethod
+    def count_stories_by_theme(self, theme_name: str) -> int:
+        """
+        Return total number of stories with the given theme (case-insensitive).
+
+        Args:
+            theme_name: Theme name to count
+
+        Returns:
+            Total count of matching stories
+
+        Raises:
+            GraphError: If the query fails
+        """
+        pass
