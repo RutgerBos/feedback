@@ -8,7 +8,13 @@ from typing import Any
 
 from pymongo.database import Database
 
-from src.domain.models import SentimentAnalysis, Story, StoryMetadata, TriadCoordinates, TriadPlacement
+from src.domain.models import (
+    SentimentAnalysis,
+    Story,
+    StoryMetadata,
+    TriadCoordinates,
+    TriadPlacement,
+)
 from src.ports.errors import NotFoundError, StorageError
 from src.ports.storage import StoragePort
 

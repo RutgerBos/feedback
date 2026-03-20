@@ -1,0 +1,130 @@
+"""Integration tests for the story submission UI."""
+
+import pytest
+from fastapi.testclient import TestClient
+from pymongo import MongoClient
+
+
+@pytest.fixture
+def ui_client():
+    """TestClient for the app with no infrastructure dependencies."""
+    from src.api.main import app
+
+    with TestClient(app) as client:
+        yield client
+
+
+@pytest.fixture
+def test_db():
+    """Provide a clean test database."""
+    client = MongoClient("mongodb://admin:password@localhost:27017/")
+    db = client["test_feedback_ui"]
+    db.stories.delete_many({})
+    yield db
+    db.stories.delete_many({})
+    client.close()
+
+
+@pytest.fixture
+def submit_client(test_db):
+    """TestClient with real MongoDB wired up for submit tests."""
+    from src.adapters.mongodb_storage import MongoDBStorageAdapter
+    from src.api.main import app
+    from src.api.stories import get_storage
+
+    app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
+    try:
+        with TestClient(app) as client:
+            yield client
+    finally:
+        app.dependency_overrides.pop(get_storage, None)
+
+
+def test_root_returns_html(ui_client):
+    """GET / returns an HTML page."""
+    response = ui_client.get("/")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+
+
+def test_page_has_story_textarea(ui_client):
+    """GET / page contains a textarea for story text."""
+    response = ui_client.get("/")
+    assert "<textarea" in response.text
+
+
+def test_page_has_triad_canvases_for_all_triads(ui_client):
+    """GET / page has an SVG canvas for each of the 3 triads."""
+    response = ui_client.get("/")
+    for triad_id in ("workflow_nature", "understanding_quality", "value_character"):
+        assert triad_id in response.text
+
+
+def test_page_has_vertex_labels(ui_client):
+    """GET / page shows the vertex labels from the triad config."""
+    response = ui_client.get("/")
+    # Spot-check one label per triad
+    for label in ("Streamlined", "Intuitive", "Foundational"):
+        assert label in response.text
+
+
+def test_page_has_hidden_coordinate_inputs(ui_client):
+    """GET / page has hidden inputs for each triad's x and y coordinates."""
+    response = ui_client.get("/")
+    for triad_id in ("workflow_nature", "understanding_quality", "value_character"):
+        assert f'name="{triad_id}_x"' in response.text
+        assert f'name="{triad_id}_y"' in response.text
+
+
+def test_triad_inputs_default_to_centre(ui_client):
+    """Hidden triad coordinate inputs default to 0.5 (centre of triangle)."""
+    response = ui_client.get("/")
+    assert 'value="0.5"' in response.text
+
+
+def test_form_targets_ui_submit_endpoint(ui_client):
+    """The submission form POSTs to /ui/submit via HTMX."""
+    response = ui_client.get("/")
+    assert 'hx-post="/ui/submit"' in response.text
+
+
+def test_page_includes_htmx(ui_client):
+    """GET / page loads HTMX."""
+    response = ui_client.get("/")
+    assert "htmx" in response.text.lower()
+
+
+# ── Form submission ────────────────────────────────────────────────────────────
+
+_VALID_FORM = {
+    "story_text": "The CI pipeline kept failing and blocked our team for three days in a row.",
+    "workflow_nature_x": "0.3",
+    "workflow_nature_y": "0.6",
+    "understanding_quality_x": "0.5",
+    "understanding_quality_y": "0.4",
+    "value_character_x": "0.2",
+    "value_character_y": "0.7",
+}
+
+
+def test_submit_valid_story_returns_confirmation(submit_client):
+    """POST /ui/submit with valid data returns HTML confirmation fragment."""
+    response = submit_client.post("/ui/submit", data=_VALID_FORM)
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "submitted" in response.text.lower() or "thank you" in response.text.lower()
+
+
+def test_submit_short_story_returns_error(submit_client):
+    """POST /ui/submit with story shorter than 50 chars returns 400 HTML error."""
+    form = {**_VALID_FORM, "story_text": "Too short."}
+    response = submit_client.post("/ui/submit", data=form)
+    assert response.status_code == 400
+    assert "text/html" in response.headers["content-type"]
+
+
+def test_submit_returns_story_id_in_confirmation(submit_client):
+    """POST /ui/submit confirmation fragment contains the story ID."""
+    response = submit_client.post("/ui/submit", data=_VALID_FORM)
+    assert response.status_code == 200
+    assert "Reference:" in response.text
