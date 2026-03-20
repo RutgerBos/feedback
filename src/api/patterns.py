@@ -5,6 +5,7 @@ Query stories by entity or theme.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 
 from src.api.stories import StoryListResponse, _story_to_response, get_graph, get_storage
 from src.ports.errors import GraphError, NotFoundError
@@ -21,6 +22,44 @@ def get_pattern_query_service(
 ) -> PatternQueryService:
     """Dependency that provides the pattern query service."""
     return PatternQueryService(graph=graph, storage=storage)
+
+
+class ThemeEntry(BaseModel):
+    name: str
+    story_count: int
+    sample_story_ids: list[str]
+
+
+class ThemeListResponse(BaseModel):
+    themes: list[ThemeEntry]
+
+
+@router.get("/themes", response_model=ThemeListResponse)
+async def get_themes(
+    limit: int = Query(default=25, ge=1, le=100),
+    sample_size: int = Query(default=3, ge=1, le=10),
+    from_date: str | None = Query(default=None),
+    to_date: str | None = Query(default=None),
+    service: PatternQueryService = Depends(get_pattern_query_service),
+) -> ThemeListResponse:
+    """
+    Return themes ranked by story count with sample story IDs per theme.
+
+    Optionally filtered by ISO8601 date strings (from_date, to_date).
+    """
+    try:
+        result = service.query_themes(
+            limit=limit,
+            sample_size=sample_size,
+            from_date=from_date,
+            to_date=to_date,
+        )
+    except GraphError as e:
+        raise HTTPException(status_code=503, detail="Graph database unavailable") from e
+
+    return ThemeListResponse(
+        themes=[ThemeEntry(**t) for t in result.themes]
+    )
 
 
 @router.get("/by-entity/{entity_name}", response_model=StoryListResponse)

@@ -2,7 +2,7 @@
 PatternQueryService: query stories by entity or theme pattern.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from src.domain.models import Story
 from src.ports.graph import GraphPort
@@ -26,15 +26,33 @@ class EntityQueryResult:
     total: int
 
 
+@dataclass
+class ThemeQueryResult:
+    """
+    Responsibilities:
+    - Hold ranked theme results with sample story IDs
+
+    Collaborators:
+    - None (value object)
+
+    Notes:
+    - themes is sorted by story_count descending
+    - each entry: {name, story_count, sample_story_ids}
+    """
+
+    themes: list[dict] = field(default_factory=list)
+
+
 class PatternQueryService:
     """
     Responsibilities:
-    - Query story IDs from graph by entity name
+    - Query story IDs from graph by entity name or theme
+    - Return ranked themes with sample story IDs
     - Load full story objects from storage
     - Return paginated results with total count
 
     Collaborators:
-    - GraphPort (to query story IDs and totals)
+    - GraphPort (to query story IDs, themes, and totals)
     - StoragePort (to load full story objects)
 
     Notes:
@@ -45,6 +63,43 @@ class PatternQueryService:
     def __init__(self, graph: GraphPort, storage: StoragePort) -> None:
         self._graph = graph
         self._storage = storage
+
+    def query_themes(
+        self,
+        limit: int,
+        sample_size: int,
+        from_date: str | None = None,
+        to_date: str | None = None,
+    ) -> ThemeQueryResult:
+        """
+        Return themes ranked by story count with sample story IDs.
+
+        Args:
+            limit:      Maximum number of themes to return
+            sample_size: Maximum story IDs to include per theme
+            from_date:  ISO8601 string — filter stories on or after this date
+            to_date:    ISO8601 string — filter stories on or before this date
+
+        Returns:
+            ThemeQueryResult with ranked themes list
+
+        Raises:
+            GraphError: If the graph query fails
+        """
+        ranked = self._graph.find_themes_ranked(
+            limit=limit, from_date=from_date, to_date=to_date
+        )
+        themes = []
+        for name, story_count in ranked:
+            sample_ids = self._graph.find_story_ids_by_theme(
+                name, limit=sample_size, offset=0
+            )
+            themes.append({
+                "name": name,
+                "story_count": story_count,
+                "sample_story_ids": sample_ids,
+            })
+        return ThemeQueryResult(themes=themes)
 
     def query_by_entity(
         self, entity_name: str, limit: int, offset: int

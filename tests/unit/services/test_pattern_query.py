@@ -22,11 +22,20 @@ def make_story(story_id: str = "story-1") -> Story:
 
 
 class FakeGraph(GraphPort):
-    def __init__(self, story_ids: list[str] | None = None, total: int = 0):
+    def __init__(
+        self,
+        story_ids: list[str] | None = None,
+        total: int = 0,
+        ranked_themes: list[tuple[str, int]] | None = None,
+        theme_story_ids: dict[str, list[str]] | None = None,
+    ):
         self._story_ids = story_ids or []
         self._total = total
+        self._ranked_themes = ranked_themes or []
+        self._theme_story_ids = theme_story_ids or {}
         self.find_calls: list[tuple[str, int, int]] = []
         self.count_calls: list[str] = []
+        self.ranked_calls: list[dict] = []
 
     def save_story_node(self, story_id, triads, timestamp):
         pass
@@ -49,10 +58,11 @@ class FakeGraph(GraphPort):
         return self._total
 
     def find_themes_ranked(self, limit, from_date=None, to_date=None):
-        return []
+        self.ranked_calls.append({"limit": limit, "from_date": from_date, "to_date": to_date})
+        return self._ranked_themes[:limit]
 
     def find_story_ids_by_theme(self, theme_name, limit, offset):
-        return []
+        return self._theme_story_ids.get(theme_name, [])[:limit]
 
     def count_stories_by_theme(self, theme_name):
         return 0
@@ -91,13 +101,7 @@ class FailingGraph(FakeGraph):
         raise GraphError("Neo4j down")
 
     def find_themes_ranked(self, limit, from_date=None, to_date=None):
-        return []
-
-    def find_story_ids_by_theme(self, theme_name, limit, offset):
-        return []
-
-    def count_stories_by_theme(self, theme_name):
-        return 0
+        raise GraphError("Neo4j down")
 
 
 # ── Test 1: returns story objects for matching entity ─────────────────────────
@@ -213,3 +217,76 @@ def test_query_by_entity_total_is_full_count_not_page_size():
 
     assert len(result.stories) == 1
     assert result.total == 3
+
+
+# ── Story 4.2: query_themes ───────────────────────────────────────────────────
+
+
+def test_query_themes_returns_ranked_themes_with_sample_stories():
+    """query_themes returns themes ranked by count with sample story IDs."""
+    from src.services.pattern_query import PatternQueryService
+
+    s1 = make_story("s1")
+    graph = FakeGraph(
+        ranked_themes=[("automation friction", 3), ("tooling", 1)],
+        theme_story_ids={"automation friction": ["s1"], "tooling": []},
+    )
+    storage = FakeStorage(stories={"s1": s1})
+
+    service = PatternQueryService(graph=graph, storage=storage)
+    result = service.query_themes(limit=10, sample_size=3)
+
+    assert len(result.themes) == 2
+    assert result.themes[0]["name"] == "automation friction"
+    assert result.themes[0]["story_count"] == 3
+    assert result.themes[0]["sample_story_ids"] == ["s1"]
+    assert result.themes[1]["name"] == "tooling"
+
+
+def test_query_themes_sample_ids_capped_at_sample_size():
+    """query_themes caps sample_story_ids to sample_size."""
+    from src.services.pattern_query import PatternQueryService
+
+    graph = FakeGraph(
+        ranked_themes=[("friction", 5)],
+        theme_story_ids={"friction": ["s1", "s2", "s3", "s4", "s5"]},
+    )
+    service = PatternQueryService(graph=graph, storage=FakeStorage())
+
+    result = service.query_themes(limit=10, sample_size=2)
+
+    assert len(result.themes[0]["sample_story_ids"]) == 2
+
+
+def test_query_themes_empty_when_no_themes():
+    """query_themes returns empty list when graph has no themes."""
+    from src.services.pattern_query import PatternQueryService
+
+    graph = FakeGraph(ranked_themes=[])
+    service = PatternQueryService(graph=graph, storage=FakeStorage())
+
+    result = service.query_themes(limit=10, sample_size=3)
+
+    assert result.themes == []
+
+
+def test_query_themes_passes_date_params_to_graph():
+    """query_themes forwards from_date and to_date to find_themes_ranked."""
+    from src.services.pattern_query import PatternQueryService
+
+    graph = FakeGraph(ranked_themes=[])
+    service = PatternQueryService(graph=graph, storage=FakeStorage())
+
+    service.query_themes(limit=10, sample_size=3, from_date="2026-01-01", to_date="2026-03-31")
+
+    assert graph.ranked_calls[0]["from_date"] == "2026-01-01"
+    assert graph.ranked_calls[0]["to_date"] == "2026-03-31"
+
+
+def test_query_themes_propagates_graph_error():
+    """GraphError from find_themes_ranked propagates to caller."""
+    from src.services.pattern_query import PatternQueryService
+
+    service = PatternQueryService(graph=FailingGraph(), storage=FakeStorage())
+    with pytest.raises(GraphError):
+        service.query_themes(limit=10, sample_size=3)
