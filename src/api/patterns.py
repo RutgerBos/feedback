@@ -11,7 +11,7 @@ from src.api.stories import StoryListResponse, _story_to_response, get_graph, ge
 from src.ports.errors import GraphError, NotFoundError
 from src.ports.graph import GraphPort
 from src.ports.storage import StoragePort
-from src.services.pattern_query import PatternQueryService
+from src.services.pattern_query import CorrelationQueryResult, PatternQueryService
 
 router = APIRouter(prefix="/api/patterns", tags=["patterns"])
 
@@ -22,6 +22,18 @@ def get_pattern_query_service(
 ) -> PatternQueryService:
     """Dependency that provides the pattern query service."""
     return PatternQueryService(graph=graph, storage=storage)
+
+
+class CorrelationPair(BaseModel):
+    entity_a: str
+    entity_b: str
+    co_count: int
+    jaccard: float
+    sample_story_ids: list[str]
+
+
+class CorrelationListResponse(BaseModel):
+    pairs: list[CorrelationPair]
 
 
 class ThemeEntry(BaseModel):
@@ -66,6 +78,34 @@ async def get_themes(
 
     return ThemeListResponse(
         themes=[ThemeEntry(**t) for t in result.themes]
+    )
+
+
+@router.get("/correlations", response_model=CorrelationListResponse)
+async def get_correlations(
+    limit: int = Query(default=25, ge=1, le=100),
+    sample_size: int = Query(default=3, ge=1, le=10),
+    threshold: float = Query(default=0.0, ge=0.0, le=1.0),
+    entity_type: str | None = Query(default=None),
+    service: PatternQueryService = Depends(get_pattern_query_service),
+) -> CorrelationListResponse:
+    """
+    Return entity pairs ranked by Jaccard co-occurrence strength.
+
+    threshold filters out weak correlations; entity_type restricts both entities to that type.
+    """
+    try:
+        result = service.query_correlations(
+            limit=limit,
+            sample_size=sample_size,
+            threshold=threshold,
+            entity_type=entity_type,
+        )
+    except GraphError as e:
+        raise HTTPException(status_code=503, detail="Graph database unavailable") from e
+
+    return CorrelationListResponse(
+        pairs=[CorrelationPair(**p) for p in result.pairs]
     )
 
 
