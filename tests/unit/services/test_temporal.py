@@ -4,13 +4,10 @@ from datetime import datetime, UTC
 
 import pytest
 
-from src.domain.models import Story, TriadCoordinates, TriadPlacement
+from src.domain.models import ContextMetadata, Story, StorySignification, TriadCoordinates, TriadResponseItem
 from src.ports.errors import GraphError
 from src.ports.graph import GraphPort
 from src.ports.storage import StoragePort
-
-
-from src.domain.models import StoryMetadata
 
 
 def make_story(
@@ -21,20 +18,20 @@ def make_story(
     department: str | None = None,
     role: str | None = None,
 ) -> Story:
-    metadata = StoryMetadata(department=department, role=role) if (department or role) else None
+    context = ContextMetadata(department=department, role=role) if (department or role) else None
     return Story(
         id=story_id,
         story_text="CI failures blocked our deployment repeatedly this sprint. " * 3,
-        triads=[
-            TriadPlacement(triad_id="workflow_nature", coordinates=TriadCoordinates(x=x, y=y)),
-            TriadPlacement(triad_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.4)),
-            TriadPlacement(triad_id="value_character", coordinates=TriadCoordinates(x=0.2, y=0.7)),
-        ],
+        signification=StorySignification(responses=[
+            TriadResponseItem(kind="triad", signifier_id="workflow_nature", coordinates=TriadCoordinates(x=x, y=y)),
+            TriadResponseItem(kind="triad", signifier_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.4)),
+            TriadResponseItem(kind="triad", signifier_id="value_character", coordinates=TriadCoordinates(x=0.2, y=0.7)),
+        ]),
         processing_status="processed",
         timestamp=timestamp,
         themes=["automation friction"],
         entities=[{"name": "CI pipeline", "type": "tool"}],
-        metadata=metadata,
+        context=context,
     )
 
 

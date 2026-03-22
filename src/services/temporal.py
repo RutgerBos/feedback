@@ -138,17 +138,17 @@ def _parse_iso_to_naive_utc(iso: str) -> datetime:
 
 
 def _filter_by_metadata(stories, department: str | None, role: str | None):
-    """Filter stories by metadata fields. Stories without metadata are excluded when a filter is set."""
+    """Filter stories by context fields. Stories without context are excluded when a filter is set."""
     if department is None and role is None:
         return stories
     result = []
     for story in stories:
-        meta = story.metadata
-        if meta is None:
+        ctx = story.context
+        if ctx is None:
             continue
-        if department is not None and meta.department != department:
+        if department is not None and ctx.department != department:
             continue
-        if role is not None and meta.role != role:
+        if role is not None and ctx.role != role:
             continue
         result.append(story)
     return result
@@ -246,9 +246,9 @@ class TemporalService:
         drift_map: dict[str, dict[str, list[tuple[float, float]]]] = {}
         for s in stories:
             window_label = s.timestamp.strftime("%Y-%m" if window_size == "month" else "%Y-%m-%d")
-            for p in s.triads:
-                drift_map.setdefault(p.triad_id, {}).setdefault(window_label, []).append(
-                    (p.coordinates.x, p.coordinates.y)
+            for r in (s.signification.responses if s.signification else []):
+                drift_map.setdefault(r.signifier_id, {}).setdefault(window_label, []).append(
+                    (r.coordinates.x, r.coordinates.y)
                 )
 
         # ── Assemble windows list ────────────────────────────────────────────

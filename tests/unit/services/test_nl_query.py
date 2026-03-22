@@ -10,9 +10,9 @@ from src.domain.models import (
     QueryIntent,
     SentimentAnalysis,
     Story,
-    StoryMetadata,
+    StorySignification,
     TriadCoordinates,
-    TriadPlacement,
+    TriadResponseItem,
 )
 from src.ports.errors import GraphError, LLMError, QueryTranslationError
 from src.ports.graph import GraphPort
@@ -27,11 +27,11 @@ def make_story(story_id: str) -> Story:
     return Story(
         id=story_id,
         story_text="CI failures blocked our deployment repeatedly this sprint. " * 3,
-        triads=[
-            TriadPlacement(triad_id="workflow_nature", coordinates=TriadCoordinates(x=0.3, y=0.5)),
-            TriadPlacement(triad_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.4)),
-            TriadPlacement(triad_id="value_character", coordinates=TriadCoordinates(x=0.2, y=0.7)),
-        ],
+        signification=StorySignification(responses=[
+            TriadResponseItem(kind="triad", signifier_id="workflow_nature", coordinates=TriadCoordinates(x=0.3, y=0.5)),
+            TriadResponseItem(kind="triad", signifier_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.4)),
+            TriadResponseItem(kind="triad", signifier_id="value_character", coordinates=TriadCoordinates(x=0.2, y=0.7)),
+        ]),
         processing_status="processed",
         timestamp=datetime(2026, 1, 15, tzinfo=UTC),
         themes=["automation friction"],

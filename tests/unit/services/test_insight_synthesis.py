@@ -7,8 +7,9 @@ from src.domain.models import (
     InsightOutput,
     SentimentAnalysis,
     Story,
+    StorySignification,
     TriadCoordinates,
-    TriadPlacement,
+    TriadResponseItem,
 )
 from src.ports.errors import LLMError, NotFoundError
 from src.ports.graph import GraphPort
@@ -27,11 +28,11 @@ def make_story(
     return Story(
         id=story_id,
         story_text=text,
-        triads=[
-            TriadPlacement(triad_id="workflow_nature", coordinates=TriadCoordinates(x=0.3, y=0.6)),
-            TriadPlacement(triad_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.4)),
-            TriadPlacement(triad_id="value_character", coordinates=TriadCoordinates(x=0.2, y=0.7)),
-        ],
+        signification=StorySignification(responses=[
+            TriadResponseItem(kind="triad", signifier_id="workflow_nature", coordinates=TriadCoordinates(x=0.3, y=0.6)),
+            TriadResponseItem(kind="triad", signifier_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.4)),
+            TriadResponseItem(kind="triad", signifier_id="value_character", coordinates=TriadCoordinates(x=0.2, y=0.7)),
+        ]),
         processing_status="processed",
         themes=themes or [],
         sentiment=sentiment,

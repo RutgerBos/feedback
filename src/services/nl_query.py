@@ -128,8 +128,8 @@ class NLQueryService:
                 story_id=story.id,
                 text_excerpt=story.story_text[:_EXCERPT_LEN],
                 triad_positions={
-                    p.triad_id: {"x": p.coordinates.x, "y": p.coordinates.y}
-                    for p in story.triads
+                    r.signifier_id: {"x": r.coordinates.x, "y": r.coordinates.y}
+                    for r in (story.signification.responses if story.signification else [])
                 },
             )
             for story in stories

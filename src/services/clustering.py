@@ -91,12 +91,12 @@ class ClusteringService:
         for community_id, story_ids in sorted(groups.items()):
             stories = [self._storage.get_story(sid) for sid in story_ids]
 
-            # Centroid: only stories with a placement for this triad
+            # Centroid: only stories with a placement for this signifier
             coords = [
-                p.coordinates
+                r.coordinates
                 for s in stories
-                for p in s.triads
-                if p.triad_id == triad_id
+                for r in (s.signification.responses if s.signification else [])
+                if r.signifier_id == triad_id
             ]
             if not coords:
                 continue

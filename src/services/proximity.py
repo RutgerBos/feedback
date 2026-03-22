@@ -44,7 +44,8 @@ class ProximityCalculationService:
         computes per-triad Euclidean distances, and writes qualifying pairs.
         """
         target = self._storage.get_story(story_id)
-        target_coords = {p.triad_id: p.coordinates for p in target.triads}
+        target_responses = target.signification.responses if target.signification else []
+        target_coords = {r.signifier_id: r.coordinates for r in target_responses}
 
         pairs: list[TriadProximity] = []
 
@@ -58,9 +59,10 @@ class ProximityCalculationService:
                     continue
                 if candidate.processing_status != "processed":
                     continue
-                candidate_coords = {p.triad_id: p.coordinates for p in candidate.triads}
-                for triad_id, tc in target_coords.items():
-                    cc = candidate_coords.get(triad_id)
+                candidate_responses = candidate.signification.responses if candidate.signification else []
+                candidate_coords = {r.signifier_id: r.coordinates for r in candidate_responses}
+                for signifier_id, tc in target_coords.items():
+                    cc = candidate_coords.get(signifier_id)
                     if cc is None:
                         continue
                     dist = tc.distance_to(cc)
@@ -69,7 +71,7 @@ class ProximityCalculationService:
                             TriadProximity(
                                 story_id_a=story_id,
                                 story_id_b=candidate.id,
-                                triad_id=triad_id,
+                                triad_id=signifier_id,
                                 distance=dist,
                             )
                         )
