@@ -98,6 +98,9 @@ class _NoOpLLM(LLMPort):
     def synthesize_insights(self, context):  # type: ignore[override]
         raise LLMError("No LLM provider configured — override get_llm dependency")
 
+    def translate_query(self, question: str):  # type: ignore[override]
+        raise LLMError("No LLM provider configured — override get_llm dependency")
+
 
 def get_llm() -> LLMPort:
     """

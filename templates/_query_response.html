@@ -1,0 +1,23 @@
+<div class="query-turn">
+    <div class="query-question">
+        <strong>Q:</strong> {{ question }}
+    </div>
+    <div class="query-answer">
+        <strong>A:</strong>
+        {% if answer %}
+            {{ answer }}
+        {% else %}
+            <em>No matching stories found.</em>
+        {% endif %}
+        {% if caveats %}
+        <ul class="caveats">
+            {% for caveat in caveats %}
+            <li>{{ caveat }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% if story_count is not none %}
+        <p class="story-count">Based on {{ story_count }} matching {{ "story" if story_count == 1 else "stories" }}.</p>
+        {% endif %}
+    </div>
+</div>
