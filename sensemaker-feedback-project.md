@@ -240,23 +240,30 @@ Triangular signifiers where users place their story based on three positive desc
 ### Story Entity Model
 
 ```javascript
-// Raw story (MongoDB)
+// Raw story (MongoDB, schema_version: 2)
 {
   "id": "uuid",
+  "schema_version": 2,
   "timestamp": "ISO8601",
   "story_text": "User's narrative...",
-  "triads": [
-    {
-      "triad_id": "workflow_character",
-      "coordinates": {"x": 0.3, "y": 0.6}  // Barycentric coordinates
-    },
-    // ... other triads
-  ],
-  "metadata": {
-    "user_pseudonym": "user_abc123",
+  "signification": {
+    "headline": null,  // optional short label
+    "responses": [
+      {
+        "kind": "triad",
+        "signifier_id": "workflow_character",
+        "coordinates": {"x": 0.3, "y": 0.6}
+      }
+      // ... other triad responses
+    ]
+  },
+  "context": {
     "department": "engineering",
     "role": "developer",
     "tool_context": "CI/CD pipeline"
+  },
+  "participant": {
+    "user_pseudonym": "user_abc123"
   },
   "processing_status": "pending"
 }
