@@ -46,6 +46,10 @@ def api_client(test_db):
         def synthesize_insights(self, context):  # type: ignore[override]
             from src.domain.models import InsightOutput
             return InsightOutput(narrative="")
+        def translate_query(self, question):  # type: ignore[override]
+            from src.domain.models import QueryIntent
+            return QueryIntent(operation="unknown")
+
 
     class NoOpGraph(GraphPort):
         def save_story_node(self, story_id: str, triads, timestamp: str) -> None:
@@ -155,6 +159,10 @@ def test_query_by_entity_returns_503_on_graph_error(test_db):
         def synthesize_insights(self, context):  # type: ignore[override]
             from src.domain.models import InsightOutput
             return InsightOutput(narrative="")
+        def translate_query(self, question):  # type: ignore[override]
+            from src.domain.models import QueryIntent
+            return QueryIntent(operation="unknown")
+
 
     class FailingGraph(GraphPort):
         def save_story_node(self, story_id, triads, timestamp):
@@ -238,6 +246,10 @@ def test_query_by_entity_returns_stories_from_graph(test_db):
         def synthesize_insights(self, context):  # type: ignore[override]
             from src.domain.models import InsightOutput
             return InsightOutput(narrative="")
+        def translate_query(self, question):  # type: ignore[override]
+            from src.domain.models import QueryIntent
+            return QueryIntent(operation="unknown")
+
 
     story_ids = []
 
@@ -338,6 +350,10 @@ def test_get_themes_returns_503_on_graph_error(test_db):
         def synthesize_insights(self, context):
             from src.domain.models import InsightOutput
             return InsightOutput(narrative="")
+        def translate_query(self, question):  # type: ignore[override]
+            from src.domain.models import QueryIntent
+            return QueryIntent(operation="unknown")
+
 
     class FailingThemesGraph(GraphPort):
         def save_story_node(self, story_id, triads, timestamp): pass
@@ -393,6 +409,10 @@ def test_get_themes_returns_ranked_themes_with_sample_ids(test_db):
         def synthesize_insights(self, context):
             from src.domain.models import InsightOutput
             return InsightOutput(narrative="")
+        def translate_query(self, question):  # type: ignore[override]
+            from src.domain.models import QueryIntent
+            return QueryIntent(operation="unknown")
+
 
     class ThemeGraph(GraphPort):
         def save_story_node(self, story_id, triads, timestamp): pass
@@ -465,6 +485,10 @@ def test_get_correlations_returns_503_on_graph_error(test_db):
         def synthesize_insights(self, context):
             from src.domain.models import InsightOutput
             return InsightOutput(narrative="")
+        def translate_query(self, question):  # type: ignore[override]
+            from src.domain.models import QueryIntent
+            return QueryIntent(operation="unknown")
+
 
     class FailingGraph(GraphPort):
         def save_story_node(self, story_id, triads, timestamp): pass
@@ -514,6 +538,10 @@ def test_get_correlations_returns_ranked_pairs_with_sample_ids(test_db):
         def synthesize_insights(self, context):
             from src.domain.models import InsightOutput
             return InsightOutput(narrative="")
+        def translate_query(self, question):  # type: ignore[override]
+            from src.domain.models import QueryIntent
+            return QueryIntent(operation="unknown")
+
 
     class CorrelationGraph(GraphPort):
         def save_story_node(self, story_id, triads, timestamp): pass
@@ -583,6 +611,10 @@ def test_get_clusters_returns_503_on_graph_error(test_db):
         def synthesize_insights(self, context):
             from src.domain.models import InsightOutput
             return InsightOutput(narrative="")
+        def translate_query(self, question):  # type: ignore[override]
+            from src.domain.models import QueryIntent
+            return QueryIntent(operation="unknown")
+
 
     class FailingGraph(GraphPort):
         def save_story_node(self, story_id, triads, timestamp): pass
@@ -631,6 +663,10 @@ def test_get_clusters_returns_cluster_data(test_db):
         def synthesize_insights(self, context):
             from src.domain.models import InsightOutput
             return InsightOutput(narrative="")
+        def translate_query(self, question):  # type: ignore[override]
+            from src.domain.models import QueryIntent
+            return QueryIntent(operation="unknown")
+
 
     story = Story(
         id="s1",
@@ -725,6 +761,10 @@ def test_get_temporal_returns_503_on_graph_error(test_db):
         def synthesize_insights(self, context):
             from src.domain.models import InsightOutput
             return InsightOutput(narrative="")
+        def translate_query(self, question):  # type: ignore[override]
+            from src.domain.models import QueryIntent
+            return QueryIntent(operation="unknown")
+
 
     class FailingGraph(GraphPort):
         def save_story_node(self, story_id, triads, timestamp): pass
@@ -775,6 +815,10 @@ def test_get_temporal_returns_theme_and_drift_data(test_db):
         def synthesize_insights(self, context):
             from src.domain.models import InsightOutput
             return InsightOutput(narrative="")
+        def translate_query(self, question):  # type: ignore[override]
+            from src.domain.models import QueryIntent
+            return QueryIntent(operation="unknown")
+
 
     class TemporalGraph(GraphPort):
         def save_story_node(self, story_id, triads, timestamp): pass
@@ -847,6 +891,10 @@ def test_get_temporal_department_filter_restricts_drift(test_db):
         def synthesize_insights(self, context):
             from src.domain.models import InsightOutput
             return InsightOutput(narrative="")
+        def translate_query(self, question):  # type: ignore[override]
+            from src.domain.models import QueryIntent
+            return QueryIntent(operation="unknown")
+
 
     class NoOpGraph(GraphPort):
         def save_story_node(self, story_id, triads, timestamp): pass

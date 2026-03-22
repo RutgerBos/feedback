@@ -8,11 +8,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from src.api.stories import get_graph, get_llm, get_storage
-from src.ports.errors import GraphError, LLMError, NotFoundError, StorageError
+from src.ports.errors import GraphError, LLMError, NotFoundError, QueryTranslationError, StorageError
 from src.ports.graph import GraphPort
 from src.ports.llm import LLMPort
 from src.ports.storage import StoragePort
 from src.services.insight_synthesis import InsightResponse, InsightSynthesisService
+from src.services.nl_query import NLQueryResult, NLQueryService
 
 router = APIRouter(prefix="/api/insights", tags=["insights"])
 
@@ -62,6 +63,15 @@ def get_insight_synthesis_service(
     return InsightSynthesisService(graph=graph, storage=storage, llm=llm)
 
 
+def get_nl_query_service(
+    graph: GraphPort = Depends(get_graph),
+    storage: StoragePort = Depends(get_storage),
+    llm: LLMPort = Depends(get_llm),
+) -> NLQueryService:
+    """Dependency that provides the natural language query service."""
+    return NLQueryService(graph=graph, storage=storage, llm=llm)
+
+
 def _to_response(result: InsightResponse) -> SynthesizeResponse:
     return SynthesizeResponse(
         narrative=result.narrative,
@@ -84,6 +94,58 @@ def _to_response(result: InsightResponse) -> SynthesizeResponse:
             )
             for e in result.excerpts
         ],
+    )
+
+
+class NLQueryRequest(BaseModel):
+    question: str = Field(min_length=1)
+
+    @field_validator("question")
+    @classmethod
+    def must_not_be_whitespace_only(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("must not be blank or whitespace only")
+        return v
+
+
+class NLQueryResponse(BaseModel):
+    answer: str
+    story_count: int
+    caveats: list[str]
+
+
+@router.post("/query", response_model=NLQueryResponse)
+async def query_insights(
+    request: NLQueryRequest,
+    service: NLQueryService = Depends(get_nl_query_service),
+) -> NLQueryResponse:
+    """
+    Answer a natural language question about feedback patterns.
+
+    The LLM translates the question into a graph query, retrieves matching
+    stories, and synthesizes a plain-English answer.
+
+    Args:
+        request: question — a plain-English question about the feedback data
+
+    Returns:
+        NLQueryResponse with answer, story_count, and any caveats
+
+    Raises:
+        HTTPException 422: If the question cannot be translated to a graph query
+        HTTPException 503: If the graph or LLM is unavailable
+    """
+    try:
+        result = service.query(request.question)
+    except QueryTranslationError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except (GraphError, LLMError, StorageError, NotFoundError) as e:
+        raise HTTPException(status_code=503, detail="Service unavailable") from e
+
+    return NLQueryResponse(
+        answer=result.answer,
+        story_count=result.story_count,
+        caveats=result.caveats,
     )
 
 

@@ -5,8 +5,8 @@ Ollama LLM adapter implementing LLMPort via a local ollama instance.
 import json
 from typing import Any
 
-from src.adapters._synthesis_prompt import _build_synthesis_prompt, _parse_synthesis_response
-from src.domain.models import InsightContext, InsightOutput, SentimentAnalysis
+from src.adapters._synthesis_prompt import _build_synthesis_prompt, _parse_synthesis_response, _strip_code_fences
+from src.domain.models import InsightContext, InsightOutput, QueryIntent, SentimentAnalysis
 from src.ports.errors import LLMError
 from src.ports.llm import EntityExtraction, LLMPort
 
@@ -129,6 +129,30 @@ class OllamaLLMAdapter(LLMPort):
         """Synthesize a narrative insight from structured pattern evidence via ollama."""
         raw = self._call(_build_synthesis_prompt(context))
         return _parse_synthesis_response(raw)
+
+    def translate_query(self, question: str) -> QueryIntent:
+        """Translate a natural language question into a structured graph query intent via ollama."""
+        import json as _json
+        prompt = (
+            "Translate the following question into a structured graph query intent. "
+            "Respond with JSON only using one of these formats:\n"
+            '  {"operation": "by_entity", "entity": "<entity name>"}\n'
+            '  {"operation": "by_theme", "theme": "<theme name>"}\n'
+            '  {"operation": "unknown", "explanation": "<why it cannot be answered>"}\n\n'
+            f"Question: {question}"
+        )
+        raw = self._call(prompt)
+        try:
+            data = _json.loads(_strip_code_fences(raw))
+            operation = data.get("operation", "unknown")
+            return QueryIntent(
+                operation=operation,
+                entity=data.get("entity"),
+                theme=data.get("theme"),
+                explanation=data.get("explanation", ""),
+            )
+        except (_json.JSONDecodeError, KeyError) as e:
+            raise LLMError(f"Failed to parse query translation response: {e}") from e
 
     def _require_list(self, data: dict, key: str) -> list:
         """Extract a list value from parsed JSON, raising LLMError if missing or not a list."""

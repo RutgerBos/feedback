@@ -25,3 +25,8 @@ class LLMError(Exception):
 class GraphError(Exception):
     """Raised when a graph database operation fails."""
     pass
+
+
+class QueryTranslationError(Exception):
+    """Raised when the LLM cannot translate a natural language question into a graph query."""
+    pass

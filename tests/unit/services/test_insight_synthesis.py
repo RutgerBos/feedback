@@ -127,6 +127,10 @@ class FakeLLM(LLMPort):
     def synthesize_insights(self, context: InsightContext) -> InsightOutput:
         self.calls.append(context)
         return self._output
+    def translate_query(self, question):  # type: ignore[override]
+        from src.domain.models import QueryIntent
+        return QueryIntent(operation="unknown")
+
 
 
 class FailingLLM(FakeLLM):

@@ -76,6 +76,10 @@ class FakeLLM(LLMPort):
     def synthesize_insights(self, context):
         from src.domain.models import InsightOutput
         return InsightOutput(narrative="")
+    def translate_query(self, question):  # type: ignore[override]
+        from src.domain.models import QueryIntent
+        return QueryIntent(operation="unknown")
+
 
 
 class FailingLLM(LLMPort):
@@ -95,6 +99,9 @@ class FailingLLM(LLMPort):
 
     def synthesize_insights(self, context):
         raise LLMError("API unavailable")
+    def translate_query(self, question):
+        raise LLMError("API unavailable")
+
 
 
 # ── Test 1: can instantiate service ───────────────────────────────────────────
