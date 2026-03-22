@@ -214,6 +214,23 @@ def test_ollama_adapter_extract_sentiment_handles_empty_emotion_markers():
     assert result.process_sentiment == "neutral"
 
 
+def test_ollama_adapter_extract_sentiment_raises_llmerror_on_invalid_label():
+    """extract_sentiment wraps an unrecognised sentiment label as LLMError, not ValidationError."""
+    import json
+    from src.adapters.ollama_llm import OllamaLLMAdapter
+    from src.ports.errors import LLMError
+
+    bad_response = json.dumps({
+        "emotion_markers": [],
+        "process_sentiment": "cautious",
+        "outcome_sentiment": "neutral",
+    })
+    adapter = OllamaLLMAdapter(http_client=make_fake_http_client(bad_response))
+
+    with pytest.raises(LLMError, match="cautious"):
+        adapter.extract_sentiment("some story text here")
+
+
 # ── synthesize_insights ────────────────────────────────────────────────────────
 
 
