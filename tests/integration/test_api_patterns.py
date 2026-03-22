@@ -302,11 +302,11 @@ def test_query_by_entity_returns_stories_from_graph(test_db):
                 "/api/stories",
                 json={
                     "story_text": "CI failures blocked deployment repeatedly this sprint and last. " * 2,
-                    "triads": [
-                        {"triad_id": "workflow_nature", "x": 0.3, "y": 0.6},
-                        {"triad_id": "understanding_quality", "x": 0.5, "y": 0.4},
-                        {"triad_id": "value_character", "x": 0.2, "y": 0.7},
-                    ],
+                    "signification": {"responses": [
+                        {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}},
+                        {"kind": "triad", "signifier_id": "understanding_quality", "coordinates": {"x": 0.5, "y": 0.4}},
+                        {"kind": "triad", "signifier_id": "value_character", "coordinates": {"x": 0.2, "y": 0.7}},
+                    ]},
                 },
             )
             assert resp.status_code == 201

@@ -6,7 +6,7 @@ ID generation, and persistence.
 """
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator
@@ -15,13 +15,33 @@ from src.domain.models import (
     ContextMetadata,
     ParticipantMetadata,
     Story,
-    StoryMetadata,
     StorySignification,
     TriadCoordinates,
-    TriadPlacement,
     TriadResponseItem,
 )
 from src.ports.storage import StoragePort
+
+
+class CoordinatesRequest(BaseModel):
+    """x/y coordinates in [0, 1]."""
+
+    x: float = Field(..., ge=0.0, le=1.0)
+    y: float = Field(..., ge=0.0, le=1.0)
+
+
+class TriadResponseRequest(BaseModel):
+    """One response placement in a signification."""
+
+    kind: Literal["triad"] = "triad"
+    signifier_id: str
+    coordinates: CoordinatesRequest
+
+
+class SignificationRequest(BaseModel):
+    """V2 signification block sent by the client."""
+
+    headline: str | None = None
+    responses: list[TriadResponseRequest] = Field(default_factory=list)
 
 
 class StorySubmissionRequest(BaseModel):
@@ -30,38 +50,29 @@ class StorySubmissionRequest(BaseModel):
 
     Responsibilities:
     - Hold and validate story submission data
-    - Support both V1 (triads + metadata) and V2 (signification + context + participant) paths
 
     Notes:
     - Used as input to StorySubmissionService
     - Validates on construction via Pydantic
-    - V1: triads list with dict entries; metadata flat dict
-    - V2: signification dict, context dict, participant dict; triads may be empty
+    - triads field is kept to provide a clear rejection message for old V1 clients
+    - signification, context, participant are the V2 fields
     """
 
     story_text: str = Field(..., min_length=50, max_length=2000)
     triads: list[dict[str, Any]] = Field(default_factory=list)
-    # V1 compat
-    metadata: dict[str, str | None] | None = None
-    # V2 fields
-    signification: dict[str, Any] | None = None
+    signification: SignificationRequest | None = None
     context: dict[str, str | None] | None = None
     participant: dict[str, str | None] | None = None
 
     @field_validator("triads")
     @classmethod
-    def validate_triad_structure(cls, v: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Ensure each triad has required fields."""
-        for triad in v:
-            if "triad_id" not in triad:
-                raise ValueError("Each triad must have a triad_id")
-            if "x" not in triad or "y" not in triad:
-                raise ValueError("Each triad must have x and y coordinates")
-            # Validate coordinate range
-            if not (0.0 <= triad["x"] <= 1.0):
-                raise ValueError("Coordinate x must be between 0 and 1")
-            if not (0.0 <= triad["y"] <= 1.0):
-                raise ValueError("Coordinate y must be between 0 and 1")
+    def reject_v1_triads(cls, v: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Reject legacy V1 triads payload with a helpful error."""
+        if v:
+            raise ValueError(
+                "The 'triads' field is no longer accepted. "
+                "Submit coordinates via 'signification.responses' instead."
+            )
         return v
 
 
@@ -100,7 +111,7 @@ class StorySubmissionService:
     - Pure coordination - no business logic
     - All validation delegated to domain models and request model
     - Doesn't know about MongoDB or specific storage
-    - valid_triad_ids: when provided, submitted triad_ids must be in the set
+    - valid_triad_ids: when provided, submitted signifier_ids must be in the set
     """
 
     def __init__(self, storage: StoragePort, valid_triad_ids: set[str] | None = None):
@@ -110,7 +121,7 @@ class StorySubmissionService:
         Args:
             storage: Storage port for persisting stories
             valid_triad_ids: Allowlist of known triad IDs from config.
-                             If None, triad ID membership is not validated.
+                             If None, signifier ID membership is not validated.
         """
         self.storage = storage
         self.valid_triad_ids = valid_triad_ids
@@ -126,63 +137,34 @@ class StorySubmissionService:
             StorySubmissionResult with story ID
 
         Raises:
-            ValueError: If validation fails (caught by Pydantic)
+            ValueError: If signifier IDs not in allowlist
             StorageError: If storage operation fails
         """
-        # Validate signifier IDs against config allowlist (covers both triads and signification)
-        if self.valid_triad_ids is not None:
-            submitted_ids = {t["triad_id"] for t in request.triads}
-            if request.signification:
-                submitted_ids |= {
-                    r["signifier_id"]
-                    for r in request.signification.get("responses", [])
-                }
+        # Validate signifier IDs against config allowlist
+        if self.valid_triad_ids is not None and request.signification:
+            submitted_ids = {r.signifier_id for r in request.signification.responses}
             unknown = submitted_ids - self.valid_triad_ids
             if unknown:
                 raise ValueError(f"Unknown triad IDs: {', '.join(sorted(unknown))}")
 
-        # Generate UUID for story
         story_id = str(uuid4())
 
-        # Convert request triads to domain model
-        triad_placements = [
-            TriadPlacement(
-                triad_id=t["triad_id"],
-                coordinates=TriadCoordinates(x=t["x"], y=t["y"]),
-            )
-            for t in request.triads
-        ]
-
-        # Convert V1 metadata if present
-        metadata = None
-        if request.metadata:
-            metadata = StoryMetadata(
-                user_pseudonym=request.metadata.get("user_pseudonym"),
-                department=request.metadata.get("department"),
-                role=request.metadata.get("role"),
-                tool_context=request.metadata.get("tool_context"),
-            )
-
-        # Convert V2 signification if present
+        # Convert signification
         signification = None
         if request.signification:
-            sig = request.signification
-            responses = [
-                TriadResponseItem(
-                    kind=r["kind"],
-                    signifier_id=r["signifier_id"],
-                    coordinates=TriadCoordinates(
-                        x=r["coordinates"]["x"], y=r["coordinates"]["y"]
-                    ),
-                )
-                for r in sig.get("responses", [])
-            ]
             signification = StorySignification(
-                headline=sig.get("headline"),
-                responses=responses,
+                headline=request.signification.headline,
+                responses=[
+                    TriadResponseItem(
+                        kind=r.kind,
+                        signifier_id=r.signifier_id,
+                        coordinates=TriadCoordinates(x=r.coordinates.x, y=r.coordinates.y),
+                    )
+                    for r in request.signification.responses
+                ],
             )
 
-        # Convert V2 context metadata if present
+        # Convert context metadata if present
         context = None
         if request.context:
             context = ContextMetadata(
@@ -191,20 +173,18 @@ class StorySubmissionService:
                 tool_context=request.context.get("tool_context"),
             )
 
-        # Convert V2 participant metadata if present
+        # Convert participant metadata if present
         participant = None
         if request.participant:
             participant = ParticipantMetadata(
                 user_pseudonym=request.participant.get("user_pseudonym"),
             )
 
-        # Create story domain model (V2)
         story = Story(
             id=story_id,
             story_text=request.story_text,
             schema_version=2,
-            triads=triad_placements,
-            metadata=metadata,
+            triads=[],
             signification=signification,
             context=context,
             participant=participant,
@@ -212,7 +192,5 @@ class StorySubmissionService:
             processing_status="pending",
         )
 
-        # Save via storage port
         saved_id = self.storage.save_story(story)
-
         return StorySubmissionResult(story_id=saved_id)
