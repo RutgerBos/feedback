@@ -263,3 +263,58 @@ def test_ollama_adapter_synthesize_insights_raises_on_bad_json():
     adapter = OllamaLLMAdapter(http_client=make_fake_http_client("not json"))
     with pytest.raises(LLMError):
         adapter.synthesize_insights(make_insight_context())
+
+
+# ── translate_query tests ─────────────────────────────────────────────────────
+
+
+def test_ollama_adapter_translate_query_returns_entity_intent():
+    """translate_query parses by_entity response into QueryIntent."""
+    from src.adapters.ollama_llm import OllamaLLMAdapter
+    from src.domain.models import QueryIntent
+
+    response = json.dumps({"operation": "by_entity", "entity": "CI pipeline"})
+    adapter = OllamaLLMAdapter(http_client=make_fake_http_client(response))
+
+    result = adapter.translate_query("What issues exist with the CI pipeline?")
+
+    assert isinstance(result, QueryIntent)
+    assert result.operation == "by_entity"
+    assert result.entity == "CI pipeline"
+
+
+def test_ollama_adapter_translate_query_returns_theme_intent():
+    """translate_query parses by_theme response into QueryIntent."""
+    from src.adapters.ollama_llm import OllamaLLMAdapter
+
+    response = json.dumps({"operation": "by_theme", "theme": "automation friction"})
+    adapter = OllamaLLMAdapter(http_client=make_fake_http_client(response))
+
+    result = adapter.translate_query("Tell me about automation friction.")
+
+    assert result.operation == "by_theme"
+    assert result.theme == "automation friction"
+
+
+def test_ollama_adapter_translate_query_strips_code_fences():
+    """translate_query accepts JSON wrapped in markdown code fences."""
+    from src.adapters.ollama_llm import OllamaLLMAdapter
+
+    fenced = "```json\n" + json.dumps({"operation": "by_entity", "entity": "CI"}) + "\n```"
+    adapter = OllamaLLMAdapter(http_client=make_fake_http_client(fenced))
+
+    result = adapter.translate_query("CI issues?")
+
+    assert result.operation == "by_entity"
+    assert result.entity == "CI"
+
+
+def test_ollama_adapter_translate_query_raises_on_bad_json():
+    """translate_query raises LLMError when model returns non-JSON."""
+    from src.adapters.ollama_llm import OllamaLLMAdapter
+    from src.ports.errors import LLMError
+
+    adapter = OllamaLLMAdapter(http_client=make_fake_http_client("not json"))
+
+    with pytest.raises(LLMError):
+        adapter.translate_query("Any question")
