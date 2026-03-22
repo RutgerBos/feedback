@@ -43,15 +43,15 @@ class FakeStorage(StoragePort):
     def list_stories(self, limit: int = 20, offset: int = 0, from_date=None, to_date=None) -> list:
         return list(self.stories.values())[offset:offset + limit]
 
-    def update_story_entities(self, story_id: str, entities: list, themes: list, processing_status: str) -> None:
+    def update_story_entities(self, story_id: str, entities: list, themes: list, entity_status: str) -> None:
         if story_id not in self.stories:
             raise NotFoundError(f"Story not found: {story_id}")
-        self.updated[story_id] = (entities, themes, processing_status)
+        self.updated[story_id] = (entities, themes, entity_status)
 
-    def update_story_sentiment(self, story_id: str, sentiment, processing_status: str) -> None:
+    def update_story_sentiment(self, story_id: str, sentiment, sentiment_status: str) -> None:
         if story_id not in self.stories:
             raise NotFoundError(f"Story not found: {story_id}")
-        self.updated[story_id] = (sentiment, processing_status)
+        self.updated[story_id] = (sentiment, sentiment_status)
 
 
 class FakeLLM(LLMPort):
@@ -348,3 +348,24 @@ def test_extract_for_story_works_without_graph_projection():
 
     _, _, status = storage.updated[story.id]
     assert status == "processed"
+
+
+# ── Test: entity_status uses dedicated field name ─────────────────────────────
+
+def test_extract_for_story_passes_entity_status_not_processing_status():
+    """update_story_entities is called with entity_status kwarg, not processing_status."""
+    from src.services.entity_extraction import EntityExtractionService
+
+    entity_status_calls = []
+
+    class TrackingStorage(FakeStorage):
+        def update_story_entities(self, story_id: str, entities: list, themes: list, entity_status: str) -> None:
+            entity_status_calls.append(entity_status)
+            super().update_story_entities(story_id, entities, themes, entity_status)
+
+    story = make_story()
+    storage = TrackingStorage(stories={story.id: story})
+    service = EntityExtractionService(storage=storage, llm=FakeLLM())
+    service.extract_for_story(story.id)
+
+    assert entity_status_calls == ["processed"]

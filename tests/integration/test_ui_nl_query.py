@@ -19,8 +19,8 @@ def nl_query_client():
         def get_story(self, story_id): raise KeyError(story_id)
         def count_stories(self, from_date=None, to_date=None): return 0
         def list_stories(self, limit=20, offset=0, from_date=None, to_date=None): return []
-        def update_story_entities(self, story_id, entities, themes, processing_status): pass
-        def update_story_sentiment(self, story_id, sentiment, processing_status): pass
+        def update_story_entities(self, story_id, entities, themes, entity_status): pass
+        def update_story_sentiment(self, story_id, sentiment, sentiment_status): pass
 
     class NoOpGraph(GraphPort):
         def save_story_node(self, story_id, triads, timestamp): pass
@@ -145,8 +145,8 @@ def nl_query_client_with_answer():
         def get_story(self, story_id): return _story
         def count_stories(self, from_date=None, to_date=None): return 1
         def list_stories(self, limit=20, offset=0, from_date=None, to_date=None): return [_story]
-        def update_story_entities(self, story_id, entities, themes, processing_status): pass
-        def update_story_sentiment(self, story_id, sentiment, processing_status): pass
+        def update_story_entities(self, story_id, entities, themes, entity_status): pass
+        def update_story_sentiment(self, story_id, sentiment, sentiment_status): pass
 
     class SingleStoryGraph(GraphPort):
         def save_story_node(self, story_id, triads, timestamp): pass
@@ -252,8 +252,8 @@ def test_ui_query_untranslatable_question_returns_error_fragment():
         def get_story(self, story_id): raise KeyError(story_id)
         def count_stories(self, from_date=None, to_date=None): return 0
         def list_stories(self, limit=20, offset=0, from_date=None, to_date=None): return []
-        def update_story_entities(self, story_id, entities, themes, processing_status): pass
-        def update_story_sentiment(self, story_id, sentiment, processing_status): pass
+        def update_story_entities(self, story_id, entities, themes, entity_status): pass
+        def update_story_sentiment(self, story_id, sentiment, sentiment_status): pass
 
     class NoOpGraph(GraphPort):
         def save_story_node(self, story_id, triads, timestamp): pass

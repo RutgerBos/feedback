@@ -30,10 +30,10 @@ class FakeStorage(StoragePort):
     def list_stories(self, limit: int = 20, offset: int = 0, from_date=None, to_date=None) -> list[Story]:
         return list(self.stories.values())[offset:offset + limit]
 
-    def update_story_entities(self, story_id: str, entities: list, themes: list, processing_status: str) -> None:
+    def update_story_entities(self, story_id: str, entities: list, themes: list, entity_status: str) -> None:
         pass
 
-    def update_story_sentiment(self, story_id: str, sentiment, processing_status: str) -> None:
+    def update_story_sentiment(self, story_id: str, sentiment, sentiment_status: str) -> None:
         pass
 
 

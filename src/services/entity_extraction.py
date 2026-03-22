@@ -62,19 +62,19 @@ class EntityExtractionService:
             extraction = self.llm.extract_entities(story.story_text)
             entities = extraction.entities
             themes = self.llm.extract_themes(story.story_text)
-            processing_status = "processed"
+            entity_status = "processed"
         except LLMError as e:
             logger.warning("Entity extraction failed for story %s: %s", story_id, e)
             entities = []
             themes = []
-            processing_status = "failed"
+            entity_status = "failed"
 
         self.storage.update_story_entities(
             story_id=story_id,
             entities=entities,
             themes=themes,
-            processing_status=processing_status,
+            entity_status=entity_status,
         )
 
-        if processing_status == "processed" and self.graph_projection is not None:
+        if entity_status == "processed" and self.graph_projection is not None:
             self.graph_projection.project_story(story_id)

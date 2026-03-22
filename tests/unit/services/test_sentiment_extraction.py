@@ -50,13 +50,13 @@ class FakeStorage(StoragePort):
     def list_stories(self, limit: int = 20, offset: int = 0, from_date=None, to_date=None) -> list:
         return list(self.stories.values())[offset:offset + limit]
 
-    def update_story_entities(self, story_id: str, entities: list, themes: list, processing_status: str) -> None:
+    def update_story_entities(self, story_id: str, entities: list, themes: list, entity_status: str) -> None:
         pass
 
-    def update_story_sentiment(self, story_id: str, sentiment: SentimentAnalysis | None, processing_status: str) -> None:
+    def update_story_sentiment(self, story_id: str, sentiment: SentimentAnalysis | None, sentiment_status: str) -> None:
         if story_id not in self.stories:
             raise NotFoundError(f"Story not found: {story_id}")
-        self.sentiment_updates[story_id] = (sentiment, processing_status)
+        self.sentiment_updates[story_id] = (sentiment, sentiment_status)
 
 
 class FakeLLM(LLMPort):

@@ -286,6 +286,8 @@ class Story(BaseModel):
     metadata: StoryMetadata | None = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     processing_status: str = Field(default="pending")
+    entity_status: str = Field(default="pending")
+    sentiment_status: str = Field(default="pending")
     entities: list[dict[str, Any]] = Field(default_factory=list)
     themes: list[str] = Field(default_factory=list)
     sentiment: SentimentAnalysis | None = None
