@@ -450,6 +450,34 @@ def test_update_story_sentiment_not_found_raises(storage_adapter):
         )
 
 
+def test_legacy_free_form_sentiment_degrades_gracefully_on_read(storage_adapter, clean_db):
+    """Docs with pre-constraint free-form sentiment values read back with sentiment=None."""
+    from uuid import uuid4 as _uuid4
+    story_id = str(_uuid4())
+    from datetime import UTC, datetime
+    clean_db.stories.insert_one({
+        "_id": story_id,
+        "story_text": "The CI pipeline was an absolute mess for the entire week, blocking everyone.",
+        "triads": [],
+        "signification": {"headline": None, "responses": []},
+        "schema_version": 2,
+        "processing_status": "pending",
+        "sentiment_status": "processed",
+        "timestamp": datetime.now(UTC),
+        # Legacy free-form value that would have been stored before the constraint
+        "sentiment": {
+            "emotion_markers": ["frustration"],
+            "process_sentiment": "cautious",
+            "outcome_sentiment": "neutral with a hint of negativity",
+        },
+    })
+
+    retrieved = storage_adapter.get_story(story_id)
+    # "cautious" is unrecognisable → degraded to None
+    # "neutral with a hint of negativity" would normalise, but "cautious" fails first
+    assert retrieved.sentiment is None
+
+
 # ── V2 field round-trips ───────────────────────────────────────────────────────
 
 

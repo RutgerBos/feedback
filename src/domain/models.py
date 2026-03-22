@@ -11,6 +11,31 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+# Canonical sentiment label for categorical aggregation.
+SentimentLabel = Literal["positive", "negative", "neutral"]
+_SENTIMENT_PREFIXES: tuple[str, ...] = ("positive", "negative", "neutral")
+
+
+def _normalise_sentiment(value: str) -> str:
+    """
+    Normalise a raw LLM sentiment string to a canonical SentimentLabel.
+
+    LLMs sometimes return values like "positive (embracing the new process)"
+    or "Neutral with a hint of negativity". This function maps any value that
+    starts with a known prefix to the canonical label, case-insensitively.
+
+    Raises ValueError for values that do not start with a known prefix,
+    so caller knows the model returned something genuinely unexpected.
+    """
+    lowered = value.strip().lower()
+    for prefix in _SENTIMENT_PREFIXES:
+        if lowered.startswith(prefix):
+            return prefix
+    raise ValueError(
+        f"Unrecognised sentiment value {value!r}. "
+        f"Expected a value starting with one of: {', '.join(_SENTIMENT_PREFIXES)}"
+    )
+
 
 class TriadCoordinates(BaseModel):
     """
@@ -348,10 +373,17 @@ class SentimentAnalysis(BaseModel):
     """
 
     emotion_markers: list[str] = Field(default_factory=list)
-    process_sentiment: str
-    outcome_sentiment: str
+    process_sentiment: SentimentLabel
+    outcome_sentiment: SentimentLabel
 
     model_config = {"frozen": True}
+
+    @field_validator("process_sentiment", "outcome_sentiment", mode="before")
+    @classmethod
+    def normalise_sentiment(cls, v: object) -> str:
+        if not isinstance(v, str):
+            raise ValueError(f"Expected a string, got {type(v).__name__}")
+        return _normalise_sentiment(v)
 
 
 class Story(BaseModel):

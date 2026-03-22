@@ -92,8 +92,11 @@ class ClaudeLLMAdapter(LLMPort):
             "Identify specific emotion markers (e.g. frustration, relief, confusion), "
             "the overall sentiment about the process experienced, "
             "and the overall sentiment about the outcome achieved. "
+            "For process_sentiment and outcome_sentiment use ONLY the exact word "
+            "'positive', 'negative', or 'neutral' — no qualifiers or parentheticals. "
             "Respond with JSON only: "
-            '{"emotion_markers": ["..."], "process_sentiment": "...", "outcome_sentiment": "..."}\n\n'
+            '{"emotion_markers": ["..."], "process_sentiment": "positive|negative|neutral", '
+            '"outcome_sentiment": "positive|negative|neutral"}\n\n'
             f"Story: {story_text}"
         )
         raw = self._call(prompt)
@@ -111,7 +114,7 @@ class ClaudeLLMAdapter(LLMPort):
                 process_sentiment=process_sentiment,
                 outcome_sentiment=outcome_sentiment,
             )
-        except (json.JSONDecodeError, KeyError) as e:
+        except (json.JSONDecodeError, KeyError, ValueError) as e:
             raise LLMError(f"Failed to parse sentiment extraction response: {e}") from e
 
     def synthesize_insights(self, context: InsightContext) -> InsightOutput:

@@ -318,23 +318,16 @@ def test_synthesize_empty_result_when_no_stories():
     assert llm.calls == []  # LLM not called when no stories
 
 
-def test_synthesize_unknown_sentiment_labels_not_counted_as_neutral():
-    """Sentiment values other than positive/negative/neutral are not bucketed into neutral."""
-    from src.services.insight_synthesis import InsightSynthesisService
+def test_sentiment_analysis_rejects_unknown_labels_at_construction():
+    """SentimentAnalysis now rejects non-canonical labels at construction time.
 
-    s1 = make_story("s1", sentiment=SentimentAnalysis(
-        emotion_markers=[], process_sentiment="mixed", outcome_sentiment="ambivalent"
-    ))
-    graph = FakeGraph(story_ids=["s1"], total=1)
-    storage = FakeStorage(stories={"s1": s1})
-    llm = FakeLLM()
-
-    service = InsightSynthesisService(graph=graph, storage=storage, llm=llm)
-    service.synthesize(entity_name="CI", query="Test?")
-
-    ctx = llm.calls[0]
-    s = ctx.sentiment_summary
-    assert s.neutral_process == 0
-    assert s.neutral_outcome == 0
-    assert s.positive_process == 0
-    assert s.negative_process == 0
+    The previous test verified that 'mixed'/'ambivalent' were not silently
+    counted as neutral. That is now guaranteed structurally: SentimentAnalysis
+    raises ValueError for any value that does not start with positive/negative/neutral,
+    so the bad data can never reach the aggregation layer.
+    """
+    import pytest
+    with pytest.raises(ValueError, match="Unrecognised sentiment value"):
+        SentimentAnalysis(
+            emotion_markers=[], process_sentiment="mixed", outcome_sentiment="ambivalent"
+        )
