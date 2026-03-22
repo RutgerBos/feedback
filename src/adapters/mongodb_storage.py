@@ -387,15 +387,21 @@ class MongoDBStorageAdapter(StoragePort):
                 responses=responses,
             )
 
-        # Convert sentiment if present
+        # Convert sentiment if present.
+        # Use a try/except so that legacy docs with free-form sentiment values
+        # (stored before the SentimentLabel constraint was introduced) degrade
+        # gracefully to sentiment=None rather than crashing the read path.
         sentiment = None
         if document.get("sentiment"):
             s = document["sentiment"]
-            sentiment = SentimentAnalysis(
-                emotion_markers=s.get("emotion_markers", []),
-                process_sentiment=s["process_sentiment"],
-                outcome_sentiment=s["outcome_sentiment"],
-            )
+            try:
+                sentiment = SentimentAnalysis(
+                    emotion_markers=s.get("emotion_markers", []),
+                    process_sentiment=s["process_sentiment"],
+                    outcome_sentiment=s["outcome_sentiment"],
+                )
+            except (ValueError, KeyError):
+                pass  # Legacy free-form value — treat as unanalysed
 
         return Story(
             id=document["_id"],

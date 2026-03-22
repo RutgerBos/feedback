@@ -114,7 +114,7 @@ class ClaudeLLMAdapter(LLMPort):
                 process_sentiment=process_sentiment,
                 outcome_sentiment=outcome_sentiment,
             )
-        except (json.JSONDecodeError, KeyError) as e:
+        except (json.JSONDecodeError, KeyError, ValueError) as e:
             raise LLMError(f"Failed to parse sentiment extraction response: {e}") from e
 
     def synthesize_insights(self, context: InsightContext) -> InsightOutput:
