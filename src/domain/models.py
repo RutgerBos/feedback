@@ -190,6 +190,31 @@ class InsightOutput(BaseModel):
     model_config = {"frozen": True}
 
 
+class QueryIntent(BaseModel):
+    """
+    Responsibilities:
+    - Hold the LLM's interpretation of a natural language query
+    - Specify which graph operation should be dispatched
+
+    Collaborators:
+    - None (value object)
+
+    Notes:
+    - operation: "by_entity" | "by_theme" | "unknown"
+    - entity: populated when operation is "by_entity"
+    - theme: populated when operation is "by_theme"
+    - explanation: human-readable reason when operation is "unknown"
+    - Immutable value object
+    """
+
+    operation: str
+    entity: str | None = None
+    theme: str | None = None
+    explanation: str = ""
+
+    model_config = {"frozen": True}
+
+
 class StoryMetadata(BaseModel):
     """
     Responsibilities:

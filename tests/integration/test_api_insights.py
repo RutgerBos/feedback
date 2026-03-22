@@ -80,6 +80,10 @@ def api_client(test_db):
 
         def synthesize_insights(self, context: InsightContext) -> InsightOutput:
             return InsightOutput(narrative="Test insight narrative.", caveats=["Sample caveat."])
+        def translate_query(self, question):  # type: ignore[override]
+            from src.domain.models import QueryIntent
+            return QueryIntent(operation="unknown")
+
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: FixedInsightLLM()
@@ -147,6 +151,10 @@ def test_synthesize_returns_narrative_when_stories_exist(test_db):
 
         def synthesize_insights(self, context: InsightContext) -> InsightOutput:
             return InsightOutput(narrative="CI friction is high.", caveats=["Only sample."])
+        def translate_query(self, question):  # type: ignore[override]
+            from src.domain.models import QueryIntent
+            return QueryIntent(operation="unknown")
+
 
     story_ids = []
 
@@ -284,6 +292,10 @@ def test_synthesize_returns_503_on_storage_error(test_db):
 
         def synthesize_insights(self, context: InsightContext) -> InsightOutput:
             return InsightOutput(narrative="")
+        def translate_query(self, question):  # type: ignore[override]
+            from src.domain.models import QueryIntent
+            return QueryIntent(operation="unknown")
+
 
     class OneIdGraph(GraphPort):
         def save_story_node(self, story_id, triads, timestamp):
@@ -384,6 +396,10 @@ def test_synthesize_returns_503_on_graph_error(test_db):
 
         def synthesize_insights(self, context: InsightContext) -> InsightOutput:
             return InsightOutput(narrative="")
+        def translate_query(self, question):  # type: ignore[override]
+            from src.domain.models import QueryIntent
+            return QueryIntent(operation="unknown")
+
 
     class FailingGraph(GraphPort):
         def save_story_node(self, story_id, triads, timestamp):

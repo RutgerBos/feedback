@@ -42,6 +42,10 @@ def api_client(test_db):
         def synthesize_insights(self, context):  # type: ignore[override]
             from src.domain.models import InsightOutput
             return InsightOutput(narrative="")
+        def translate_query(self, question):  # type: ignore[override]
+            from src.domain.models import QueryIntent
+            return QueryIntent(operation="unknown")
+
 
     class NoOpGraph(GraphPort):
         def save_story_node(self, story_id: str, triads, timestamp: str) -> None:
@@ -321,6 +325,10 @@ def test_submit_story_triggers_entity_extraction(test_db):
         def synthesize_insights(self, context):  # type: ignore[override]
             from src.domain.models import InsightOutput
             return InsightOutput(narrative="")
+        def translate_query(self, question):  # type: ignore[override]
+            from src.domain.models import QueryIntent
+            return QueryIntent(operation="unknown")
+
 
     class NoOpGraph(GraphPort):
         def save_story_node(self, story_id: str, triads, timestamp: str) -> None:
@@ -466,6 +474,10 @@ def test_submit_story_triggers_graph_node_creation(test_db):
         def synthesize_insights(self, context):  # type: ignore[override]
             from src.domain.models import InsightOutput
             return InsightOutput(narrative="")
+        def translate_query(self, question):  # type: ignore[override]
+            from src.domain.models import QueryIntent
+            return QueryIntent(operation="unknown")
+
 
     class CapturingGraph(GraphPort):
         def save_story_node(self, story_id: str, triads, timestamp: str) -> None:

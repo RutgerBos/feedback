@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from src.domain.models import InsightContext, InsightOutput, SentimentAnalysis
+    from src.domain.models import InsightContext, InsightOutput, QueryIntent, SentimentAnalysis
 
 
 class EntityExtraction:
@@ -126,6 +126,23 @@ class LLMPort(ABC):
 
         Returns:
             InsightOutput: narrative explanation and optional caveats
+
+        Raises:
+            LLMError: If LLM API call fails or response cannot be parsed
+        """
+        pass
+
+    @abstractmethod
+    def translate_query(self, question: str) -> "QueryIntent":
+        """
+        Translate a natural language question into a structured graph query intent.
+
+        Args:
+            question: The user's natural language question
+
+        Returns:
+            QueryIntent: structured intent with operation type and parameters.
+                         operation "unknown" means translation failed; check explanation.
 
         Raises:
             LLMError: If LLM API call fails or response cannot be parsed

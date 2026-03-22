@@ -81,9 +81,34 @@ def test_llm_port_has_synthesize_insights_method():
         IncompleteProvider()
 
 
+def test_llm_port_has_translate_query_method():
+    """LLMPort requires translate_query implementation."""
+    from src.domain.models import InsightContext, InsightOutput, SentimentAnalysis
+    from src.ports.llm import EntityExtraction, LLMPort
+
+    class IncompleteProvider(LLMPort):
+        def extract_entities(self, story_text: str) -> EntityExtraction:
+            return EntityExtraction(entities=[])
+
+        def extract_themes(self, story_text: str) -> list:
+            return []
+
+        def extract_relationships(self, story_text: str) -> list:
+            return []
+
+        def extract_sentiment(self, story_text: str) -> SentimentAnalysis:
+            return SentimentAnalysis(emotion_markers=[], process_sentiment="neutral", outcome_sentiment="neutral")
+
+        def synthesize_insights(self, context: InsightContext) -> InsightOutput:
+            return InsightOutput(narrative="")
+
+    with pytest.raises(TypeError, match="abstract"):
+        IncompleteProvider()
+
+
 def test_can_implement_llm_port():
     """Can create a valid LLMPort implementation."""
-    from src.domain.models import InsightContext, InsightOutput, SentimentAnalysis, SentimentSummary
+    from src.domain.models import InsightContext, InsightOutput, QueryIntent, SentimentAnalysis, SentimentSummary
     from src.ports.llm import EntityExtraction, LLMPort
 
     class FakeLLM(LLMPort):
@@ -106,6 +131,9 @@ def test_can_implement_llm_port():
         def synthesize_insights(self, context: InsightContext) -> InsightOutput:
             return InsightOutput(narrative="test")
 
+        def translate_query(self, question: str) -> QueryIntent:
+            return QueryIntent(operation="unknown")
+
     llm = FakeLLM()
     assert isinstance(llm, LLMPort)
     assert llm.extract_entities("test").entities == []
@@ -117,3 +145,4 @@ def test_can_implement_llm_port():
         excerpts=[], theme_counts={}, sentiment_summary=SentimentSummary(),
     )
     assert llm.synthesize_insights(ctx).narrative == "test"
+    assert llm.translate_query("any question").operation == "unknown"
