@@ -81,7 +81,7 @@ class NLQueryService:
                 intent.explanation or "Could not interpret your question as a graph query."
             )
 
-        total, story_ids = self._dispatch_intent(intent)
+        total, story_ids = self._dispatch_intent(intent)  # raises QueryTranslationError on bad intent
 
         if total == 0:
             return NLQueryResult(answer="", story_count=0)
@@ -135,9 +135,15 @@ class NLQueryService:
             for story in stories
         ]
 
+        # Label the synthesis scope clearly so the LLM prompt frames it correctly
+        scope_label = (
+            intent.entity if intent.operation == "by_entity"
+            else f"theme '{intent.theme}'" if intent.operation == "by_theme"
+            else ""
+        )
         context = InsightContext(
             query=question,
-            entity_name=intent.entity or intent.theme or "",
+            entity_name=scope_label,
             total_stories=total,
             excerpts=excerpts,
             theme_counts=theme_counts,
@@ -152,19 +158,36 @@ class NLQueryService:
         )
 
     def _dispatch_intent(self, intent) -> tuple[int, list[str]]:
-        """Return (total_count, story_ids) based on intent operation."""
-        if intent.operation == "by_entity" and intent.entity:
+        """
+        Return (total_count, story_ids) based on intent operation.
+
+        Raises:
+            QueryTranslationError: If the operation is unrecognized or required
+                                   field (entity/theme) is missing.
+        """
+        if intent.operation == "by_entity":
+            if not intent.entity:
+                raise QueryTranslationError(
+                    "Query translated as entity lookup but no entity name was provided."
+                )
             total = self._graph.count_stories_by_entity(intent.entity)
             story_ids = self._graph.find_story_ids_by_entity(
                 intent.entity, limit=_MAX_STORIES, offset=0
             )
             return total, story_ids
 
-        if intent.operation == "by_theme" and intent.theme:
+        if intent.operation == "by_theme":
+            if not intent.theme:
+                raise QueryTranslationError(
+                    "Query translated as theme lookup but no theme name was provided."
+                )
             total = self._graph.count_stories_by_theme(intent.theme)
             story_ids = self._graph.find_story_ids_by_theme(
                 intent.theme, limit=_MAX_STORIES, offset=0
             )
             return total, story_ids
 
-        return 0, []
+        raise QueryTranslationError(
+            f"Unrecognized query operation '{intent.operation}'. "
+            "Expected 'by_entity' or 'by_theme'."
+        )

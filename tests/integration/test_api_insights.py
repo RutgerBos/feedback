@@ -454,3 +454,178 @@ def test_synthesize_returns_503_on_graph_error(test_db):
         app.dependency_overrides.pop(get_storage, None)
         app.dependency_overrides.pop(get_llm, None)
         app.dependency_overrides.pop(get_graph, None)
+
+
+# ── POST /api/insights/query integration tests ────────────────────────────────
+
+
+def test_nl_query_returns_200_with_answer(test_db):
+    """POST /api/insights/query returns 200 with synthesized answer."""
+    from datetime import datetime, UTC
+    from src.adapters.mongodb_storage import MongoDBStorageAdapter
+    from src.api.main import app
+    from src.api.stories import get_graph, get_llm, get_storage
+    from src.domain.models import InsightOutput, QueryIntent, SentimentAnalysis
+    from src.ports.graph import GraphPort
+    from src.ports.llm import EntityExtraction, LLMPort
+
+    class QueryLLM(LLMPort):
+        def extract_entities(self, story_text): return EntityExtraction(entities=[])
+        def extract_themes(self, story_text): return []
+        def extract_relationships(self, story_text): return []
+        def extract_sentiment(self, story_text):
+            return SentimentAnalysis(emotion_markers=[], process_sentiment="neutral", outcome_sentiment="neutral")
+        def synthesize_insights(self, context):
+            return InsightOutput(narrative="CI pipeline causes friction.")
+        def translate_query(self, question):
+            return QueryIntent(operation="by_entity", entity="CI pipeline")
+
+    class EntityGraph(GraphPort):
+        def save_story_node(self, story_id, triads, timestamp): pass
+        def save_entity_nodes(self, story_id, entities): pass
+        def save_theme_nodes(self, story_id, themes): pass
+        def save_proximity_relationships(self, story_id, pairs): pass
+        def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None):
+            return ["s1"]
+        def count_stories_by_entity(self, entity_name): return 1
+        def find_themes_ranked(self, limit, from_date=None, to_date=None): return []
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None): return []
+        def count_stories_by_theme(self, theme_name): return 0
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None): return []
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0): return []
+        def find_theme_counts_by_window(self, window_size, from_date=None, to_date=None, theme=None): return []
+        def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None): return []
+        def find_story_communities(self, triad_id): return []
+
+    test_db.stories.insert_one({
+        "_id": "s1",
+        "story_text": "CI failures blocked our deployment repeatedly this sprint. " * 3,
+        "triads": [
+            {"triad_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}},
+            {"triad_id": "understanding_quality", "coordinates": {"x": 0.5, "y": 0.4}},
+            {"triad_id": "value_character", "coordinates": {"x": 0.2, "y": 0.7}},
+        ],
+        "processing_status": "processed",
+        "themes": [],
+        "entities": [],
+        "timestamp": datetime(2026, 1, 15, tzinfo=UTC).replace(tzinfo=None),
+    })
+
+    app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
+    app.dependency_overrides[get_llm] = lambda: QueryLLM()
+    app.dependency_overrides[get_graph] = lambda: EntityGraph()
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/insights/query",
+                json={"question": "What issues exist with the CI pipeline?"},
+            )
+            assert response.status_code == 200
+            body = response.json()
+            assert body["answer"] == "CI pipeline causes friction."
+            assert body["story_count"] == 1
+            assert "caveats" in body
+    finally:
+        app.dependency_overrides.pop(get_storage, None)
+        app.dependency_overrides.pop(get_llm, None)
+        app.dependency_overrides.pop(get_graph, None)
+
+
+def test_nl_query_returns_422_for_blank_question(test_db):
+    """POST /api/insights/query returns 422 for blank question."""
+    from src.adapters.mongodb_storage import MongoDBStorageAdapter
+    from src.api.main import app
+    from src.api.stories import get_graph, get_llm, get_storage
+    from src.domain.models import InsightOutput, QueryIntent, SentimentAnalysis
+    from src.ports.graph import GraphPort
+    from src.ports.llm import EntityExtraction, LLMPort
+
+    class NoOpLLM(LLMPort):
+        def extract_entities(self, story_text): return EntityExtraction(entities=[])
+        def extract_themes(self, story_text): return []
+        def extract_relationships(self, story_text): return []
+        def extract_sentiment(self, story_text):
+            return SentimentAnalysis(emotion_markers=[], process_sentiment="neutral", outcome_sentiment="neutral")
+        def synthesize_insights(self, context): return InsightOutput(narrative="")
+        def translate_query(self, question):
+            return QueryIntent(operation="unknown")
+
+    class NoOpGraph(GraphPort):
+        def save_story_node(self, story_id, triads, timestamp): pass
+        def save_entity_nodes(self, story_id, entities): pass
+        def save_theme_nodes(self, story_id, themes): pass
+        def save_proximity_relationships(self, story_id, pairs): pass
+        def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None): return []
+        def count_stories_by_entity(self, entity_name): return 0
+        def find_themes_ranked(self, limit, from_date=None, to_date=None): return []
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None): return []
+        def count_stories_by_theme(self, theme_name): return 0
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None): return []
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0): return []
+        def find_theme_counts_by_window(self, window_size, from_date=None, to_date=None, theme=None): return []
+        def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None): return []
+        def find_story_communities(self, triad_id): return []
+
+    app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
+    app.dependency_overrides[get_llm] = lambda: NoOpLLM()
+    app.dependency_overrides[get_graph] = lambda: NoOpGraph()
+    try:
+        with TestClient(app) as client:
+            response = client.post("/api/insights/query", json={"question": "   "})
+            assert response.status_code == 422
+    finally:
+        app.dependency_overrides.pop(get_storage, None)
+        app.dependency_overrides.pop(get_llm, None)
+        app.dependency_overrides.pop(get_graph, None)
+
+
+def test_nl_query_returns_422_on_untranslatable_question(test_db):
+    """POST /api/insights/query returns 422 when LLM returns unknown intent."""
+    from src.adapters.mongodb_storage import MongoDBStorageAdapter
+    from src.api.main import app
+    from src.api.stories import get_graph, get_llm, get_storage
+    from src.domain.models import InsightOutput, QueryIntent, SentimentAnalysis
+    from src.ports.graph import GraphPort
+    from src.ports.llm import EntityExtraction, LLMPort
+
+    class UnknownLLM(LLMPort):
+        def extract_entities(self, story_text): return EntityExtraction(entities=[])
+        def extract_themes(self, story_text): return []
+        def extract_relationships(self, story_text): return []
+        def extract_sentiment(self, story_text):
+            return SentimentAnalysis(emotion_markers=[], process_sentiment="neutral", outcome_sentiment="neutral")
+        def synthesize_insights(self, context): return InsightOutput(narrative="")
+        def translate_query(self, question):
+            return QueryIntent(operation="unknown", explanation="Cannot determine query type.")
+
+    class NoOpGraph(GraphPort):
+        def save_story_node(self, story_id, triads, timestamp): pass
+        def save_entity_nodes(self, story_id, entities): pass
+        def save_theme_nodes(self, story_id, themes): pass
+        def save_proximity_relationships(self, story_id, pairs): pass
+        def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None): return []
+        def count_stories_by_entity(self, entity_name): return 0
+        def find_themes_ranked(self, limit, from_date=None, to_date=None): return []
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None): return []
+        def count_stories_by_theme(self, theme_name): return 0
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None): return []
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0): return []
+        def find_theme_counts_by_window(self, window_size, from_date=None, to_date=None, theme=None): return []
+        def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None): return []
+        def find_story_communities(self, triad_id): return []
+
+    app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
+    app.dependency_overrides[get_llm] = lambda: UnknownLLM()
+    app.dependency_overrides[get_graph] = lambda: NoOpGraph()
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/insights/query",
+                json={"question": "What is the meaning of life?"},
+            )
+            assert response.status_code == 422
+            assert "Cannot determine query type" in response.json()["detail"]
+    finally:
+        app.dependency_overrides.pop(get_storage, None)
+        app.dependency_overrides.pop(get_llm, None)
+        app.dependency_overrides.pop(get_graph, None)

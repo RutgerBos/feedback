@@ -400,3 +400,61 @@ def test_claude_adapter_synthesize_insights_includes_triad_positions_in_prompt()
     assert "0.30" in prompt
     assert "0.60" in prompt
     assert "workflow" in prompt
+
+
+# ── translate_query tests ─────────────────────────────────────────────────────
+
+
+def test_claude_adapter_translate_query_returns_entity_intent():
+    """translate_query parses by_entity response into QueryIntent."""
+    import json
+    from src.adapters.claude_llm import ClaudeLLMAdapter
+    from src.domain.models import QueryIntent
+
+    response = json.dumps({"operation": "by_entity", "entity": "CI pipeline"})
+    adapter = ClaudeLLMAdapter(client=make_fake_anthropic_client(response))
+
+    result = adapter.translate_query("What issues exist with the CI pipeline?")
+
+    assert isinstance(result, QueryIntent)
+    assert result.operation == "by_entity"
+    assert result.entity == "CI pipeline"
+
+
+def test_claude_adapter_translate_query_returns_theme_intent():
+    """translate_query parses by_theme response into QueryIntent."""
+    import json
+    from src.adapters.claude_llm import ClaudeLLMAdapter
+
+    response = json.dumps({"operation": "by_theme", "theme": "automation friction"})
+    adapter = ClaudeLLMAdapter(client=make_fake_anthropic_client(response))
+
+    result = adapter.translate_query("Tell me about automation friction.")
+
+    assert result.operation == "by_theme"
+    assert result.theme == "automation friction"
+
+
+def test_claude_adapter_translate_query_strips_code_fences():
+    """translate_query accepts JSON wrapped in markdown code fences."""
+    import json
+    from src.adapters.claude_llm import ClaudeLLMAdapter
+
+    fenced = "```json\n" + json.dumps({"operation": "by_entity", "entity": "CI"}) + "\n```"
+    adapter = ClaudeLLMAdapter(client=make_fake_anthropic_client(fenced))
+
+    result = adapter.translate_query("CI issues?")
+
+    assert result.operation == "by_entity"
+    assert result.entity == "CI"
+
+
+def test_claude_adapter_translate_query_raises_on_bad_json():
+    """translate_query raises LLMError when model returns non-JSON."""
+    from src.adapters.claude_llm import ClaudeLLMAdapter
+    from src.ports.errors import LLMError
+
+    adapter = ClaudeLLMAdapter(client=make_fake_anthropic_client("not json"))
+
+    with pytest.raises(LLMError):
+        adapter.translate_query("Any question")

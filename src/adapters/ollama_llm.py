@@ -5,7 +5,7 @@ Ollama LLM adapter implementing LLMPort via a local ollama instance.
 import json
 from typing import Any
 
-from src.adapters._synthesis_prompt import _build_synthesis_prompt, _parse_synthesis_response
+from src.adapters._synthesis_prompt import _build_synthesis_prompt, _parse_synthesis_response, _strip_code_fences
 from src.domain.models import InsightContext, InsightOutput, QueryIntent, SentimentAnalysis
 from src.ports.errors import LLMError
 from src.ports.llm import EntityExtraction, LLMPort
@@ -143,7 +143,7 @@ class OllamaLLMAdapter(LLMPort):
         )
         raw = self._call(prompt)
         try:
-            data = _json.loads(raw)
+            data = _json.loads(_strip_code_fences(raw))
             operation = data.get("operation", "unknown")
             return QueryIntent(
                 operation=operation,

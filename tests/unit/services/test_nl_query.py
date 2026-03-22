@@ -229,3 +229,96 @@ def test_nl_query_graph_error_propagates():
 
     with pytest.raises(GraphError):
         service.query("Any question")
+
+
+# ── Test 8: by_entity intent without entity → QueryTranslationError ───────────
+
+
+def test_nl_query_by_entity_without_entity_raises_translation_error():
+    """by_entity intent with no entity name raises QueryTranslationError, not silent empty."""
+    from src.services.nl_query import NLQueryService
+
+    intent = QueryIntent(operation="by_entity", entity=None)
+    llm = FakeLLM(intent=intent)
+    service = NLQueryService(graph=FakeGraph(), storage=FakeStorage(), llm=llm)
+
+    with pytest.raises(QueryTranslationError):
+        service.query("Something unclear")
+
+
+# ── Test 9: by_theme intent without theme → QueryTranslationError ─────────────
+
+
+def test_nl_query_by_theme_without_theme_raises_translation_error():
+    """by_theme intent with no theme name raises QueryTranslationError."""
+    from src.services.nl_query import NLQueryService
+
+    intent = QueryIntent(operation="by_theme", theme=None)
+    llm = FakeLLM(intent=intent)
+    service = NLQueryService(graph=FakeGraph(), storage=FakeStorage(), llm=llm)
+
+    with pytest.raises(QueryTranslationError):
+        service.query("Something unclear")
+
+
+# ── Test 10: unrecognized operation → QueryTranslationError ──────────────────
+
+
+def test_nl_query_unrecognized_operation_raises_translation_error():
+    """An unrecognized operation string raises QueryTranslationError, not silent empty."""
+    from src.services.nl_query import NLQueryService
+
+    intent = QueryIntent(operation="by_product", entity="CI pipeline")
+    llm = FakeLLM(intent=intent)
+    service = NLQueryService(graph=FakeGraph(), storage=FakeStorage(), llm=llm)
+
+    with pytest.raises(QueryTranslationError):
+        service.query("Something unclear")
+
+
+# ── Test 11: synthesis LLMError propagates ────────────────────────────────────
+
+
+def test_nl_query_synthesis_llm_error_propagates():
+    """LLMError raised during synthesis propagates to the caller."""
+    from src.services.nl_query import NLQueryService
+
+    class SynthesisFailingLLM(FakeLLM):
+        def synthesize_insights(self, context):
+            raise LLMError("synthesis down")
+
+    intent = QueryIntent(operation="by_entity", entity="CI pipeline")
+    llm = SynthesisFailingLLM(intent=intent)
+    graph = FakeGraph(entity_ids=["s1"], entity_count=1)
+    storage = FakeStorage(stories={"s1": make_story("s1")})
+    service = NLQueryService(graph=graph, storage=storage, llm=llm)
+
+    with pytest.raises(LLMError):
+        service.query("Any question")
+
+
+# ── Test 12: theme intent sets scope label correctly ─────────────────────────
+
+
+def test_nl_query_theme_intent_sets_theme_scope_label():
+    """For by_theme intent, synthesis context labels scope as 'theme X', not bare entity."""
+    from src.domain.models import InsightContext
+    from src.services.nl_query import NLQueryService
+
+    captured_contexts: list[InsightContext] = []
+
+    class CapturingLLM(FakeLLM):
+        def synthesize_insights(self, context: InsightContext):
+            captured_contexts.append(context)
+            return super().synthesize_insights(context)
+
+    intent = QueryIntent(operation="by_theme", theme="automation friction")
+    llm = CapturingLLM(intent=intent)
+    graph = FakeGraph(theme_ids=["s1"], theme_count=1)
+    storage = FakeStorage(stories={"s1": make_story("s1")})
+    service = NLQueryService(graph=graph, storage=storage, llm=llm)
+    service.query("Tell me about automation friction.")
+
+    assert len(captured_contexts) == 1
+    assert "theme" in captured_contexts[0].entity_name
+    assert "automation friction" in captured_contexts[0].entity_name
