@@ -8,11 +8,15 @@ from pymongo import MongoClient
 
 from src.adapters.mongodb_storage import MongoDBStorageAdapter
 from src.domain.models import (
+    ContextMetadata,
+    ParticipantMetadata,
     SentimentAnalysis,
     Story,
     StoryMetadata,
+    StorySignification,
     TriadCoordinates,
     TriadPlacement,
+    TriadResponseItem,
 )
 
 
@@ -444,3 +448,102 @@ def test_update_story_sentiment_not_found_raises(storage_adapter):
             sentiment=None,
             sentiment_status="failed",
         )
+
+
+# ── V2 field round-trips ───────────────────────────────────────────────────────
+
+
+def test_v2_story_with_signification_round_trips(storage_adapter):
+    """V2 story with StorySignification saves and retrieves correctly."""
+    signification = StorySignification(
+        headline="Pipeline kept breaking due to flaky tests",
+        responses=[
+            TriadResponseItem(
+                kind="triad",
+                signifier_id="workflow_nature",
+                coordinates=TriadCoordinates(x=0.3, y=0.6),
+            ),
+        ],
+    )
+    story = Story(
+        id=str(uuid4()),
+        story_text="CI failures blocked our deployment repeatedly this sprint. " * 3,
+        triads=[],
+        signification=signification,
+        schema_version=2,
+    )
+    storage_adapter.save_story(story)
+
+    retrieved = storage_adapter.get_story(story.id)
+    assert retrieved.schema_version == 2
+    assert retrieved.signification is not None
+    assert retrieved.signification.headline == "Pipeline kept breaking due to flaky tests"
+    assert len(retrieved.signification.responses) == 1
+    assert retrieved.signification.responses[0].signifier_id == "workflow_nature"
+    assert retrieved.signification.responses[0].coordinates.x == 0.3
+
+
+def test_v2_story_with_context_and_participant_round_trips(storage_adapter):
+    """V2 story with ContextMetadata and ParticipantMetadata saves and retrieves."""
+    story = Story(
+        id=str(uuid4()),
+        story_text="CI failures blocked our deployment repeatedly this sprint. " * 3,
+        triads=[],
+        context=ContextMetadata(department="engineering", role="developer", tool_context="CI/CD"),
+        participant=ParticipantMetadata(user_pseudonym="user_42"),
+        schema_version=2,
+    )
+    storage_adapter.save_story(story)
+
+    retrieved = storage_adapter.get_story(story.id)
+    assert retrieved.context is not None
+    assert retrieved.context.department == "engineering"
+    assert retrieved.context.role == "developer"
+    assert retrieved.context.tool_context == "CI/CD"
+    assert retrieved.participant is not None
+    assert retrieved.participant.user_pseudonym == "user_42"
+
+
+def test_v2_story_schema_version_persists(storage_adapter):
+    """schema_version is written to MongoDB and read back."""
+    story = Story(
+        id=str(uuid4()),
+        story_text="CI failures blocked our deployment repeatedly this sprint. " * 3,
+        triads=[],
+        schema_version=2,
+    )
+    storage_adapter.save_story(story)
+
+    raw = storage_adapter.collection.find_one({"_id": story.id})
+    assert raw["schema_version"] == 2
+
+
+def test_v1_document_reads_back_without_v2_fields(storage_adapter):
+    """A V1 document (no schema_version/signification/context/participant) reads safely."""
+    story_id = str(uuid4())
+    # Insert raw V1-style document directly into MongoDB
+    storage_adapter.collection.insert_one({
+        "_id": story_id,
+        "story_text": "CI failures blocked our deployment repeatedly this sprint. " * 3,
+        "triads": [
+            {"triad_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}},
+            {"triad_id": "understanding_quality", "coordinates": {"x": 0.5, "y": 0.4}},
+            {"triad_id": "value_character", "coordinates": {"x": 0.2, "y": 0.7}},
+        ],
+        "metadata": {"department": "engineering", "role": "dev", "tool_context": None, "user_pseudonym": None},
+        "timestamp": datetime.now(UTC),
+        "processing_status": "pending",
+        "entity_status": "pending",
+        "sentiment_status": "pending",
+        "entities": [],
+        "themes": [],
+        "sentiment": None,
+    })
+
+    retrieved = storage_adapter.get_story(story_id)
+    # V1 docs have no schema_version stored — adapter should default to 1
+    assert retrieved.schema_version == 1
+    assert retrieved.signification is None
+    assert retrieved.context is None
+    assert retrieved.participant is None
+    assert len(retrieved.triads) == 3

@@ -7,7 +7,7 @@ They use Pydantic for validation and immutability.
 
 import math
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -218,7 +218,7 @@ class QueryIntent(BaseModel):
 class StoryMetadata(BaseModel):
     """
     Responsibilities:
-    - Hold optional contextual metadata about the story
+    - Hold optional contextual metadata about the story (V1 — deprecated)
     - Support pseudonymous identification
 
     Collaborators:
@@ -228,12 +228,104 @@ class StoryMetadata(BaseModel):
     - All fields are optional
     - No PII (personally identifiable information)
     - Immutable value object
+    - V1 compat: replaced by ContextMetadata + ParticipantMetadata in V2
     """
 
     user_pseudonym: str | None = None
     department: str | None = None
     role: str | None = None
     tool_context: str | None = None
+
+    model_config = {"frozen": True}
+
+
+class ContextMetadata(BaseModel):
+    """
+    Responsibilities:
+    - Hold segmentation/organisational context for a story
+    - Enable filtering and grouping by department, role, and tool context
+
+    Collaborators:
+    - None (value object)
+
+    Notes:
+    - All fields are optional
+    - Immutable value object
+    - V2 replacement for StoryMetadata (minus user_pseudonym)
+    """
+
+    department: str | None = None
+    role: str | None = None
+    tool_context: str | None = None
+
+    model_config = {"frozen": True}
+
+
+class ParticipantMetadata(BaseModel):
+    """
+    Responsibilities:
+    - Hold participant identity data separate from organisational segmentation
+    - Support pseudonymous identification without mixing with context fields
+
+    Collaborators:
+    - None (value object)
+
+    Notes:
+    - All fields are optional
+    - Immutable value object
+    - V2 split from StoryMetadata.user_pseudonym
+    """
+
+    user_pseudonym: str | None = None
+
+    model_config = {"frozen": True}
+
+
+class TriadResponseItem(BaseModel):
+    """
+    Responsibilities:
+    - Hold a participant's response to a single triad signifier
+    - Carry the discriminator kind="triad" for union dispatch
+
+    Collaborators:
+    - TriadCoordinates (value object)
+
+    Notes:
+    - Immutable value object
+    - kind field enables SignifierResponse discriminated union
+    - Named TriadResponseItem to avoid collision with API-layer TriadResponse
+    """
+
+    kind: Literal["triad"] = "triad"
+    signifier_id: str = Field(..., min_length=1)
+    coordinates: TriadCoordinates
+
+    model_config = {"frozen": True}
+
+
+# Discriminated union for extensible signifier responses.
+# Add DyadResponse, ChoiceResponse etc. here when new signifier types land.
+SignifierResponse = TriadResponseItem
+
+
+class StorySignification(BaseModel):
+    """
+    Responsibilities:
+    - Hold the participant's self-signification of their story
+    - Capture headline label and one response per signifier
+
+    Collaborators:
+    - SignifierResponse (union value object)
+
+    Notes:
+    - Immutable value object
+    - headline: short label in the participant's own words (optional)
+    - responses: one entry per signifier the participant completed
+    - Absorbs feedback-bkf (headline) and feedback-0ct (extensibility point)
+    """
+
+    headline: str | None = None
+    responses: list[SignifierResponse] = Field(default_factory=list)
 
     model_config = {"frozen": True}
 
@@ -265,25 +357,35 @@ class SentimentAnalysis(BaseModel):
 class Story(BaseModel):
     """
     Responsibilities:
-    - Hold complete story data (text, triads, metadata)
-    - Validate story meets requirements (length, triad count)
+    - Hold complete story data (text, triads/signification, metadata)
+    - Validate story meets requirements (text length)
     - Ensure story is always valid when constructed
 
     Collaborators:
-    - TriadPlacement (value object)
-    - StoryMetadata (value object)
+    - TriadPlacement (value object, V1 compat)
+    - StoryMetadata (value object, V1 compat — deprecated)
+    - StorySignification (value object, V2)
+    - ContextMetadata (value object, V2)
+    - ParticipantMetadata (value object, V2)
 
     Notes:
     - Core domain aggregate root
-    - Immutable after creation (except processing_status)
+    - schema_version=1: legacy path — triads + metadata present
+    - schema_version=2: V2 path — signification + context + participant
+    - triads constraint relaxed to [] in V2 (participant used signification)
     - Story text: 50-2000 characters
-    - Exactly 3 triad placements required
     """
 
     id: str = Field(..., min_length=1)
     story_text: str = Field(..., min_length=50, max_length=2000)
-    triads: list[TriadPlacement] = Field(..., min_length=3, max_length=3)
+    schema_version: int = Field(default=2)
+    # V1 compat fields — present for existing stories read from MongoDB
+    triads: list[TriadPlacement] = Field(default_factory=list)
     metadata: StoryMetadata | None = None
+    # V2 fields
+    signification: StorySignification | None = None
+    context: ContextMetadata | None = None
+    participant: ParticipantMetadata | None = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     processing_status: str = Field(default="pending")
     entity_status: str = Field(default="pending")

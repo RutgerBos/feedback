@@ -3,7 +3,7 @@ Tests for ProximityCalculationService (Story 3.4).
 """
 
 
-from src.domain.models import Story, TriadCoordinates, TriadPlacement, TriadProximity
+from src.domain.models import Story, StorySignification, TriadCoordinates, TriadProximity, TriadResponseItem
 from src.ports.errors import NotFoundError
 from src.ports.graph import GraphPort
 from src.ports.storage import StoragePort
@@ -21,11 +21,11 @@ def make_story(
     return Story(
         id=story_id,
         story_text="CI failures blocked our deployment repeatedly this sprint. " * 3,
-        triads=[
-            TriadPlacement(triad_id="workflow_nature", coordinates=TriadCoordinates(x=x, y=y)),
-            TriadPlacement(triad_id="understanding_quality", coordinates=TriadCoordinates(x=x, y=y)),
-            TriadPlacement(triad_id="value_character", coordinates=TriadCoordinates(x=x, y=y)),
-        ],
+        signification=StorySignification(responses=[
+            TriadResponseItem(kind="triad", signifier_id="workflow_nature", coordinates=TriadCoordinates(x=x, y=y)),
+            TriadResponseItem(kind="triad", signifier_id="understanding_quality", coordinates=TriadCoordinates(x=x, y=y)),
+            TriadResponseItem(kind="triad", signifier_id="value_character", coordinates=TriadCoordinates(x=x, y=y)),
+        ]),
         processing_status=processing_status,
     )
 
@@ -181,21 +181,21 @@ def test_calculate_for_story_matches_triads_by_id():
     story_a = Story(
         id="story-a",
         story_text="CI failures blocked our deployment repeatedly this sprint. " * 3,
-        triads=[
-            TriadPlacement(triad_id="workflow_nature", coordinates=TriadCoordinates(x=0.1, y=0.1)),
-            TriadPlacement(triad_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.5)),
-            TriadPlacement(triad_id="value_character", coordinates=TriadCoordinates(x=0.1, y=0.1)),
-        ],
+        signification=StorySignification(responses=[
+            TriadResponseItem(kind="triad", signifier_id="workflow_nature", coordinates=TriadCoordinates(x=0.1, y=0.1)),
+            TriadResponseItem(kind="triad", signifier_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.5)),
+            TriadResponseItem(kind="triad", signifier_id="value_character", coordinates=TriadCoordinates(x=0.1, y=0.1)),
+        ]),
         processing_status="processed",
     )
     story_b = Story(
         id="story-b",
         story_text="CI failures blocked our deployment repeatedly this sprint. " * 3,
-        triads=[
-            TriadPlacement(triad_id="value_character", coordinates=TriadCoordinates(x=0.1, y=0.15)),
-            TriadPlacement(triad_id="workflow_nature", coordinates=TriadCoordinates(x=0.1, y=0.15)),
-            TriadPlacement(triad_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.55)),
-        ],
+        signification=StorySignification(responses=[
+            TriadResponseItem(kind="triad", signifier_id="value_character", coordinates=TriadCoordinates(x=0.1, y=0.15)),
+            TriadResponseItem(kind="triad", signifier_id="workflow_nature", coordinates=TriadCoordinates(x=0.1, y=0.15)),
+            TriadResponseItem(kind="triad", signifier_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.55)),
+        ]),
         processing_status="processed",
     )
     storage = FakeStorage(stories={"story-a": story_a, "story-b": story_b})
@@ -241,12 +241,12 @@ def test_calculate_for_story_skips_missing_triad():
     story_b = Story(
         id="story-b",
         story_text="CI failures blocked our deployment repeatedly this sprint. " * 3,
-        triads=[
-            TriadPlacement(triad_id="workflow_nature", coordinates=TriadCoordinates(x=0.1, y=0.15)),
-            TriadPlacement(triad_id="understanding_quality", coordinates=TriadCoordinates(x=0.1, y=0.15)),
+        signification=StorySignification(responses=[
+            TriadResponseItem(kind="triad", signifier_id="workflow_nature", coordinates=TriadCoordinates(x=0.1, y=0.15)),
+            TriadResponseItem(kind="triad", signifier_id="understanding_quality", coordinates=TriadCoordinates(x=0.1, y=0.15)),
             # value_character is absent
-            TriadPlacement(triad_id="other_triad", coordinates=TriadCoordinates(x=0.1, y=0.15)),
-        ],
+            TriadResponseItem(kind="triad", signifier_id="other_triad", coordinates=TriadCoordinates(x=0.1, y=0.15)),
+        ]),
         processing_status="processed",
     )
     storage = FakeStorage(stories={"story-a": story_a, "story-b": story_b})
@@ -296,22 +296,22 @@ def test_calculate_for_story_exact_triad_set_regardless_of_order():
     story_a = Story(
         id="story-a",
         story_text="CI failures blocked our deployment repeatedly this sprint. " * 3,
-        triads=[
-            TriadPlacement(triad_id="workflow_nature", coordinates=TriadCoordinates(x=0.1, y=0.1)),
-            TriadPlacement(triad_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.5)),
-            TriadPlacement(triad_id="value_character", coordinates=TriadCoordinates(x=0.1, y=0.1)),
-        ],
+        signification=StorySignification(responses=[
+            TriadResponseItem(kind="triad", signifier_id="workflow_nature", coordinates=TriadCoordinates(x=0.1, y=0.1)),
+            TriadResponseItem(kind="triad", signifier_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.5)),
+            TriadResponseItem(kind="triad", signifier_id="value_character", coordinates=TriadCoordinates(x=0.1, y=0.1)),
+        ]),
         processing_status="processed",
     )
     # story_b has triads in reverse order; value_character is far away
     story_b = Story(
         id="story-b",
         story_text="CI failures blocked our deployment repeatedly this sprint. " * 3,
-        triads=[
-            TriadPlacement(triad_id="value_character", coordinates=TriadCoordinates(x=0.9, y=0.05)),  # far
-            TriadPlacement(triad_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.55)),  # close
-            TriadPlacement(triad_id="workflow_nature", coordinates=TriadCoordinates(x=0.1, y=0.15)),  # close
-        ],
+        signification=StorySignification(responses=[
+            TriadResponseItem(kind="triad", signifier_id="value_character", coordinates=TriadCoordinates(x=0.9, y=0.05)),  # far
+            TriadResponseItem(kind="triad", signifier_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.55)),  # close
+            TriadResponseItem(kind="triad", signifier_id="workflow_nature", coordinates=TriadCoordinates(x=0.1, y=0.15)),  # close
+        ]),
         processing_status="processed",
     )
     storage = FakeStorage(stories={"story-a": story_a, "story-b": story_b})

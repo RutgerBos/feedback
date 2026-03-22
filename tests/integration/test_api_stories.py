@@ -117,11 +117,13 @@ def test_submit_story_via_api(test_db, api_client):
         "/api/stories",
         json={
             "story_text": "I had to restart the CI pipeline three times today because of flaky tests. " * 2,
-            "triads": [
-                {"triad_id": "workflow_nature", "x": 0.3, "y": 0.6},
-                {"triad_id": "understanding_quality", "x": 0.5, "y": 0.4},
-                {"triad_id": "value_character", "x": 0.2, "y": 0.7},
-            ],
+            "signification": {
+                "responses": [
+                    {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}},
+                    {"kind": "triad", "signifier_id": "understanding_quality", "coordinates": {"x": 0.5, "y": 0.4}},
+                    {"kind": "triad", "signifier_id": "value_character", "coordinates": {"x": 0.2, "y": 0.7}},
+                ]
+            },
         },
     )
 
@@ -136,6 +138,20 @@ def test_submit_story_via_api(test_db, api_client):
     assert "CI pipeline" in story["story_text"]
 
 
+def test_submit_story_rejects_v1_triads(test_db, api_client):
+    """POST /api/stories returns 422 when old V1 triads field is non-empty."""
+    response = api_client.post(
+        "/api/stories",
+        json={
+            "story_text": "I had to restart the CI pipeline three times today because of flaky tests. " * 2,
+            "triads": [
+                {"triad_id": "workflow_nature", "x": 0.3, "y": 0.6},
+            ],
+        },
+    )
+    assert response.status_code == 422
+
+
 def test_submit_story_with_invalid_data(test_db, api_client):
     """Submitting invalid data returns 400."""
     client = api_client
@@ -145,11 +161,6 @@ def test_submit_story_with_invalid_data(test_db, api_client):
         "/api/stories",
         json={
             "story_text": "Too short",
-            "triads": [
-                {"triad_id": "t1", "x": 0.3, "y": 0.6},
-                {"triad_id": "t2", "x": 0.5, "y": 0.4},
-                {"triad_id": "t3", "x": 0.2, "y": 0.7},
-            ],
         },
     )
 
@@ -168,11 +179,13 @@ def test_list_stories_returns_all_stories(test_db, api_client):
             "/api/stories",
             json={
                 "story_text": story_text,
-                "triads": [
-                    {"triad_id": "workflow_nature", "x": 0.3, "y": 0.4},
-                    {"triad_id": "understanding_quality", "x": 0.4, "y": 0.3},
-                    {"triad_id": "value_character", "x": 0.5, "y": 0.2},
-                ],
+                "signification": {
+                    "responses": [
+                        {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.4}},
+                        {"kind": "triad", "signifier_id": "understanding_quality", "coordinates": {"x": 0.4, "y": 0.3}},
+                        {"kind": "triad", "signifier_id": "value_character", "coordinates": {"x": 0.5, "y": 0.2}},
+                    ]
+                },
             },
         )
 
@@ -208,11 +221,13 @@ def test_list_stories_supports_pagination(test_db, api_client):
             "/api/stories",
             json={
                 "story_text": story_text,
-                "triads": [
-                    {"triad_id": "workflow_nature", "x": 0.3, "y": 0.4},
-                    {"triad_id": "understanding_quality", "x": 0.4, "y": 0.3},
-                    {"triad_id": "value_character", "x": 0.5, "y": 0.2},
-                ],
+                "signification": {
+                    "responses": [
+                        {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.4}},
+                        {"kind": "triad", "signifier_id": "understanding_quality", "coordinates": {"x": 0.4, "y": 0.3}},
+                        {"kind": "triad", "signifier_id": "value_character", "coordinates": {"x": 0.5, "y": 0.2}},
+                    ]
+                },
             },
         )
 
@@ -226,23 +241,22 @@ def test_list_stories_supports_pagination(test_db, api_client):
 
 
 def test_submit_story_with_metadata(test_db, api_client):
-    """Can submit a story with optional metadata (department, role, user_pseudonym)."""
+    """Can submit a story with optional context and participant fields."""
     client = api_client
 
     response = client.post(
         "/api/stories",
         json={
             "story_text": "The deployment process has become much smoother after the recent automation improvements. " * 2,
-            "triads": [
-                {"triad_id": "workflow_nature", "x": 0.8, "y": 0.1},
-                {"triad_id": "understanding_quality", "x": 0.6, "y": 0.3},
-                {"triad_id": "value_character", "x": 0.7, "y": 0.2},
-            ],
-            "metadata": {
-                "department": "engineering",
-                "role": "senior_developer",
-                "user_pseudonym": "user_abc123"
-            }
+            "signification": {
+                "responses": [
+                    {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.8, "y": 0.1}},
+                    {"kind": "triad", "signifier_id": "understanding_quality", "coordinates": {"x": 0.6, "y": 0.3}},
+                    {"kind": "triad", "signifier_id": "value_character", "coordinates": {"x": 0.7, "y": 0.2}},
+                ]
+            },
+            "context": {"department": "engineering", "role": "senior_developer", "tool_context": None},
+            "participant": {"user_pseudonym": "user_abc123"},
         },
     )
 
@@ -250,12 +264,11 @@ def test_submit_story_with_metadata(test_db, api_client):
     data = response.json()
     assert "story_id" in data
 
-    # Verify metadata was saved to database
+    # Verify context and participant were saved to database
     story = test_db.stories.find_one({"_id": data["story_id"]})
     assert story is not None
-    assert story["metadata"]["department"] == "engineering"
-    assert story["metadata"]["role"] == "senior_developer"
-    assert story["metadata"]["user_pseudonym"] == "user_abc123"
+    assert story["context"]["department"] == "engineering"
+    assert story["participant"]["user_pseudonym"] == "user_abc123"
 
 
 def test_get_story_by_id(test_db, api_client):
@@ -267,12 +280,13 @@ def test_get_story_by_id(test_db, api_client):
         "/api/stories",
         json={
             "story_text": "The deployment pipeline finally works smoothly after months of effort. " * 2,
-            "triads": [
-                {"triad_id": "workflow_nature", "x": 0.5, "y": 0.3},
-                {"triad_id": "understanding_quality", "x": 0.4, "y": 0.4},
-                {"triad_id": "value_character", "x": 0.3, "y": 0.5},
-            ],
-            "metadata": {"department": "engineering", "role": "developer"},
+            "signification": {
+                "responses": [
+                    {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.5, "y": 0.3}},
+                    {"kind": "triad", "signifier_id": "understanding_quality", "coordinates": {"x": 0.4, "y": 0.4}},
+                    {"kind": "triad", "signifier_id": "value_character", "coordinates": {"x": 0.3, "y": 0.5}},
+                ]
+            },
         },
     )
     story_id = submit_response.json()["story_id"]
@@ -284,9 +298,10 @@ def test_get_story_by_id(test_db, api_client):
     data = response.json()
     assert data["id"] == story_id
     assert "deployment pipeline" in data["story_text"]
-    assert len(data["triads"]) == 3
-    assert data["metadata"]["department"] == "engineering"
     assert "timestamp" in data
+    assert data["signification"] is not None
+    assert len(data["signification"]["responses"]) == 3
+    assert data["signification"]["responses"][0]["signifier_id"] == "workflow_nature"
 
 
 def test_get_story_returns_404_for_unknown_id(test_db, api_client):
@@ -378,11 +393,13 @@ def test_submit_story_triggers_entity_extraction(test_db):
                 "/api/stories",
                 json={
                     "story_text": "CI failures blocked our deployment repeatedly this sprint. " * 2,
-                    "triads": [
-                        {"triad_id": "workflow_nature", "x": 0.3, "y": 0.6},
-                        {"triad_id": "understanding_quality", "x": 0.5, "y": 0.4},
-                        {"triad_id": "value_character", "x": 0.2, "y": 0.7},
-                    ],
+                    "signification": {
+                        "responses": [
+                            {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}},
+                            {"kind": "triad", "signifier_id": "understanding_quality", "coordinates": {"x": 0.5, "y": 0.4}},
+                            {"kind": "triad", "signifier_id": "value_character", "coordinates": {"x": 0.2, "y": 0.7}},
+                        ]
+                    },
                 },
             )
             assert response.status_code == 201
@@ -394,23 +411,25 @@ def test_submit_story_triggers_entity_extraction(test_db):
 
     # Background task should have run; verify extraction results in DB
     doc = test_db.stories.find_one({"_id": story_id})
-    assert doc["processing_status"] == "processed"
+    assert doc["entity_status"] == "processed"
     assert doc["entities"] == [{"name": "CI pipeline", "type": "tool"}]
 
 
 def test_submit_story_rejects_unknown_triad_id(test_db, api_client):
-    """POST /api/stories returns 400 when a triad_id is not in the loaded config."""
+    """POST /api/stories returns 400 when a signifier_id is not in the loaded config."""
     client = api_client
 
     response = client.post(
         "/api/stories",
         json={
             "story_text": "The deployment pipeline failed twice before we caught the config issue. " * 2,
-            "triads": [
-                {"triad_id": "workflow_nature", "x": 0.3, "y": 0.6},
-                {"triad_id": "understanding_quality", "x": 0.5, "y": 0.4},
-                {"triad_id": "phantom_triad", "x": 0.2, "y": 0.7},  # not in config
-            ],
+            "signification": {
+                "responses": [
+                    {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}},
+                    {"kind": "triad", "signifier_id": "understanding_quality", "coordinates": {"x": 0.5, "y": 0.4}},
+                    {"kind": "triad", "signifier_id": "phantom_triad", "coordinates": {"x": 0.2, "y": 0.7}},  # not in config
+                ]
+            },
         },
     )
 
@@ -422,17 +441,19 @@ def test_submit_story_without_metadata(test_db, api_client):
     """Can submit a story without metadata - metadata is optional."""
     client = api_client
 
-    # Submit story without metadata field at all
+    # Submit story without context field at all
     response = client.post(
         "/api/stories",
         json={
             "story_text": "The new feature made my workflow much faster and more efficient today. " * 2,
-            "triads": [
-                {"triad_id": "workflow_nature", "x": 0.9, "y": 0.05},
-                {"triad_id": "understanding_quality", "x": 0.7, "y": 0.2},
-                {"triad_id": "value_character", "x": 0.8, "y": 0.1},
-            ],
-            # No metadata field
+            "signification": {
+                "responses": [
+                    {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.9, "y": 0.05}},
+                    {"kind": "triad", "signifier_id": "understanding_quality", "coordinates": {"x": 0.7, "y": 0.2}},
+                    {"kind": "triad", "signifier_id": "value_character", "coordinates": {"x": 0.8, "y": 0.1}},
+                ]
+            },
+            # No context or participant fields
         },
     )
 
@@ -440,10 +461,10 @@ def test_submit_story_without_metadata(test_db, api_client):
     data = response.json()
     assert "story_id" in data
 
-    # Verify story was saved without metadata
+    # Verify story was saved without context
     story = test_db.stories.find_one({"_id": data["story_id"]})
     assert story is not None
-    assert story["metadata"] is None
+    assert story.get("context") is None
 
 
 def test_submit_story_triggers_graph_node_creation(test_db):
@@ -527,11 +548,13 @@ def test_submit_story_triggers_graph_node_creation(test_db):
                 "/api/stories",
                 json={
                     "story_text": "CI failures blocked our deployment repeatedly this sprint. " * 2,
-                    "triads": [
-                        {"triad_id": "workflow_nature", "x": 0.3, "y": 0.6},
-                        {"triad_id": "understanding_quality", "x": 0.5, "y": 0.4},
-                        {"triad_id": "value_character", "x": 0.2, "y": 0.7},
-                    ],
+                    "signification": {
+                        "responses": [
+                            {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}},
+                            {"kind": "triad", "signifier_id": "understanding_quality", "coordinates": {"x": 0.5, "y": 0.4}},
+                            {"kind": "triad", "signifier_id": "value_character", "coordinates": {"x": 0.2, "y": 0.7}},
+                        ]
+                    },
                 },
             )
             assert response.status_code == 201
@@ -558,11 +581,13 @@ def test_reprocess_existing_story_returns_202(api_client):
         "/api/stories",
         json={
             "story_text": "CI failures blocked our deployment repeatedly this sprint. " * 2,
-            "triads": [
-                {"triad_id": "workflow_nature", "x": 0.3, "y": 0.6},
-                {"triad_id": "understanding_quality", "x": 0.5, "y": 0.4},
-                {"triad_id": "value_character", "x": 0.2, "y": 0.7},
-            ],
+            "signification": {
+                "responses": [
+                    {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}},
+                    {"kind": "triad", "signifier_id": "understanding_quality", "coordinates": {"x": 0.5, "y": 0.4}},
+                    {"kind": "triad", "signifier_id": "value_character", "coordinates": {"x": 0.2, "y": 0.7}},
+                ]
+            },
         },
     )
     story_id = submit.json()["story_id"]

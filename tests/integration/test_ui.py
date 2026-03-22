@@ -128,3 +128,19 @@ def test_submit_returns_story_id_in_confirmation(submit_client):
     response = submit_client.post("/ui/submit", data=_VALID_FORM)
     assert response.status_code == 200
     assert "Reference:" in response.text
+
+
+def test_submit_stores_signification_not_bare_triads(submit_client, test_db):
+    """POST /ui/submit stores signification.responses, not bare triads[], on the new story."""
+    response = submit_client.post("/ui/submit", data=_VALID_FORM)
+    assert response.status_code == 200
+
+    doc = test_db.stories.find_one({})
+    assert doc is not None
+    assert doc.get("signification") is not None
+    responses = doc["signification"]["responses"]
+    assert len(responses) == 3
+    signifier_ids = {r["signifier_id"] for r in responses}
+    assert signifier_ids == {"workflow_nature", "understanding_quality", "value_character"}
+    # triads list should be empty — coordinates live in signification now
+    assert doc.get("triads") == []

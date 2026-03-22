@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.domain.models import Story, TriadCoordinates, TriadPlacement
+from src.domain.models import Story, StorySignification, TriadCoordinates, TriadResponseItem
 from src.ports.errors import GraphError
 from src.ports.graph import GraphPort
 from src.ports.storage import StoragePort
@@ -12,11 +12,11 @@ def make_story(story_id: str, x: float, y: float, triad_id: str = "workflow_natu
     return Story(
         id=story_id,
         story_text="CI failures blocked our deployment repeatedly this sprint. " * 3,
-        triads=[
-            TriadPlacement(triad_id=triad_id, coordinates=TriadCoordinates(x=x, y=y)),
-            TriadPlacement(triad_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.4)),
-            TriadPlacement(triad_id="value_character", coordinates=TriadCoordinates(x=0.2, y=0.7)),
-        ],
+        signification=StorySignification(responses=[
+            TriadResponseItem(kind="triad", signifier_id=triad_id, coordinates=TriadCoordinates(x=x, y=y)),
+            TriadResponseItem(kind="triad", signifier_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.4)),
+            TriadResponseItem(kind="triad", signifier_id="value_character", coordinates=TriadCoordinates(x=0.2, y=0.7)),
+        ]),
         processing_status="processed",
         entities=[{"name": "CI pipeline", "type": "tool"}],
         themes=["automation friction"],

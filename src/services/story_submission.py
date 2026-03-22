@@ -6,13 +6,75 @@ ID generation, and persistence.
 """
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from src.domain.models import Story, StoryMetadata, TriadCoordinates, TriadPlacement
+from src.domain.models import (
+    ContextMetadata,
+    ParticipantMetadata,
+    Story,
+    StorySignification,
+    TriadCoordinates,
+    TriadResponseItem,
+)
 from src.ports.storage import StoragePort
+
+
+class CoordinatesRequest(BaseModel):
+    """x/y coordinates in [0, 1]."""
+
+    x: float = Field(..., ge=0.0, le=1.0)
+    y: float = Field(..., ge=0.0, le=1.0)
+
+
+class TriadResponseRequest(BaseModel):
+    """One response placement in a signification."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["triad"] = "triad"
+    signifier_id: str = Field(..., min_length=1)
+    coordinates: CoordinatesRequest
+
+
+class SignificationRequest(BaseModel):
+    """V2 signification block sent by the client."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    headline: str | None = None
+    responses: list[TriadResponseRequest] = Field(default_factory=list)
+
+    @field_validator("responses")
+    @classmethod
+    def reject_duplicate_signifier_ids(
+        cls, v: list[TriadResponseRequest]
+    ) -> list[TriadResponseRequest]:
+        """Reject duplicate signifier_id entries."""
+        ids = [r.signifier_id for r in v]
+        if len(ids) != len(set(ids)):
+            raise ValueError("Duplicate signifier_id values are not allowed in responses.")
+        return v
+
+
+class ContextRequest(BaseModel):
+    """Typed context metadata sent by the client."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    department: str | None = None
+    role: str | None = None
+    tool_context: str | None = None
+
+
+class ParticipantRequest(BaseModel):
+    """Typed participant metadata sent by the client."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    user_pseudonym: str | None = None
 
 
 class StorySubmissionRequest(BaseModel):
@@ -21,33 +83,29 @@ class StorySubmissionRequest(BaseModel):
 
     Responsibilities:
     - Hold and validate story submission data
-    - Ensure all required fields are present
-    - Validate field constraints
 
     Notes:
     - Used as input to StorySubmissionService
     - Validates on construction via Pydantic
-    - Triads represented as simple dicts for API convenience
+    - triads field is kept to provide a clear rejection message for old V1 clients
+    - signification, context, participant are the V2 fields
     """
 
     story_text: str = Field(..., min_length=50, max_length=2000)
-    triads: list[dict[str, Any]] = Field(..., min_length=3, max_length=3)
-    metadata: dict[str, str | None] | None = None
+    triads: list[dict[str, Any]] = Field(default_factory=list)
+    signification: SignificationRequest
+    context: ContextRequest | None = None
+    participant: ParticipantRequest | None = None
 
     @field_validator("triads")
     @classmethod
-    def validate_triad_structure(cls, v: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Ensure each triad has required fields."""
-        for triad in v:
-            if "triad_id" not in triad:
-                raise ValueError("Each triad must have a triad_id")
-            if "x" not in triad or "y" not in triad:
-                raise ValueError("Each triad must have x and y coordinates")
-            # Validate coordinate range
-            if not (0.0 <= triad["x"] <= 1.0):
-                raise ValueError("Coordinate x must be between 0 and 1")
-            if not (0.0 <= triad["y"] <= 1.0):
-                raise ValueError("Coordinate y must be between 0 and 1")
+    def reject_v1_triads(cls, v: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Reject legacy V1 triads payload with a helpful error."""
+        if v:
+            raise ValueError(
+                "The 'triads' field is no longer accepted. "
+                "Submit coordinates via 'signification.responses' instead."
+            )
         return v
 
 
@@ -86,7 +144,7 @@ class StorySubmissionService:
     - Pure coordination - no business logic
     - All validation delegated to domain models and request model
     - Doesn't know about MongoDB or specific storage
-    - valid_triad_ids: when provided, submitted triad_ids must be in the set
+    - valid_triad_ids: when provided, submitted signifier_ids must be in the set
     """
 
     def __init__(self, storage: StoragePort, valid_triad_ids: set[str] | None = None):
@@ -96,7 +154,7 @@ class StorySubmissionService:
         Args:
             storage: Storage port for persisting stories
             valid_triad_ids: Allowlist of known triad IDs from config.
-                             If None, triad ID membership is not validated.
+                             If None, signifier ID membership is not validated.
         """
         self.storage = storage
         self.valid_triad_ids = valid_triad_ids
@@ -112,49 +170,58 @@ class StorySubmissionService:
             StorySubmissionResult with story ID
 
         Raises:
-            ValueError: If validation fails (caught by Pydantic)
+            ValueError: If signifier IDs not in allowlist
             StorageError: If storage operation fails
         """
-        # Validate triad IDs against config allowlist
+        # Validate signifier IDs against config allowlist
         if self.valid_triad_ids is not None:
-            submitted_ids = {t["triad_id"] for t in request.triads}
+            submitted_ids = {r.signifier_id for r in request.signification.responses}
             unknown = submitted_ids - self.valid_triad_ids
             if unknown:
-                raise ValueError(f"Unknown triad IDs: {', '.join(sorted(unknown))}")
+                raise ValueError(f"Unknown signifier IDs: {', '.join(sorted(unknown))}")
 
-        # Generate UUID for story
         story_id = str(uuid4())
 
-        # Convert request triads to domain model
-        triad_placements = [
-            TriadPlacement(
-                triad_id=t["triad_id"],
-                coordinates=TriadCoordinates(x=t["x"], y=t["y"]),
-            )
-            for t in request.triads
-        ]
+        # Convert signification
+        signification = StorySignification(
+            headline=request.signification.headline,
+            responses=[
+                TriadResponseItem(
+                    kind=r.kind,
+                    signifier_id=r.signifier_id,
+                    coordinates=TriadCoordinates(x=r.coordinates.x, y=r.coordinates.y),
+                )
+                for r in request.signification.responses
+            ],
+        )
 
-        # Convert metadata if present
-        metadata = None
-        if request.metadata:
-            metadata = StoryMetadata(
-                user_pseudonym=request.metadata.get("user_pseudonym"),
-                department=request.metadata.get("department"),
-                role=request.metadata.get("role"),
-                tool_context=request.metadata.get("tool_context"),
+        # Convert context metadata if present
+        context = None
+        if request.context:
+            context = ContextMetadata(
+                department=request.context.department,
+                role=request.context.role,
+                tool_context=request.context.tool_context,
             )
 
-        # Create story domain model
+        # Convert participant metadata if present
+        participant = None
+        if request.participant:
+            participant = ParticipantMetadata(
+                user_pseudonym=request.participant.user_pseudonym,
+            )
+
         story = Story(
             id=story_id,
             story_text=request.story_text,
-            triads=triad_placements,
-            metadata=metadata,
+            schema_version=2,
+            triads=[],
+            signification=signification,  # always set; required field
+            context=context,
+            participant=participant,
             timestamp=datetime.now(UTC),
             processing_status="pending",
         )
 
-        # Save via storage port
         saved_id = self.storage.save_story(story)
-
         return StorySubmissionResult(story_id=saved_id)

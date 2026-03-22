@@ -207,11 +207,11 @@ def test_synthesize_returns_narrative_when_stories_exist(test_db):
                 "/api/stories",
                 json={
                     "story_text": "CI pipeline kept failing repeatedly and blocked our entire team. " * 2,
-                    "triads": [
-                        {"triad_id": "workflow_nature", "x": 0.3, "y": 0.6},
-                        {"triad_id": "understanding_quality", "x": 0.5, "y": 0.4},
-                        {"triad_id": "value_character", "x": 0.2, "y": 0.7},
-                    ],
+                    "signification": {"responses": [
+                        {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}},
+                        {"kind": "triad", "signifier_id": "understanding_quality", "coordinates": {"x": 0.5, "y": 0.4}},
+                        {"kind": "triad", "signifier_id": "value_character", "coordinates": {"x": 0.2, "y": 0.7}},
+                    ]},
                 },
             )
             assert resp.status_code == 201
@@ -500,11 +500,13 @@ def test_nl_query_returns_200_with_answer(test_db):
     test_db.stories.insert_one({
         "_id": "s1",
         "story_text": "CI failures blocked our deployment repeatedly this sprint. " * 3,
-        "triads": [
-            {"triad_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}},
-            {"triad_id": "understanding_quality", "coordinates": {"x": 0.5, "y": 0.4}},
-            {"triad_id": "value_character", "coordinates": {"x": 0.2, "y": 0.7}},
-        ],
+        "schema_version": 2,
+        "triads": [],
+        "signification": {"headline": None, "responses": [
+            {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}},
+            {"kind": "triad", "signifier_id": "understanding_quality", "coordinates": {"x": 0.5, "y": 0.4}},
+            {"kind": "triad", "signifier_id": "value_character", "coordinates": {"x": 0.2, "y": 0.7}},
+        ]},
         "processing_status": "processed",
         "themes": [],
         "entities": [],

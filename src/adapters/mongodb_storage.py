@@ -10,11 +10,15 @@ from typing import Any
 from pymongo.database import Database
 
 from src.domain.models import (
+    ContextMetadata,
+    ParticipantMetadata,
     SentimentAnalysis,
     Story,
     StoryMetadata,
+    StorySignification,
     TriadCoordinates,
     TriadPlacement,
+    TriadResponseItem,
 )
 from src.ports.errors import NotFoundError, StorageError
 from src.ports.storage import StoragePort
@@ -245,7 +249,7 @@ class MongoDBStorageAdapter(StoragePort):
             for placement in story.triads
         ]
 
-        # Convert metadata if present
+        # Convert V1 metadata if present
         metadata_dict = None
         if story.metadata:
             metadata_dict = {
@@ -253,6 +257,37 @@ class MongoDBStorageAdapter(StoragePort):
                 "department": story.metadata.department,
                 "role": story.metadata.role,
                 "tool_context": story.metadata.tool_context,
+            }
+
+        # Convert V2 context metadata if present
+        context_dict = None
+        if story.context:
+            context_dict = {
+                "department": story.context.department,
+                "role": story.context.role,
+                "tool_context": story.context.tool_context,
+            }
+
+        # Convert V2 participant metadata if present
+        participant_dict = None
+        if story.participant:
+            participant_dict = {
+                "user_pseudonym": story.participant.user_pseudonym,
+            }
+
+        # Convert V2 signification if present
+        signification_dict = None
+        if story.signification:
+            signification_dict = {
+                "headline": story.signification.headline,
+                "responses": [
+                    {
+                        "kind": r.kind,
+                        "signifier_id": r.signifier_id,
+                        "coordinates": {"x": r.coordinates.x, "y": r.coordinates.y},
+                    }
+                    for r in story.signification.responses
+                ],
             }
 
         sentiment_dict = None
@@ -264,9 +299,13 @@ class MongoDBStorageAdapter(StoragePort):
             }
 
         return {
+            "schema_version": story.schema_version,
             "story_text": story.story_text,
             "triads": triads_list,
             "metadata": metadata_dict,
+            "signification": signification_dict,
+            "context": context_dict,
+            "participant": participant_dict,
             "timestamp": story.timestamp,
             "processing_status": story.processing_status,
             "entity_status": story.entity_status,
@@ -280,13 +319,17 @@ class MongoDBStorageAdapter(StoragePort):
         """
         Convert MongoDB document to Story domain model.
 
+        Handles both V1 (schema_version absent or 1) and V2 documents.
+
         Args:
             document: MongoDB document
 
         Returns:
             Story: Story domain object
         """
-        # Convert triads
+        schema_version = document.get("schema_version", 1)
+
+        # Convert triads (V1 compat)
         triads = [
             TriadPlacement(
                 triad_id=t["triad_id"],
@@ -294,10 +337,10 @@ class MongoDBStorageAdapter(StoragePort):
                     x=t["coordinates"]["x"], y=t["coordinates"]["y"]
                 ),
             )
-            for t in document["triads"]
+            for t in document.get("triads", [])
         ]
 
-        # Convert metadata if present
+        # Convert V1 metadata if present
         metadata = None
         if document.get("metadata"):
             metadata = StoryMetadata(
@@ -305,6 +348,43 @@ class MongoDBStorageAdapter(StoragePort):
                 department=document["metadata"].get("department"),
                 role=document["metadata"].get("role"),
                 tool_context=document["metadata"].get("tool_context"),
+            )
+
+        # Convert V2 context metadata if present
+        context = None
+        if document.get("context"):
+            c = document["context"]
+            context = ContextMetadata(
+                department=c.get("department"),
+                role=c.get("role"),
+                tool_context=c.get("tool_context"),
+            )
+
+        # Convert V2 participant metadata if present
+        participant = None
+        if document.get("participant"):
+            p = document["participant"]
+            participant = ParticipantMetadata(
+                user_pseudonym=p.get("user_pseudonym"),
+            )
+
+        # Convert V2 signification if present
+        signification = None
+        if document.get("signification"):
+            sig = document["signification"]
+            responses = [
+                TriadResponseItem(
+                    kind=r["kind"],
+                    signifier_id=r["signifier_id"],
+                    coordinates=TriadCoordinates(
+                        x=r["coordinates"]["x"], y=r["coordinates"]["y"]
+                    ),
+                )
+                for r in sig.get("responses", [])
+            ]
+            signification = StorySignification(
+                headline=sig.get("headline"),
+                responses=responses,
             )
 
         # Convert sentiment if present
@@ -320,8 +400,12 @@ class MongoDBStorageAdapter(StoragePort):
         return Story(
             id=document["_id"],
             story_text=document["story_text"],
+            schema_version=schema_version,
             triads=triads,
             metadata=metadata,
+            signification=signification,
+            context=context,
+            participant=participant,
             timestamp=document["timestamp"],
             processing_status=document.get("processing_status", "pending"),
             entity_status=document.get("entity_status", "pending"),
