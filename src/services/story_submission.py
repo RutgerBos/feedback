@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from src.domain.models import (
     ContextMetadata,
@@ -43,6 +43,35 @@ class SignificationRequest(BaseModel):
     headline: str | None = None
     responses: list[TriadResponseRequest] = Field(default_factory=list)
 
+    @field_validator("responses")
+    @classmethod
+    def reject_duplicate_signifier_ids(
+        cls, v: list[TriadResponseRequest]
+    ) -> list[TriadResponseRequest]:
+        """Reject duplicate signifier_id entries."""
+        ids = [r.signifier_id for r in v]
+        if len(ids) != len(set(ids)):
+            raise ValueError("Duplicate signifier_id values are not allowed in responses.")
+        return v
+
+
+class ContextRequest(BaseModel):
+    """Typed context metadata sent by the client."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    department: str | None = None
+    role: str | None = None
+    tool_context: str | None = None
+
+
+class ParticipantRequest(BaseModel):
+    """Typed participant metadata sent by the client."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    user_pseudonym: str | None = None
+
 
 class StorySubmissionRequest(BaseModel):
     """
@@ -60,9 +89,9 @@ class StorySubmissionRequest(BaseModel):
 
     story_text: str = Field(..., min_length=50, max_length=2000)
     triads: list[dict[str, Any]] = Field(default_factory=list)
-    signification: SignificationRequest | None = None
-    context: dict[str, str | None] | None = None
-    participant: dict[str, str | None] | None = None
+    signification: SignificationRequest
+    context: ContextRequest | None = None
+    participant: ParticipantRequest | None = None
 
     @field_validator("triads")
     @classmethod
@@ -141,43 +170,41 @@ class StorySubmissionService:
             StorageError: If storage operation fails
         """
         # Validate signifier IDs against config allowlist
-        if self.valid_triad_ids is not None and request.signification:
+        if self.valid_triad_ids is not None:
             submitted_ids = {r.signifier_id for r in request.signification.responses}
             unknown = submitted_ids - self.valid_triad_ids
             if unknown:
-                raise ValueError(f"Unknown triad IDs: {', '.join(sorted(unknown))}")
+                raise ValueError(f"Unknown signifier IDs: {', '.join(sorted(unknown))}")
 
         story_id = str(uuid4())
 
         # Convert signification
-        signification = None
-        if request.signification:
-            signification = StorySignification(
-                headline=request.signification.headline,
-                responses=[
-                    TriadResponseItem(
-                        kind=r.kind,
-                        signifier_id=r.signifier_id,
-                        coordinates=TriadCoordinates(x=r.coordinates.x, y=r.coordinates.y),
-                    )
-                    for r in request.signification.responses
-                ],
-            )
+        signification = StorySignification(
+            headline=request.signification.headline,
+            responses=[
+                TriadResponseItem(
+                    kind=r.kind,
+                    signifier_id=r.signifier_id,
+                    coordinates=TriadCoordinates(x=r.coordinates.x, y=r.coordinates.y),
+                )
+                for r in request.signification.responses
+            ],
+        )
 
         # Convert context metadata if present
         context = None
         if request.context:
             context = ContextMetadata(
-                department=request.context.get("department"),
-                role=request.context.get("role"),
-                tool_context=request.context.get("tool_context"),
+                department=request.context.department,
+                role=request.context.role,
+                tool_context=request.context.tool_context,
             )
 
         # Convert participant metadata if present
         participant = None
         if request.participant:
             participant = ParticipantMetadata(
-                user_pseudonym=request.participant.get("user_pseudonym"),
+                user_pseudonym=request.participant.user_pseudonym,
             )
 
         story = Story(
@@ -185,7 +212,7 @@ class StorySubmissionService:
             story_text=request.story_text,
             schema_version=2,
             triads=[],
-            signification=signification,
+            signification=signification,  # always set; required field
             context=context,
             participant=participant,
             timestamp=datetime.now(UTC),
