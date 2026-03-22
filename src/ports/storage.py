@@ -132,6 +132,19 @@ class StoragePort(ABC):
         pass
 
     @abstractmethod
+    def find_story_ids_requiring_processing(self) -> list[str]:
+        """
+        Return IDs of stories that have not yet been fully processed.
+
+        A story requires processing if either entity_status or sentiment_status
+        is not 'processed'. Used by the background worker as a sweep fallback.
+
+        Returns:
+            list[str]: Story IDs needing (re)processing
+        """
+        pass
+
+    @abstractmethod
     def update_story_sentiment(
         self,
         story_id: str,

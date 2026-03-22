@@ -114,6 +114,8 @@ class FakeStorage(StoragePort):
     def update_story_sentiment(self, story_id, sentiment, sentiment_status):
         pass
 
+    def find_story_ids_requiring_processing(self): return []
+
 
 class FailingGraph(FakeGraph):
     def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None):

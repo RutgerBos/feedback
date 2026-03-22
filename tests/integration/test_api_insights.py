@@ -355,6 +355,8 @@ def test_synthesize_returns_503_on_storage_error(test_db):
         def update_story_sentiment(self, story_id, sentiment, sentiment_status):
             pass
 
+        def find_story_ids_requiring_processing(self): return []
+
     app.dependency_overrides[get_storage] = lambda: ErrorStorage()
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
     app.dependency_overrides[get_graph] = lambda: OneIdGraph()

@@ -48,6 +48,8 @@ class FakeStorage(StoragePort):
     def update_story_sentiment(self, story_id: str, sentiment, sentiment_status: str) -> None:
         pass
 
+    def find_story_ids_requiring_processing(self): return []
+
 
 class FakeGraph(GraphPort):
     def __init__(self):

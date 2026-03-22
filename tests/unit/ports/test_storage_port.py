@@ -153,6 +153,9 @@ def test_can_implement_storage_port():
         def update_story_sentiment(self, story_id: str, sentiment: SentimentAnalysis, sentiment_status: str) -> None:
             pass
 
+        def find_story_ids_requiring_processing(self) -> list[str]:
+            return []
+
     storage = FakeStorage()
     assert storage is not None
     assert isinstance(storage, StoragePort)
