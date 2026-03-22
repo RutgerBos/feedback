@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from src.adapters.mongodb_storage import MongoDBStorageAdapter
 from src.adapters.neo4j_graph import Neo4jGraphAdapter
-from src.domain.models import SentimentAnalysis, Story, TriadCoordinates, TriadPlacement
+from src.domain.models import SentimentAnalysis, Story
 from src.ports.errors import LLMError, NotFoundError
 from src.ports.graph import GraphPort
 from src.ports.llm import EntityExtraction, LLMPort
