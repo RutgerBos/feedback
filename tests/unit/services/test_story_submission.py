@@ -159,21 +159,27 @@ def test_submit_story_validates_text_length():
         service.submit_story(request)
 
 
-def test_submit_story_requires_three_triads():
-    """Story must have exactly 3 triad placements."""
+def test_submit_story_triads_count_not_constrained():
+    """V2 stories accept any number of triads (0 to N)."""
     storage = FakeStorage()
     service = StorySubmissionService(storage)
 
-    # Only 2 triads
-    with pytest.raises(ValueError, match="triads"):
-        request = StorySubmissionRequest(
-            story_text="A" * 50,
-            triads=[
-                {"triad_id": "t1", "x": 0.3, "y": 0.6},
-                {"triad_id": "t2", "x": 0.5, "y": 0.4},
-            ],
-        )
-        service.submit_story(request)
+    # 0 triads — valid in V2
+    result = service.submit_story(StorySubmissionRequest(
+        story_text="A" * 50,
+        triads=[],
+    ))
+    assert result.story_id is not None
+
+    # 2 triads — valid
+    result = service.submit_story(StorySubmissionRequest(
+        story_text="A" * 50,
+        triads=[
+            {"triad_id": "t1", "x": 0.3, "y": 0.6},
+            {"triad_id": "t2", "x": 0.5, "y": 0.4},
+        ],
+    ))
+    assert result.story_id is not None
 
 
 # ── Triad ID validation against config ────────────────────────────────────────
@@ -230,3 +236,87 @@ def test_submit_story_skips_triad_id_validation_when_no_config():
     ))
 
     assert result.story_id is not None
+
+
+# ── V2 submission: signification, context, participant ────────────────────────
+
+
+def test_submit_story_with_signification():
+    """V2 submission accepts signification and stores it on the story."""
+    storage = FakeStorage()
+    service = StorySubmissionService(storage)
+
+    request = StorySubmissionRequest(
+        story_text="A" * 50,
+        triads=[],
+        signification={
+            "headline": "Pipeline kept breaking",
+            "responses": [
+                {
+                    "kind": "triad",
+                    "signifier_id": "workflow_nature",
+                    "coordinates": {"x": 0.3, "y": 0.6},
+                }
+            ],
+        },
+    )
+
+    result = service.submit_story(request)
+
+    saved = storage.stories[result.story_id]
+    assert saved.signification is not None
+    assert saved.signification.headline == "Pipeline kept breaking"
+    assert len(saved.signification.responses) == 1
+    assert saved.signification.responses[0].signifier_id == "workflow_nature"
+
+
+def test_submit_story_with_context_metadata():
+    """V2 submission accepts context metadata and stores it."""
+    storage = FakeStorage()
+    service = StorySubmissionService(storage)
+
+    request = StorySubmissionRequest(
+        story_text="A" * 50,
+        triads=[],
+        context={"department": "engineering", "role": "developer", "tool_context": "CI/CD"},
+    )
+
+    result = service.submit_story(request)
+
+    saved = storage.stories[result.story_id]
+    assert saved.context is not None
+    assert saved.context.department == "engineering"
+    assert saved.context.role == "developer"
+    assert saved.context.tool_context == "CI/CD"
+
+
+def test_submit_story_with_participant_metadata():
+    """V2 submission accepts participant metadata and stores it."""
+    storage = FakeStorage()
+    service = StorySubmissionService(storage)
+
+    request = StorySubmissionRequest(
+        story_text="A" * 50,
+        triads=[],
+        participant={"user_pseudonym": "user_42"},
+    )
+
+    result = service.submit_story(request)
+
+    saved = storage.stories[result.story_id]
+    assert saved.participant is not None
+    assert saved.participant.user_pseudonym == "user_42"
+
+
+def test_submit_story_schema_version_is_2():
+    """V2 submission sets schema_version=2 on the stored story."""
+    storage = FakeStorage()
+    service = StorySubmissionService(storage)
+
+    result = service.submit_story(StorySubmissionRequest(
+        story_text="A" * 50,
+        triads=[],
+    ))
+
+    saved = storage.stories[result.story_id]
+    assert saved.schema_version == 2

@@ -11,7 +11,16 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator
 
-from src.domain.models import Story, StoryMetadata, TriadCoordinates, TriadPlacement
+from src.domain.models import (
+    ContextMetadata,
+    ParticipantMetadata,
+    Story,
+    StoryMetadata,
+    StorySignification,
+    TriadCoordinates,
+    TriadPlacement,
+    TriadResponseItem,
+)
 from src.ports.storage import StoragePort
 
 
@@ -21,18 +30,23 @@ class StorySubmissionRequest(BaseModel):
 
     Responsibilities:
     - Hold and validate story submission data
-    - Ensure all required fields are present
-    - Validate field constraints
+    - Support both V1 (triads + metadata) and V2 (signification + context + participant) paths
 
     Notes:
     - Used as input to StorySubmissionService
     - Validates on construction via Pydantic
-    - Triads represented as simple dicts for API convenience
+    - V1: triads list with dict entries; metadata flat dict
+    - V2: signification dict, context dict, participant dict; triads may be empty
     """
 
     story_text: str = Field(..., min_length=50, max_length=2000)
-    triads: list[dict[str, Any]] = Field(..., min_length=3, max_length=3)
+    triads: list[dict[str, Any]] = Field(default_factory=list)
+    # V1 compat
     metadata: dict[str, str | None] | None = None
+    # V2 fields
+    signification: dict[str, Any] | None = None
+    context: dict[str, str | None] | None = None
+    participant: dict[str, str | None] | None = None
 
     @field_validator("triads")
     @classmethod
@@ -134,7 +148,7 @@ class StorySubmissionService:
             for t in request.triads
         ]
 
-        # Convert metadata if present
+        # Convert V1 metadata if present
         metadata = None
         if request.metadata:
             metadata = StoryMetadata(
@@ -144,12 +158,51 @@ class StorySubmissionService:
                 tool_context=request.metadata.get("tool_context"),
             )
 
-        # Create story domain model
+        # Convert V2 signification if present
+        signification = None
+        if request.signification:
+            sig = request.signification
+            responses = [
+                TriadResponseItem(
+                    kind=r["kind"],
+                    signifier_id=r["signifier_id"],
+                    coordinates=TriadCoordinates(
+                        x=r["coordinates"]["x"], y=r["coordinates"]["y"]
+                    ),
+                )
+                for r in sig.get("responses", [])
+            ]
+            signification = StorySignification(
+                headline=sig.get("headline"),
+                responses=responses,
+            )
+
+        # Convert V2 context metadata if present
+        context = None
+        if request.context:
+            context = ContextMetadata(
+                department=request.context.get("department"),
+                role=request.context.get("role"),
+                tool_context=request.context.get("tool_context"),
+            )
+
+        # Convert V2 participant metadata if present
+        participant = None
+        if request.participant:
+            participant = ParticipantMetadata(
+                user_pseudonym=request.participant.get("user_pseudonym"),
+            )
+
+        # Create story domain model (V2)
         story = Story(
             id=story_id,
             story_text=request.story_text,
+            schema_version=2,
             triads=triad_placements,
             metadata=metadata,
+            signification=signification,
+            context=context,
+            participant=participant,
             timestamp=datetime.now(UTC),
             processing_status="pending",
         )
