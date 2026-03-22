@@ -544,3 +544,27 @@ def test_submit_story_triggers_graph_node_creation(test_db):
     assert len(saved_nodes) == 1
     assert saved_nodes[0]["story_id"] == story_id
     assert len(saved_nodes[0]["triads"]) == 3
+
+
+def test_reprocess_unknown_story_returns_404(api_client):
+    """POST /api/stories/{id}/reprocess returns 404 for non-existent story."""
+    response = api_client.post("/api/stories/does-not-exist/reprocess")
+    assert response.status_code == 404
+
+
+def test_reprocess_existing_story_returns_202(api_client):
+    """POST /api/stories/{id}/reprocess returns 202 for existing story."""
+    submit = api_client.post(
+        "/api/stories",
+        json={
+            "story_text": "CI failures blocked our deployment repeatedly this sprint. " * 2,
+            "triads": [
+                {"triad_id": "workflow_nature", "x": 0.3, "y": 0.6},
+                {"triad_id": "understanding_quality", "x": 0.5, "y": 0.4},
+                {"triad_id": "value_character", "x": 0.2, "y": 0.7},
+            ],
+        },
+    )
+    story_id = submit.json()["story_id"]
+    response = api_client.post(f"/api/stories/{story_id}/reprocess")
+    assert response.status_code == 202
