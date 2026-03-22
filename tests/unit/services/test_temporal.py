@@ -435,3 +435,66 @@ def test_temporal_department_and_theme_intersect():
     assert len(drift.centroids) == 1
     assert drift.centroids[0].window == "2026-01"
     assert abs(drift.centroids[0].center_x - 0.1) < 1e-9
+
+
+# ── Test 16: metadata filter does not affect theme/entity frequency ───────────
+
+
+def test_temporal_metadata_filter_does_not_affect_frequency_timelines():
+    """department/role filters apply to drift only; theme_frequency and entity_frequency are unchanged."""
+    from src.services.temporal import TemporalService
+
+    jan = datetime(2026, 1, 15, 10, 0, tzinfo=UTC)
+    s1 = make_story("s1", jan, department="engineering")
+    s2 = make_story("s2", jan, department="product")
+
+    graph = FakeGraph(
+        theme_windows=[("2026-01", "automation friction", 5)],
+        entity_windows=[("2026-01", "CI pipeline", 3)],
+    )
+    storage = FakeStorage(stories={"s1": s1, "s2": s2})
+    service = TemporalService(graph=graph, storage=storage)
+    result = service.query_temporal(from_date=None, to_date=None, department="engineering")
+
+    # frequency timelines unaffected — both stories contribute graph data
+    assert len(result.theme_frequency) == 1
+    assert result.theme_frequency[0].windows[0].count == 5
+    assert len(result.entity_frequency) == 1
+    assert result.entity_frequency[0].windows[0].count == 3
+
+    # drift is filtered — only s1 (engineering) contributes
+    drift = next((d for d in result.triad_drift if d.triad_id == "workflow_nature"), None)
+    assert drift is not None
+    assert len(drift.centroids) == 1
+
+
+# ── Test 17: windows under metadata-only filter ───────────────────────────────
+
+
+def test_temporal_windows_reflect_filtered_drift():
+    """windows list is the union of observed graph windows, not filtered drift windows."""
+    from src.services.temporal import TemporalService
+
+    jan = datetime(2026, 1, 15, 10, 0, tzinfo=UTC)
+    feb = datetime(2026, 2, 10, 10, 0, tzinfo=UTC)
+    # Only s1 passes the department filter; s2 is excluded from drift
+    s1 = make_story("s1", jan, department="engineering")
+    s2 = make_story("s2", feb, department="product")
+
+    graph = FakeGraph(
+        theme_windows=[("2026-01", "x", 1), ("2026-02", "x", 1)],
+        entity_windows=[],
+    )
+    storage = FakeStorage(stories={"s1": s1, "s2": s2})
+    service = TemporalService(graph=graph, storage=storage)
+    result = service.query_temporal(from_date=None, to_date=None, department="engineering")
+
+    # windows comes from graph rows — both months present even though drift only has Jan
+    assert "2026-01" in result.windows
+    assert "2026-02" in result.windows
+
+    drift = next((d for d in result.triad_drift if d.triad_id == "workflow_nature"), None)
+    assert drift is not None
+    # drift only has Jan (s1 only)
+    drift_windows = {c.window for c in drift.centroids}
+    assert drift_windows == {"2026-01"}
