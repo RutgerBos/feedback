@@ -104,6 +104,127 @@ def test_ui_query_fragment_contains_question_echo(nl_query_client):
     assert "What issues exist with the CI pipeline?" in response.text
 
 
+# ── Test 2b: POST /ui/query renders synthesized answer and story count ─────────
+
+
+@pytest.fixture
+def nl_query_client_with_answer():
+    """TestClient where LLM synthesizes a real answer and graph returns one story."""
+    from datetime import UTC, datetime
+
+    from src.api.main import app
+    from src.api.stories import get_graph, get_llm, get_storage
+    from src.domain.models import (
+        InsightOutput,
+        QueryIntent,
+        SentimentAnalysis,
+        Story,
+        TriadCoordinates,
+        TriadPlacement,
+    )
+    from src.ports.graph import GraphPort
+    from src.ports.llm import EntityExtraction, LLMPort
+    from src.ports.storage import StoragePort
+
+    _story = Story(
+        id="s1",
+        story_text="CI failures blocked deploys repeatedly this sprint." * 3,
+        triads=[
+            TriadPlacement(triad_id="workflow_nature", coordinates=TriadCoordinates(x=0.3, y=0.5)),
+            TriadPlacement(triad_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.4)),
+            TriadPlacement(triad_id="value_character", coordinates=TriadCoordinates(x=0.2, y=0.7)),
+        ],
+        processing_status="processed",
+        timestamp=datetime(2026, 1, 15, tzinfo=UTC),
+        themes=["automation friction"],
+        entities=[{"name": "CI pipeline", "type": "tool"}],
+    )
+
+    class SingleStoryStorage(StoragePort):
+        def save_story(self, story): return story.id
+        def get_story(self, story_id): return _story
+        def count_stories(self, from_date=None, to_date=None): return 1
+        def list_stories(self, limit=20, offset=0, from_date=None, to_date=None): return [_story]
+        def update_story_entities(self, story_id, entities, themes, processing_status): pass
+        def update_story_sentiment(self, story_id, sentiment, processing_status): pass
+
+    class SingleStoryGraph(GraphPort):
+        def save_story_node(self, story_id, triads, timestamp): pass
+        def save_entity_nodes(self, story_id, entities): pass
+        def save_theme_nodes(self, story_id, themes): pass
+        def save_proximity_relationships(self, story_id, pairs): pass
+        def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None): return ["s1"]
+        def count_stories_by_entity(self, entity_name): return 1
+        def find_themes_ranked(self, limit, from_date=None, to_date=None): return []
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None): return []
+        def count_stories_by_theme(self, theme_name): return 0
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None): return []
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0): return []
+        def find_theme_counts_by_window(self, window_size, from_date=None, to_date=None, theme=None): return []
+        def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None): return []
+        def find_story_communities(self, triad_id): return []
+
+    class RichLLM(LLMPort):
+        def extract_entities(self, story_text): return EntityExtraction(entities=[])
+        def extract_themes(self, story_text): return []
+        def extract_relationships(self, story_text): return []
+        def extract_sentiment(self, story_text):
+            return SentimentAnalysis(emotion_markers=[], process_sentiment="neutral", outcome_sentiment="neutral")
+        def synthesize_insights(self, context):
+            return InsightOutput(narrative="CI pipeline causes friction.", caveats=["Small sample."])
+        def translate_query(self, question):
+            return QueryIntent(operation="by_entity", entity="CI pipeline")
+
+    app.dependency_overrides[get_storage] = lambda: SingleStoryStorage()
+    app.dependency_overrides[get_graph] = lambda: SingleStoryGraph()
+    app.dependency_overrides[get_llm] = lambda: RichLLM()
+    try:
+        with TestClient(app) as client:
+            yield client
+    finally:
+        app.dependency_overrides.pop(get_storage, None)
+        app.dependency_overrides.pop(get_graph, None)
+        app.dependency_overrides.pop(get_llm, None)
+
+
+def test_ui_query_fragment_contains_synthesized_answer(nl_query_client_with_answer):
+    """Response fragment contains the LLM-synthesized answer text."""
+    response = nl_query_client_with_answer.post(
+        "/ui/query",
+        data={"question": "What issues exist with the CI pipeline?"},
+    )
+    assert response.status_code == 200
+    assert "CI pipeline causes friction." in response.text
+
+
+def test_ui_query_fragment_contains_story_count(nl_query_client_with_answer):
+    """Response fragment contains the matching story count."""
+    response = nl_query_client_with_answer.post(
+        "/ui/query",
+        data={"question": "What issues exist with the CI pipeline?"},
+    )
+    assert "1" in response.text
+
+
+def test_ui_query_fragment_contains_caveats(nl_query_client_with_answer):
+    """Response fragment shows caveats returned by the LLM."""
+    response = nl_query_client_with_answer.post(
+        "/ui/query",
+        data={"question": "What issues exist with the CI pipeline?"},
+    )
+    assert "Small sample." in response.text
+
+
+def test_ui_query_no_match_shows_empty_message(nl_query_client):
+    """When no stories match, response fragment shows a no-match message."""
+    response = nl_query_client.post(
+        "/ui/query",
+        data={"question": "What issues exist with the CI pipeline?"},
+    )
+    assert response.status_code == 200
+    assert "No matching stories found" in response.text
+
+
 # ── Test 3: POST /ui/query with blank question returns 400 fragment ───────────
 
 
