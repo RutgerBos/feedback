@@ -593,3 +593,86 @@ def test_reprocess_existing_story_returns_202(api_client):
     story_id = submit.json()["story_id"]
     response = api_client.post(f"/api/stories/{story_id}/reprocess")
     assert response.status_code == 202
+
+
+def test_get_story_returns_422_for_v1_story(test_db, api_client):
+    """GET /api/stories/{id} returns 422 for a V1 story (no signification)."""
+    import uuid
+    from datetime import datetime, UTC
+
+    story_id = str(uuid.uuid4())
+    test_db.stories.insert_one({
+        "_id": story_id,
+        "story_text": "A legacy story with the old V1 format stored in the database.",
+        "triads": [{"triad_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}}],
+        "schema_version": 1,
+        "processing_status": "processed",
+        "timestamp": datetime.now(UTC),
+    })
+
+    response = api_client.get(f"/api/stories/{story_id}")
+    assert response.status_code == 422
+    assert "V1" in response.json()["detail"]
+
+
+def test_list_stories_excludes_v1_stories(test_db, api_client):
+    """GET /api/stories filters out V1 stories (no signification)."""
+    import uuid
+    from datetime import datetime, UTC
+
+    # Insert a V1 story directly
+    v1_id = str(uuid.uuid4())
+    test_db.stories.insert_one({
+        "_id": v1_id,
+        "story_text": "A legacy story with the old V1 format stored in the database.",
+        "triads": [{"triad_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}}],
+        "schema_version": 1,
+        "processing_status": "processed",
+        "timestamp": datetime.now(UTC),
+    })
+
+    # Submit a V2 story via the API
+    api_client.post(
+        "/api/stories",
+        json={
+            "story_text": "Working on the new feature was a great collaborative experience. " * 2,
+            "signification": {"responses": []},
+        },
+    )
+
+    response = api_client.get("/api/stories")
+    assert response.status_code == 200
+    data = response.json()
+    returned_ids = [s["id"] for s in data["stories"]]
+    assert v1_id not in returned_ids
+    assert len(data["stories"]) == 1
+
+
+def test_submit_story_rejects_duplicate_signifier_ids(test_db, api_client):
+    """POST /api/stories returns 422 for duplicate signifier_ids in responses."""
+    response = api_client.post(
+        "/api/stories",
+        json={
+            "story_text": "I had to restart the CI pipeline three times today because of flaky tests. " * 2,
+            "signification": {
+                "responses": [
+                    {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}},
+                    {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.5, "y": 0.4}},
+                ]
+            },
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_submit_story_rejects_unknown_context_fields(test_db, api_client):
+    """POST /api/stories returns 422 for unknown fields in context (typo guard)."""
+    response = api_client.post(
+        "/api/stories",
+        json={
+            "story_text": "I had to restart the CI pipeline three times today because of flaky tests. " * 2,
+            "signification": {"responses": []},
+            "context": {"deparment": "engineering"},  # typo: 'deparment'
+        },
+    )
+    assert response.status_code == 422
