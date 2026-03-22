@@ -209,3 +209,6 @@ def test_submit_triggers_background_processing(test_db):
     assert doc["entity_status"] == "processed", (
         "entity extraction must run as a background task after UI submit"
     )
+    assert doc["sentiment_status"] == "processed", (
+        "sentiment extraction must also run as a background task after UI submit"
+    )
