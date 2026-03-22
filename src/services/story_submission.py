@@ -129,9 +129,14 @@ class StorySubmissionService:
             ValueError: If validation fails (caught by Pydantic)
             StorageError: If storage operation fails
         """
-        # Validate triad IDs against config allowlist
+        # Validate signifier IDs against config allowlist (covers both triads and signification)
         if self.valid_triad_ids is not None:
             submitted_ids = {t["triad_id"] for t in request.triads}
+            if request.signification:
+                submitted_ids |= {
+                    r["signifier_id"]
+                    for r in request.signification.get("responses", [])
+                }
             unknown = submitted_ids - self.valid_triad_ids
             if unknown:
                 raise ValueError(f"Unknown triad IDs: {', '.join(sorted(unknown))}")

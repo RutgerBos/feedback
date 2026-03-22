@@ -99,17 +99,24 @@ async def submit_story_form(
     story_text = str(form.get("story_text", ""))
     triad_config = request.app.state.triad_config
 
-    triads = []
+    responses = []
     for triad in triad_config.triads:
         try:
             x = float(form.get(f"{triad.id}_x", 0.5))  # type: ignore[arg-type]
             y = float(form.get(f"{triad.id}_y", 0.5))  # type: ignore[arg-type]
         except (TypeError, ValueError):
             x, y = 0.5, 0.5
-        triads.append({"triad_id": triad.id, "x": x, "y": y})
+        responses.append({
+            "kind": "triad",
+            "signifier_id": triad.id,
+            "coordinates": {"x": x, "y": y},
+        })
 
     try:
-        submission = StorySubmissionRequest(story_text=story_text, triads=triads)
+        submission = StorySubmissionRequest(
+            story_text=story_text,
+            signification={"responses": responses},
+        )
         result = service.submit_story(submission)
         return _templates.TemplateResponse(
             request=request,

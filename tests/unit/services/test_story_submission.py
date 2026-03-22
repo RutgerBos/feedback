@@ -221,6 +221,24 @@ def test_submit_story_rejects_unknown_triad_id():
         ))
 
 
+def test_submit_story_rejects_unknown_signifier_id_in_signification():
+    """Unknown signifier_id in signification.responses is rejected when allowlist is configured."""
+    storage = FakeStorage()
+    service = StorySubmissionService(storage, valid_triad_ids=VALID_TRIAD_IDS)
+
+    with pytest.raises(ValueError, match="phantom_signifier"):
+        service.submit_story(StorySubmissionRequest(
+            story_text="The deployment pipeline failed twice before we caught the config issue. " * 2,
+            triads=[],
+            signification={
+                "responses": [
+                    {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}},
+                    {"kind": "triad", "signifier_id": "phantom_signifier", "coordinates": {"x": 0.5, "y": 0.4}},
+                ]
+            },
+        ))
+
+
 def test_submit_story_skips_triad_id_validation_when_no_config():
     """Without an allowlist, any triad_id is accepted (backward-compatible)."""
     storage = FakeStorage()
