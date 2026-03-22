@@ -58,12 +58,16 @@ def neo4j_driver():
 
 @pytest.fixture(autouse=True)
 def clean_neo4j(neo4j_driver):
-    """Remove any Story nodes written by reconcile tests before and after each test."""
-    with neo4j_driver.session() as s:
+    """Remove any nodes written by reconcile tests before and after each test."""
+    def _cleanup(s):
         s.run(f"MATCH (s:Story) WHERE s.story_id STARTS WITH '{TEST_PREFIX}' DETACH DELETE s")
+        s.run(f"MATCH (e:Entity) WHERE e.name STARTS WITH '{TEST_PREFIX}' DETACH DELETE e")
+
+    with neo4j_driver.session() as s:
+        _cleanup(s)
     yield
     with neo4j_driver.session() as s:
-        s.run(f"MATCH (s:Story) WHERE s.story_id STARTS WITH '{TEST_PREFIX}' DETACH DELETE s")
+        _cleanup(s)
 
 
 def _mongo_story(story_id: str, db) -> None:
@@ -80,6 +84,25 @@ def _neo4j_story(story_id: str, driver) -> None:
 
 
 # ── Tests ──────────────────────────────────────────────────────────────────────
+
+
+def test_reconcile_returns_correct_deleted_count(mongo_db, neo4j_driver):
+    """reconcile() returns the actual number of nodes deleted, not 0."""
+    live_id = "test-reconcile-count-live"
+    orphan_id = "test-reconcile-count-orphan"
+
+    _mongo_story(live_id, mongo_db)
+    _neo4j_story(live_id, neo4j_driver)
+
+    # Pre-clean any stale nodes left by other tests so the count is predictable.
+    reconcile(mongo_db, neo4j_driver)
+
+    # Now add exactly one orphan and verify the returned count matches.
+    _neo4j_story(orphan_id, neo4j_driver)
+    deleted, kept = reconcile(mongo_db, neo4j_driver)
+
+    assert deleted == 1
+    assert kept == 1
 
 
 def test_reconcile_deletes_orphan_nodes(mongo_db, neo4j_driver):
@@ -148,7 +171,7 @@ def test_reconcile_detaches_relationships(mongo_db, neo4j_driver):
     with neo4j_driver.session() as s:
         s.run(
             "MATCH (s:Story {story_id: $sid}) "
-            "MERGE (e:Entity {name: 'shared-entity'}) "
+            "MERGE (e:Entity {name: 'test-reconcile-shared-entity'}) "
             "MERGE (s)-[:MENTIONS]->(e)",
             sid=orphan_id,
         )
@@ -160,7 +183,7 @@ def test_reconcile_detaches_relationships(mongo_db, neo4j_driver):
             "MATCH (s:Story {story_id: $sid}) RETURN count(s) AS n", sid=orphan_id
         ).single()["n"]
         entity_count = s.run(
-            "MATCH (e:Entity {name: 'shared-entity'}) RETURN count(e) AS n"
+            "MATCH (e:Entity {name: 'test-reconcile-shared-entity'}) RETURN count(e) AS n"
         ).single()["n"]
 
     assert story_count == 0  # orphan deleted

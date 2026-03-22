@@ -44,11 +44,10 @@ def reconcile(mongo_db, neo4j_driver, *, dry_run: bool = False) -> tuple[int, in
                 UNWIND $story_ids AS story_id
                 MATCH (s:Story {story_id: story_id})
                 DETACH DELETE s
-                RETURN count(s) AS deleted_count
                 """,
                 story_ids=list(orphan_ids),
             )
-            deleted = result.single()["deleted_count"]
+            deleted = result.consume().counters.nodes_deleted
     else:
         deleted = len(orphan_ids)
 
