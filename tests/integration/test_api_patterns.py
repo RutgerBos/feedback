@@ -21,7 +21,7 @@ def api_client(test_db):
     """TestClient with MongoDB storage and a capturing graph for entity queries."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
+    from src.api.stories import get_graph, get_llm, get_queue, get_storage
     from src.domain.models import SentimentAnalysis
     from src.ports.graph import GraphPort
     from src.ports.llm import EntityExtraction, LLMPort
@@ -90,9 +90,14 @@ def api_client(test_db):
             return []
 
 
+    class _FakeQueue:
+        def enqueue(self, story_id: str): pass
+        def dequeue(self, timeout=5): return None
+
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
     app.dependency_overrides[get_graph] = lambda: NoOpGraph()
+    app.dependency_overrides[get_queue] = lambda: _FakeQueue()
     try:
         with TestClient(app) as client:
             yield client
@@ -100,6 +105,7 @@ def api_client(test_db):
         app.dependency_overrides.pop(get_storage, None)
         app.dependency_overrides.pop(get_llm, None)
         app.dependency_overrides.pop(get_graph, None)
+        app.dependency_overrides.pop(get_queue, None)
 
 
 def test_query_by_entity_returns_200(test_db, api_client):
@@ -251,11 +257,13 @@ def test_query_by_entity_returns_stories_from_graph(test_db):
             return QueryIntent(operation="unknown")
 
 
-    story_ids = []
+    # story_ids is populated after submission from the API response,
+    # then used by find_story_ids_by_entity to simulate "story is in graph".
+    story_ids: list[str] = []
 
     class CapturingGraph(GraphPort):
         def save_story_node(self, story_id: str, triads, timestamp: str) -> None:
-            story_ids.append(story_id)
+            pass  # graph save now happens in worker, not during HTTP request
 
         def save_entity_nodes(self, story_id: str, entities: list) -> None:
             pass
@@ -292,12 +300,20 @@ def test_query_by_entity_returns_stories_from_graph(test_db):
             return []
 
 
+    from src.api.stories import get_queue
+
+    class FakeQueue:
+        def __init__(self): pass
+        def enqueue(self, story_id: str): story_ids.append(story_id)
+        def dequeue(self, timeout=5): return None
+
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: NoOpLLM()
     app.dependency_overrides[get_graph] = lambda: CapturingGraph()
+    app.dependency_overrides[get_queue] = lambda: FakeQueue()
     try:
         with TestClient(app) as client:
-            # Submit a story
+            # Submit a story — enqueues story_id (FakeQueue.enqueue populates story_ids)
             resp = client.post(
                 "/api/stories",
                 json={
@@ -311,7 +327,7 @@ def test_query_by_entity_returns_stories_from_graph(test_db):
             )
             assert resp.status_code == 201
 
-            # Query by entity — graph returns the saved story_id
+            # Query by entity — CapturingGraph.find_story_ids_by_entity returns story_ids
             resp2 = client.get("/api/patterns/by-entity/CI")
             assert resp2.status_code == 200
             body = resp2.json()
@@ -321,6 +337,7 @@ def test_query_by_entity_returns_stories_from_graph(test_db):
         app.dependency_overrides.pop(get_storage, None)
         app.dependency_overrides.pop(get_llm, None)
         app.dependency_overrides.pop(get_graph, None)
+        app.dependency_overrides.pop(get_queue, None)
 
 
 def test_get_themes_returns_200_with_empty_list(test_db, api_client):

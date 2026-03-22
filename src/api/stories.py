@@ -6,7 +6,7 @@ Handles story submission and retrieval.
 
 from datetime import datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from src.adapters.mongodb_storage import MongoDBStorageAdapter
@@ -25,6 +25,7 @@ from src.services.story_submission import (
     StorySubmissionResult,
     StorySubmissionService,
 )
+from src.workers.worker_queue import WorkerQueue
 
 router = APIRouter(prefix="/api/stories", tags=["stories"])
 
@@ -188,41 +189,9 @@ def get_sentiment_extraction_service(
     return SentimentExtractionService(storage=storage, llm=llm)
 
 
-def _save_story_to_graph(story_id: str, storage: StoragePort, graph: GraphPort) -> None:
-    """Read story from storage and persist as a graph node."""
-    story = storage.get_story(story_id)
-    triads = [
-        TriadPlacement(
-            triad_id=r.signifier_id,
-            coordinates=TriadCoordinates(x=r.coordinates.x, y=r.coordinates.y),
-        )
-        for r in (story.signification.responses if story.signification else [])
-    ]
-    graph.save_story_node(
-        story_id=story.id,
-        triads=triads,
-        timestamp=story.timestamp.isoformat(),
-    )
-
-
-def process_story_background(
-    story_id: str,
-    storage: StoragePort,
-    graph: GraphPort,
-    entity_service: EntityExtractionService,
-    sentiment_service: SentimentExtractionService,
-) -> None:
-    """
-    Run all post-submission processing in deterministic order.
-
-    Graph node must exist before entity extraction runs graph projection,
-    so steps are chained sequentially here rather than scheduled independently.
-
-    Shared by the JSON API submit path and the UI submit path.
-    """
-    _save_story_to_graph(story_id, storage, graph)
-    entity_service.extract_for_story(story_id)
-    sentiment_service.extract_for_story(story_id)
+def get_queue(request: Request) -> WorkerQueue:
+    """Dependency that provides the WorkerQueue from app.state."""
+    return request.app.state.worker_queue
 
 
 def get_submission_service(
@@ -247,21 +216,16 @@ def get_submission_service(
 @router.post("", response_model=StorySubmissionResult, status_code=201)
 async def submit_story(
     request: StorySubmissionRequest,
-    background_tasks: BackgroundTasks,
     service: StorySubmissionService = Depends(get_submission_service),
-    entity_service: EntityExtractionService = Depends(get_entity_extraction_service),
-    sentiment_service: SentimentExtractionService = Depends(get_sentiment_extraction_service),
-    storage: StoragePort = Depends(get_storage),
-    graph: GraphPort = Depends(get_graph),
+    queue: WorkerQueue = Depends(get_queue),
 ) -> StorySubmissionResult:
     """
     Submit a new story with triad placements.
 
     Args:
         request: Story submission data
-        background_tasks: FastAPI background task manager
         service: Injected story submission service
-        entity_service: Injected entity extraction service
+        queue: Injected worker queue
 
     Returns:
         StorySubmissionResult with story ID
@@ -272,35 +236,13 @@ async def submit_story(
     """
     try:
         result = service.submit_story(request)
-        background_tasks.add_task(process_story_background, result.story_id, storage, graph, entity_service, sentiment_service)
+        queue.enqueue(result.story_id)
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         # Log the error in production
         raise HTTPException(status_code=500, detail="Failed to submit story") from e
-
-
-@router.post("/{story_id}/reprocess", status_code=202)
-async def reprocess_story(
-    story_id: str,
-    background_tasks: BackgroundTasks,
-    entity_service: EntityExtractionService = Depends(get_entity_extraction_service),
-    sentiment_service: SentimentExtractionService = Depends(get_sentiment_extraction_service),
-    storage: StoragePort = Depends(get_storage),
-    graph: GraphPort = Depends(get_graph),
-) -> dict:
-    """
-    TEMPORARY: Re-run LLM processing for a story that previously failed.
-
-    TODO: Remove once feedback-cv7 (background worker) is implemented.
-    """
-    try:
-        storage.get_story(story_id)
-    except NotFoundError:
-        raise HTTPException(status_code=404, detail="Story not found")
-    background_tasks.add_task(process_story_background, story_id, storage, graph, entity_service, sentiment_service)
-    return {"story_id": story_id, "status": "reprocessing"}
 
 
 def _story_to_response(story: Story) -> StoryResponse:

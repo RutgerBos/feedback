@@ -8,26 +8,21 @@ returning HTML fragments for HTMX to swap into the page.
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
 from src.api.insights import get_insight_synthesis_service, get_nl_query_service
 from src.api.stories import (
-    get_entity_extraction_service,
-    get_graph,
-    get_sentiment_extraction_service,
+    get_queue,
     get_storage,
     get_submission_service,
-    process_story_background,
 )
 from src.ports.errors import GraphError, LLMError, NotFoundError, QueryTranslationError, StorageError
-from src.ports.graph import GraphPort
 from src.ports.storage import StoragePort
-from src.services.entity_extraction import EntityExtractionService
-from src.services.sentiment_extraction import SentimentExtractionService
 from src.services.dashboard import DashboardService
+from src.workers.worker_queue import WorkerQueue
 from src.services.insight_synthesis import InsightSynthesisService
 from src.services.nl_query import NLQueryService
 from src.services.story_submission import StorySubmissionRequest, StorySubmissionService
@@ -97,12 +92,8 @@ async def index(request: Request) -> HTMLResponse:
 @router.post("/ui/submit", response_class=HTMLResponse)
 async def submit_story_form(
     request: Request,
-    background_tasks: BackgroundTasks,
     service: StorySubmissionService = Depends(get_submission_service),
-    entity_service: EntityExtractionService = Depends(get_entity_extraction_service),
-    sentiment_service: SentimentExtractionService = Depends(get_sentiment_extraction_service),
-    storage: StoragePort = Depends(get_storage),
-    graph: GraphPort = Depends(get_graph),
+    queue: WorkerQueue = Depends(get_queue),
 ) -> HTMLResponse:
     """
     Accept story form submission and return an HTML fragment.
@@ -133,10 +124,7 @@ async def submit_story_form(
             signification={"responses": responses},
         )
         result = service.submit_story(submission)
-        background_tasks.add_task(
-            process_story_background,
-            result.story_id, storage, graph, entity_service, sentiment_service,
-        )
+        queue.enqueue(result.story_id)
         return _templates.TemplateResponse(
             request=request,
             name="_confirmation.html",

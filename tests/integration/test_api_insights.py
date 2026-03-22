@@ -21,7 +21,7 @@ def api_client(test_db):
     """TestClient with NoOp graph and LLM that returns a fixed synthesis."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
+    from src.api.stories import get_graph, get_llm, get_queue, get_storage
     from src.domain.models import InsightContext, InsightOutput, SentimentAnalysis
     from src.ports.graph import GraphPort
     from src.ports.llm import EntityExtraction, LLMPort
@@ -85,9 +85,14 @@ def api_client(test_db):
             return QueryIntent(operation="unknown")
 
 
+    class _FakeQueue:
+        def enqueue(self, story_id: str): pass
+        def dequeue(self, timeout=5): return None
+
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: FixedInsightLLM()
     app.dependency_overrides[get_graph] = lambda: NoOpGraph()
+    app.dependency_overrides[get_queue] = lambda: _FakeQueue()
     try:
         with TestClient(app) as client:
             yield client
@@ -95,6 +100,7 @@ def api_client(test_db):
         app.dependency_overrides.pop(get_storage, None)
         app.dependency_overrides.pop(get_llm, None)
         app.dependency_overrides.pop(get_graph, None)
+        app.dependency_overrides.pop(get_queue, None)
 
 
 def test_synthesize_returns_empty_narrative_when_no_stories(test_db, api_client):
@@ -156,11 +162,11 @@ def test_synthesize_returns_narrative_when_stories_exist(test_db):
             return QueryIntent(operation="unknown")
 
 
-    story_ids = []
+    story_ids: list[str] = []
 
     class CapturingGraph(GraphPort):
         def save_story_node(self, story_id, triads, timestamp):
-            story_ids.append(story_id)
+            pass  # graph save happens in worker; story_ids is populated via FakeQueue
 
         def save_entity_nodes(self, story_id, entities):
             pass
@@ -197,12 +203,20 @@ def test_synthesize_returns_narrative_when_stories_exist(test_db):
             return []
 
 
+    from src.api.stories import get_queue
+
+    class FakeQueue:
+        def __init__(self): pass
+        def enqueue(self, story_id: str): story_ids.append(story_id)
+        def dequeue(self, timeout=5): return None
+
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     app.dependency_overrides[get_llm] = lambda: FixedInsightLLM()
     app.dependency_overrides[get_graph] = lambda: CapturingGraph()
+    app.dependency_overrides[get_queue] = lambda: FakeQueue()
     try:
         with TestClient(app) as client:
-            # Submit a story
+            # Submit a story — FakeQueue.enqueue populates story_ids
             resp = client.post(
                 "/api/stories",
                 json={
@@ -229,6 +243,7 @@ def test_synthesize_returns_narrative_when_stories_exist(test_db):
         app.dependency_overrides.pop(get_storage, None)
         app.dependency_overrides.pop(get_llm, None)
         app.dependency_overrides.pop(get_graph, None)
+        app.dependency_overrides.pop(get_queue, None)
 
 
 def test_synthesize_rejects_blank_entity_name(test_db, api_client):

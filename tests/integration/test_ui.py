@@ -146,55 +146,20 @@ def test_submit_stores_signification_not_bare_triads(submit_client, test_db):
     assert doc.get("triads") == []
 
 
-def test_submit_triggers_background_processing(test_db):
-    """POST /ui/submit schedules entity extraction as a background task."""
+def test_submit_enqueues_story_for_processing(test_db):
+    """POST /ui/submit enqueues the story for the background worker; status stays pending."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
-    from src.domain.models import SentimentAnalysis
-    from src.ports.graph import GraphPort
-    from src.ports.llm import EntityExtraction, LLMPort
+    from src.api.stories import get_queue, get_storage
 
-    class FakeLLM(LLMPort):
-        def extract_entities(self, story_text: str) -> EntityExtraction:
-            return EntityExtraction(entities=[{"name": "CI pipeline", "type": "tool"}])
+    class FakeQueue:
+        def __init__(self): self.enqueued: list[str] = []
+        def enqueue(self, story_id: str): self.enqueued.append(story_id)
+        def dequeue(self, timeout=5): return None
 
-        def extract_themes(self, story_text: str) -> list:
-            return []
-
-        def extract_relationships(self, story_text: str) -> list:
-            return []
-
-        def extract_sentiment(self, story_text: str) -> SentimentAnalysis:
-            return SentimentAnalysis(emotion_markers=[], process_sentiment="neutral", outcome_sentiment="neutral")
-
-        def synthesize_insights(self, context):  # type: ignore[override]
-            from src.domain.models import InsightOutput
-            return InsightOutput(narrative="")
-
-        def translate_query(self, question):  # type: ignore[override]
-            from src.domain.models import QueryIntent
-            return QueryIntent(operation="unknown")
-
-    class NoOpGraph(GraphPort):
-        def save_story_node(self, story_id, triads, timestamp): pass
-        def save_entity_nodes(self, story_id, entities): pass
-        def save_theme_nodes(self, story_id, themes): pass
-        def save_proximity_relationships(self, story_id, pairs): pass
-        def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None): return []
-        def count_stories_by_entity(self, entity_name): return 0
-        def find_themes_ranked(self, limit, from_date=None, to_date=None): return []
-        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None): return []
-        def count_stories_by_theme(self, theme_name): return 0
-        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None): return []
-        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0): return []
-        def find_theme_counts_by_window(self, window_size, from_date=None, to_date=None, theme=None): return []
-        def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None): return []
-        def find_story_communities(self, triad_id): return []
-
+    fake_queue = FakeQueue()
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
-    app.dependency_overrides[get_llm] = lambda: FakeLLM()
-    app.dependency_overrides[get_graph] = lambda: NoOpGraph()
+    app.dependency_overrides[get_queue] = lambda: fake_queue
     try:
         with TestClient(app) as client:
             response = client.post("/ui/submit", data=_VALID_FORM)
@@ -202,13 +167,8 @@ def test_submit_triggers_background_processing(test_db):
             story_id = test_db.stories.find_one({})["_id"]
     finally:
         app.dependency_overrides.pop(get_storage, None)
-        app.dependency_overrides.pop(get_llm, None)
-        app.dependency_overrides.pop(get_graph, None)
+        app.dependency_overrides.pop(get_queue, None)
 
+    assert story_id in fake_queue.enqueued, "story_id must be enqueued after UI submit"
     doc = test_db.stories.find_one({"_id": story_id})
-    assert doc["entity_status"] == "processed", (
-        "entity extraction must run as a background task after UI submit"
-    )
-    assert doc["sentiment_status"] == "processed", (
-        "sentiment extraction must also run as a background task after UI submit"
-    )
+    assert doc["entity_status"] == "pending", "worker has not run yet — status stays pending"
