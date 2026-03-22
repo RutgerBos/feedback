@@ -17,9 +17,11 @@
           hx-swap="innerHTML"
           hx-trigger="submit, change delay:300ms"
           hx-include="[name='from_date'],[name='to_date']">
-        <label>From <input type="date" name="from_date"></label>
-        <label>To   <input type="date" name="to_date"></label>
+        <label>From <input type="date" name="from_date" title="Start of date range (inclusive)"></label>
+        <label>Up to and including <input type="date" name="to_date" title="End of date range (inclusive)"></label>
         <button type="submit">Filter</button>
+        <span class="filter-hint">Leave blank to show all stories</span>
+        <span class="htmx-indicator" id="dashboard-indicator">Loading…</span>
     </form>
 
     <!-- Export buttons — URLs updated by JS to include current filter -->
@@ -28,7 +30,7 @@
         <a id="export-csv"  href="/api/dashboard?format=csv"  class="btn-export">↓ Export CSV</a>
     </div>
 
-    <!-- Dynamic data panel — loaded by HTMX on page load -->
+    <!-- Dynamic data panel — loaded by HTMX on page load; indicator tied to filter form -->
     <div id="dashboard-data"
          hx-get="/dashboard/data"
          hx-trigger="load"
@@ -43,7 +45,8 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"
+        onload="renderCharts()"></script>
 <script>
     // Re-render charts whenever HTMX swaps new data into #dashboard-data
     document.body.addEventListener('htmx:afterSettle', function (evt) {

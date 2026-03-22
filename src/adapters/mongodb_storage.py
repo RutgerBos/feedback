@@ -163,10 +163,10 @@ class MongoDBStorageAdapter(StoragePort):
         story_id: str,
         entities: list[dict[str, Any]],
         themes: list[str],
-        processing_status: str,
+        entity_status: str,
     ) -> None:
         """
-        Update a story's extracted entities, themes, and processing status in MongoDB.
+        Update a story's extracted entities, themes, and entity status in MongoDB.
 
         Raises:
             NotFoundError: If no story exists with the given ID
@@ -178,7 +178,7 @@ class MongoDBStorageAdapter(StoragePort):
                 {"$set": {
                     "entities": entities,
                     "themes": themes,
-                    "processing_status": processing_status,
+                    "entity_status": entity_status,
                 }},
             )
             if result.matched_count == 0:
@@ -192,10 +192,10 @@ class MongoDBStorageAdapter(StoragePort):
         self,
         story_id: str,
         sentiment: SentimentAnalysis | None,
-        processing_status: str,
+        sentiment_status: str,
     ) -> None:
         """
-        Update a story's sentiment analysis result and processing status in MongoDB.
+        Update a story's sentiment analysis result and sentiment status in MongoDB.
 
         Raises:
             NotFoundError: If no story exists with the given ID
@@ -213,7 +213,7 @@ class MongoDBStorageAdapter(StoragePort):
                 {"_id": story_id},
                 {"$set": {
                     "sentiment": sentiment_doc,
-                    "processing_status": processing_status,
+                    "sentiment_status": sentiment_status,
                 }},
             )
             if result.matched_count == 0:
@@ -269,6 +269,8 @@ class MongoDBStorageAdapter(StoragePort):
             "metadata": metadata_dict,
             "timestamp": story.timestamp,
             "processing_status": story.processing_status,
+            "entity_status": story.entity_status,
+            "sentiment_status": story.sentiment_status,
             "entities": story.entities,
             "themes": story.themes,
             "sentiment": sentiment_dict,
@@ -322,6 +324,8 @@ class MongoDBStorageAdapter(StoragePort):
             metadata=metadata,
             timestamp=document["timestamp"],
             processing_status=document.get("processing_status", "pending"),
+            entity_status=document.get("entity_status", "pending"),
+            sentiment_status=document.get("sentiment_status", "pending"),
             entities=document.get("entities", []),
             themes=document.get("themes", []),
             sentiment=sentiment,

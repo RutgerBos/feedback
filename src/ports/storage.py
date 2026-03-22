@@ -114,16 +114,16 @@ class StoragePort(ABC):
         story_id: str,
         entities: list[dict[str, Any]],
         themes: list[str],
-        processing_status: str,
+        entity_status: str,
     ) -> None:
         """
-        Update a story's extracted entities, themes, and processing status.
+        Update a story's extracted entities, themes, and entity processing status.
 
         Args:
             story_id: Unique identifier for the story
             entities: List of extracted entity dicts (name, type)
             themes: List of extracted theme strings
-            processing_status: New processing status ("processed" or "failed")
+            entity_status: Entity extraction status ("processed" or "failed")
 
         Raises:
             NotFoundError: If no story exists with the given ID
@@ -136,15 +136,15 @@ class StoragePort(ABC):
         self,
         story_id: str,
         sentiment: SentimentAnalysis | None,
-        processing_status: str,
+        sentiment_status: str,
     ) -> None:
         """
-        Update a story's sentiment analysis result and processing status.
+        Update a story's sentiment analysis result and sentiment processing status.
 
         Args:
             story_id: Unique identifier for the story
             sentiment: SentimentAnalysis result, or None if extraction failed
-            processing_status: New processing status ("processed" or "failed")
+            sentiment_status: Sentiment extraction status ("processed" or "failed")
 
         Raises:
             NotFoundError: If no story exists with the given ID

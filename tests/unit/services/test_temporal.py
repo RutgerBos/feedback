@@ -84,8 +84,8 @@ class FakeStorage(StoragePort):
     def count_stories(self, from_date=None, to_date=None): return len(self._stories)
     def list_stories(self, limit=20, offset=0, from_date=None, to_date=None):
         return list(self._stories.values())[offset:offset + limit]
-    def update_story_entities(self, story_id, entities, themes, processing_status): pass
-    def update_story_sentiment(self, story_id, sentiment, processing_status): pass
+    def update_story_entities(self, story_id, entities, themes, entity_status): pass
+    def update_story_sentiment(self, story_id, sentiment, sentiment_status): pass
 
 
 class FailingGraph(FakeGraph):

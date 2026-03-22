@@ -13,15 +13,19 @@
           hx-post="/ui/query"
           hx-target="#conversation"
           hx-swap="afterbegin"
-          hx-on::after-request="this.reset()">
+          hx-indicator="#query-indicator"
+          hx-on::after-request="this.querySelector('textarea').value = ''">
         <label for="question">Question</label>
-        <input type="text" id="question" name="question"
-               placeholder="e.g. What issues exist with the CI pipeline?"
-               autocomplete="off">
-        <button type="submit">Ask</button>
+        <textarea id="question" name="question" rows="3"
+                  placeholder="e.g. What patterns emerge around CI pipeline friction?"
+                  autocomplete="off"></textarea>
+        <div class="query-actions">
+            <button type="submit">Ask</button>
+            <span id="query-indicator" class="htmx-indicator">Thinking…</span>
+        </div>
     </form>
 
-    <div id="conversation" class="conversation history">
+    <div id="conversation" class="conversation">
     </div>
 </section>
 {% endblock %}

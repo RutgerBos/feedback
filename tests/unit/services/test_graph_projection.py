@@ -8,7 +8,7 @@ from src.ports.graph import GraphPort
 from src.ports.storage import StoragePort
 
 
-def make_story(story_id: str = "story-1", processing_status: str = "processed") -> Story:
+def make_story(story_id: str = "story-1", entity_status: str = "processed") -> Story:
     story = Story(
         id=story_id,
         story_text="CI failures blocked our deployment repeatedly this sprint. " * 3,
@@ -17,7 +17,7 @@ def make_story(story_id: str = "story-1", processing_status: str = "processed") 
             TriadPlacement(triad_id="understanding_quality", coordinates=TriadCoordinates(x=0.5, y=0.4)),
             TriadPlacement(triad_id="value_character", coordinates=TriadCoordinates(x=0.2, y=0.7)),
         ],
-        processing_status=processing_status,
+        entity_status=entity_status,
         entities=[{"name": "CI pipeline", "type": "tool"}, {"name": "deployment", "type": "process"}],
     )
     return story
@@ -42,10 +42,10 @@ class FakeStorage(StoragePort):
     def list_stories(self, limit: int = 20, offset: int = 0, from_date=None, to_date=None) -> list:
         return list(self.stories.values())[offset:offset + limit]
 
-    def update_story_entities(self, story_id: str, entities: list, themes: list, processing_status: str) -> None:
+    def update_story_entities(self, story_id: str, entities: list, themes: list, entity_status: str) -> None:
         pass
 
-    def update_story_sentiment(self, story_id: str, sentiment, processing_status: str) -> None:
+    def update_story_sentiment(self, story_id: str, sentiment, sentiment_status: str) -> None:
         pass
 
 
@@ -169,7 +169,7 @@ def test_save_entities_for_story_skips_unprocessed_stories():
     from src.services.graph_projection import GraphProjectionService
 
     for status in ("pending", "failed"):
-        story = make_story(processing_status=status)
+        story = make_story(entity_status=status)
         storage = FakeStorage(stories={story.id: story})
         graph = FakeGraph()
 
@@ -230,7 +230,7 @@ def test_save_themes_for_story_skips_unprocessed_stories():
     from src.services.graph_projection import GraphProjectionService
 
     for status in ("pending", "failed"):
-        story = make_story(processing_status=status)
+        story = make_story(entity_status=status)
         story.themes = ["some theme"]
         storage = FakeStorage(stories={story.id: story})
         graph = FakeGraph()

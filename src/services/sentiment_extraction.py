@@ -47,14 +47,14 @@ class SentimentExtractionService:
 
         try:
             sentiment = self.llm.extract_sentiment(story.story_text)
-            processing_status = "processed"
+            sentiment_status = "processed"
         except LLMError as e:
             logger.warning("Sentiment extraction failed for story %s: %s", story_id, e)
             sentiment = None
-            processing_status = "failed"
+            sentiment_status = "failed"
 
         self.storage.update_story_sentiment(
             story_id=story_id,
             sentiment=sentiment,
-            processing_status=processing_status,
+            sentiment_status=sentiment_status,
         )

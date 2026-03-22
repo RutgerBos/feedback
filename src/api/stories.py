@@ -106,10 +106,23 @@ def get_llm() -> LLMPort:
     """
     Dependency that provides LLM port.
 
-    Returns a no-op implementation by default. Override in tests or production
-    with a real provider via app.dependency_overrides[get_llm].
+    Reads LLM_PROVIDER from settings ('ollama', 'claude', or 'none').
+    Falls back to _NoOpLLM if provider is 'none' or unrecognised.
     """
-    return _NoOpLLM()
+    from src.adapters.llm_factory import create_llm_provider
+    from src.config.settings import Settings
+    settings = Settings()
+    provider = settings.llm_provider.lower()
+    if provider == "none":
+        return _NoOpLLM()
+    try:
+        return create_llm_provider({
+            "provider": provider,
+            "model": settings.llm_model,
+            "base_url": settings.local_model_url,
+        })
+    except ValueError:
+        return _NoOpLLM()
 
 
 def get_graph(request: Request) -> GraphPort:
@@ -162,13 +175,31 @@ def get_sentiment_extraction_service(
 
 
 def _save_story_to_graph(story_id: str, storage: StoragePort, graph: GraphPort) -> None:
-    """Background task: read story from storage and persist as a graph node."""
+    """Read story from storage and persist as a graph node."""
     story = storage.get_story(story_id)
     graph.save_story_node(
         story_id=story.id,
         triads=story.triads,
         timestamp=story.timestamp.isoformat(),
     )
+
+
+def _process_story(
+    story_id: str,
+    storage: StoragePort,
+    graph: GraphPort,
+    entity_service: EntityExtractionService,
+    sentiment_service: SentimentExtractionService,
+) -> None:
+    """
+    Run all post-submission processing in deterministic order.
+
+    Graph node must exist before entity extraction runs graph projection,
+    so steps are chained sequentially here rather than scheduled independently.
+    """
+    _save_story_to_graph(story_id, storage, graph)
+    entity_service.extract_for_story(story_id)
+    sentiment_service.extract_for_story(story_id)
 
 
 def get_submission_service(
@@ -218,15 +249,35 @@ async def submit_story(
     """
     try:
         result = service.submit_story(request)
-        background_tasks.add_task(_save_story_to_graph, result.story_id, storage, graph)
-        background_tasks.add_task(entity_service.extract_for_story, result.story_id)
-        background_tasks.add_task(sentiment_service.extract_for_story, result.story_id)
+        background_tasks.add_task(_process_story, result.story_id, storage, graph, entity_service, sentiment_service)
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         # Log the error in production
         raise HTTPException(status_code=500, detail="Failed to submit story") from e
+
+
+@router.post("/{story_id}/reprocess", status_code=202)
+async def reprocess_story(
+    story_id: str,
+    background_tasks: BackgroundTasks,
+    entity_service: EntityExtractionService = Depends(get_entity_extraction_service),
+    sentiment_service: SentimentExtractionService = Depends(get_sentiment_extraction_service),
+    storage: StoragePort = Depends(get_storage),
+    graph: GraphPort = Depends(get_graph),
+) -> dict:
+    """
+    TEMPORARY: Re-run LLM processing for a story that previously failed.
+
+    TODO: Remove once feedback-cv7 (background worker) is implemented.
+    """
+    try:
+        storage.get_story(story_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="Story not found")
+    background_tasks.add_task(_process_story, story_id, storage, graph, entity_service, sentiment_service)
+    return {"story_id": story_id, "status": "reprocessing"}
 
 
 def _story_to_response(story: Story) -> StoryResponse:

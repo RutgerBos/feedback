@@ -75,10 +75,10 @@ class FakeStorage(StoragePort):
             stories = [s for s in stories if _to_naive(s.timestamp) <= td]
         return stories[offset: offset + limit]
 
-    def update_story_entities(self, story_id, entities, themes, processing_status):
+    def update_story_entities(self, story_id, entities, themes, entity_status):
         pass
 
-    def update_story_sentiment(self, story_id, sentiment, processing_status):
+    def update_story_sentiment(self, story_id, sentiment, sentiment_status):
         pass
 
 
