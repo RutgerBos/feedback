@@ -7,7 +7,7 @@ They use Pydantic for validation and immutability.
 
 import math
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -296,7 +296,7 @@ class TriadResponseItem(BaseModel):
     - Named TriadResponseItem to avoid collision with API-layer TriadResponse
     """
 
-    kind: str = Field(default="triad", pattern="^triad$")
+    kind: Literal["triad"] = "triad"
     signifier_id: str = Field(..., min_length=1)
     coordinates: TriadCoordinates
 
