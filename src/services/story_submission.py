@@ -32,6 +32,8 @@ class CoordinatesRequest(BaseModel):
 class TriadResponseRequest(BaseModel):
     """One response placement in a signification."""
 
+    model_config = ConfigDict(extra="forbid")
+
     kind: Literal["triad"] = "triad"
     signifier_id: str = Field(..., min_length=1)
     coordinates: CoordinatesRequest
@@ -39,6 +41,8 @@ class TriadResponseRequest(BaseModel):
 
 class SignificationRequest(BaseModel):
     """V2 signification block sent by the client."""
+
+    model_config = ConfigDict(extra="forbid")
 
     headline: str | None = None
     responses: list[TriadResponseRequest] = Field(default_factory=list)
