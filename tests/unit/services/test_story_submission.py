@@ -134,6 +134,7 @@ def test_submit_story_rejects_v1_triads():
     with pytest.raises(ValueError, match="triads"):
         StorySubmissionRequest(
             story_text=STORY_TEXT,
+            signification=V2_SIGNIFICATION,
             triads=[{"triad_id": "workflow_nature", "x": 0.3, "y": 0.6}],
         )
 
@@ -239,6 +240,7 @@ def test_submit_story_with_context_metadata():
 
     result = service.submit_story(StorySubmissionRequest(
         story_text="A" * 50,
+        signification={"responses": []},
         context={"department": "engineering", "role": "developer", "tool_context": "CI/CD"},
     ))
 
@@ -256,6 +258,7 @@ def test_submit_story_with_participant_metadata():
 
     result = service.submit_story(StorySubmissionRequest(
         story_text="A" * 50,
+        signification={"responses": []},
         participant={"user_pseudonym": "user_42"},
     ))
 
@@ -269,7 +272,43 @@ def test_submit_story_schema_version_is_2():
     storage = FakeStorage()
     service = StorySubmissionService(storage)
 
-    result = service.submit_story(StorySubmissionRequest(story_text="A" * 50))
+    result = service.submit_story(StorySubmissionRequest(
+        story_text="A" * 50,
+        signification={"responses": []},
+    ))
 
     saved = storage.stories[result.story_id]
     assert saved.schema_version == 2
+
+
+def test_submit_story_rejects_duplicate_signifier_ids():
+    """Duplicate signifier_id in responses is rejected."""
+    with pytest.raises(ValueError, match="Duplicate signifier_id"):
+        StorySubmissionRequest(
+            story_text=STORY_TEXT,
+            signification={
+                "responses": [
+                    {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}},
+                    {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.5, "y": 0.4}},
+                ]
+            },
+        )
+
+
+def test_submit_story_requires_signification():
+    """signification is a required field; omitting it raises ValidationError."""
+    with pytest.raises(ValueError, match="signification"):
+        StorySubmissionRequest(story_text=STORY_TEXT)
+
+
+def test_submit_story_rejects_empty_signifier_id():
+    """Empty string signifier_id is rejected at request validation time (422, not 400)."""
+    with pytest.raises(ValueError, match="signifier_id"):
+        StorySubmissionRequest(
+            story_text=STORY_TEXT,
+            signification={
+                "responses": [
+                    {"kind": "triad", "signifier_id": "", "coordinates": {"x": 0.3, "y": 0.6}},
+                ]
+            },
+        )

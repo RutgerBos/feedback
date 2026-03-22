@@ -33,7 +33,7 @@ class TriadResponseRequest(BaseModel):
     """One response placement in a signification."""
 
     kind: Literal["triad"] = "triad"
-    signifier_id: str
+    signifier_id: str = Field(..., min_length=1)
     coordinates: CoordinatesRequest
 
 
