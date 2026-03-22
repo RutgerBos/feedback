@@ -546,6 +546,61 @@ def test_v2_story_schema_version_persists(storage_adapter):
     assert raw["schema_version"] == 2
 
 
+def test_find_story_ids_requiring_processing_returns_pending_stories(storage_adapter):
+    """Stories with entity_status or sentiment_status != 'processed' are returned."""
+    processed_story = Story(
+        id=str(uuid4()),
+        story_text="This story has been fully processed already by the system.",
+        timestamp=datetime.now(UTC).replace(tzinfo=None),
+    )
+    storage_adapter.save_story(processed_story)
+    storage_adapter.update_story_entities(processed_story.id, [], [], "processed")
+    storage_adapter.update_story_sentiment(processed_story.id, None, "processed")
+
+    pending_story = Story(
+        id=str(uuid4()),
+        story_text="This story is still pending full processing by the worker.",
+        timestamp=datetime.now(UTC).replace(tzinfo=None),
+    )
+    storage_adapter.save_story(pending_story)
+
+    result = storage_adapter.find_story_ids_requiring_processing()
+
+    assert pending_story.id in result
+    assert processed_story.id not in result
+
+
+def test_find_story_ids_requiring_processing_includes_partially_processed(storage_adapter):
+    """A story with entity done but sentiment pending is still returned."""
+    story = Story(
+        id=str(uuid4()),
+        story_text="Entity extracted but sentiment not yet done for this test.",
+        timestamp=datetime.now(UTC).replace(tzinfo=None),
+    )
+    storage_adapter.save_story(story)
+    storage_adapter.update_story_entities(story.id, [], [], "processed")
+
+    result = storage_adapter.find_story_ids_requiring_processing()
+
+    assert story.id in result
+
+
+def test_find_story_ids_requiring_processing_empty_when_all_processed(storage_adapter):
+    """Returns empty list when all stories are fully processed."""
+    story = Story(
+        id=str(uuid4()),
+        story_text="Fully processed story for empty result test verification.",
+        timestamp=datetime.now(UTC).replace(tzinfo=None),
+    )
+    storage_adapter.save_story(story)
+    storage_adapter.update_story_entities(story.id, [], [], "processed")
+    storage_adapter.update_story_sentiment(story.id, None, "processed")
+
+    result = storage_adapter.find_story_ids_requiring_processing()
+
+    assert result == []
+
+
 def test_v1_document_reads_back_without_v2_fields(storage_adapter):
     """A V1 document (no schema_version/signification/context/participant) reads safely."""
     story_id = str(uuid4())

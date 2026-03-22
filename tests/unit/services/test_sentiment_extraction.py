@@ -58,6 +58,8 @@ class FakeStorage(StoragePort):
             raise NotFoundError(f"Story not found: {story_id}")
         self.sentiment_updates[story_id] = (sentiment, sentiment_status)
 
+    def find_story_ids_requiring_processing(self): return []
+
 
 class FakeLLM(LLMPort):
     """In-memory LLM fake that returns canned responses."""

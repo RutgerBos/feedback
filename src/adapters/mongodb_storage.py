@@ -227,6 +227,20 @@ class MongoDBStorageAdapter(StoragePort):
         except Exception as e:
             raise StorageError(f"Failed to update story sentiment: {e}") from e
 
+    def find_story_ids_requiring_processing(self) -> list[str]:
+        """
+        Return IDs of stories where entity_status or sentiment_status is not 'processed'.
+        Used by the background worker sweep to catch stories missed by the queue.
+        """
+        docs = self.collection.find(
+            {"$or": [
+                {"entity_status": {"$ne": "processed"}},
+                {"sentiment_status": {"$ne": "processed"}},
+            ]},
+            {"_id": 1},
+        )
+        return [str(doc["_id"]) for doc in docs]
+
     def _story_to_document(self, story: Story) -> dict[str, Any]:
         """
         Convert Story domain model to MongoDB document.

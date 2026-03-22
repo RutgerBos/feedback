@@ -21,6 +21,7 @@ def nl_query_client():
         def list_stories(self, limit=20, offset=0, from_date=None, to_date=None): return []
         def update_story_entities(self, story_id, entities, themes, entity_status): pass
         def update_story_sentiment(self, story_id, sentiment, sentiment_status): pass
+        def find_story_ids_requiring_processing(self): return []
 
     class NoOpGraph(GraphPort):
         def save_story_node(self, story_id, triads, timestamp): pass
@@ -147,6 +148,7 @@ def nl_query_client_with_answer():
         def list_stories(self, limit=20, offset=0, from_date=None, to_date=None): return [_story]
         def update_story_entities(self, story_id, entities, themes, entity_status): pass
         def update_story_sentiment(self, story_id, sentiment, sentiment_status): pass
+        def find_story_ids_requiring_processing(self): return []
 
     class SingleStoryGraph(GraphPort):
         def save_story_node(self, story_id, triads, timestamp): pass
@@ -254,6 +256,7 @@ def test_ui_query_untranslatable_question_returns_error_fragment():
         def list_stories(self, limit=20, offset=0, from_date=None, to_date=None): return []
         def update_story_entities(self, story_id, entities, themes, entity_status): pass
         def update_story_sentiment(self, story_id, sentiment, sentiment_status): pass
+        def find_story_ids_requiring_processing(self): return []
 
     class NoOpGraph(GraphPort):
         def save_story_node(self, story_id, triads, timestamp): pass

@@ -24,6 +24,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import neo4j
+import redis as redis_lib
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -36,6 +37,7 @@ from src.api.stories import router as stories_router
 from src.api.ui import router as ui_router
 from src.config.settings import Settings
 from src.config.triad_loader import load_triad_config
+from src.workers.worker_queue import WorkerQueue
 
 
 @asynccontextmanager
@@ -67,12 +69,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         _settings.neo4j_url,
         auth=(_settings.neo4j_user, _settings.neo4j_password),
     )
+    redis_client = redis_lib.from_url(_settings.redis_url)
+    app.state.worker_queue = WorkerQueue(redis=redis_client, queue_key=_settings.worker_queue_key)
 
     yield
 
     # Shutdown: close connection pools
     app.state.mongo_client.close()
     app.state.neo4j_driver.close()
+    redis_client.close()
 
 
 _settings = Settings()

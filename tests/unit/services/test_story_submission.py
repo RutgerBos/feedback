@@ -46,6 +46,8 @@ class FakeStorage(StoragePort):
     def update_story_sentiment(self, story_id: str, sentiment, sentiment_status: str) -> None:
         pass
 
+    def find_story_ids_requiring_processing(self): return []
+
 
 def test_submit_story_generates_uuid():
     """Submitting a story generates a UUID for it."""
