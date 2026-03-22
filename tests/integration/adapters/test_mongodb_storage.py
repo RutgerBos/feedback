@@ -292,13 +292,13 @@ def test_update_story_entities_persists_and_round_trips(storage_adapter):
         story_id=story.id,
         entities=entities,
         themes=themes,
-        processing_status="processed",
+        entity_status="processed",
     )
 
     retrieved = storage_adapter.get_story(story.id)
     assert retrieved.entities == entities
     assert retrieved.themes == themes
-    assert retrieved.processing_status == "processed"
+    assert retrieved.entity_status == "processed"
 
 
 def test_update_story_entities_not_found_raises(storage_adapter):
@@ -310,7 +310,7 @@ def test_update_story_entities_not_found_raises(storage_adapter):
             story_id="does-not-exist",
             entities=[],
             themes=[],
-            processing_status="processed",
+            entity_status="processed",
         )
 
 
@@ -329,7 +329,7 @@ def test_entities_survive_save_after_update(storage_adapter):
 
     entities = [{"name": "CI pipeline", "type": "tool"}]
     storage_adapter.update_story_entities(
-        story_id=story.id, entities=entities, themes=[], processing_status="processed"
+        story_id=story.id, entities=entities, themes=[], entity_status="processed"
     )
 
     # Reload and re-save (simulates any system that re-saves a retrieved story)
@@ -339,7 +339,7 @@ def test_entities_survive_save_after_update(storage_adapter):
     # Entities must survive the re-save
     after_resave = storage_adapter.get_story(story.id)
     assert after_resave.entities == entities
-    assert after_resave.processing_status == "processed"
+    assert after_resave.entity_status == "processed"
 
 
 def test_save_multiple_stories(storage_adapter):
@@ -398,7 +398,7 @@ def test_update_story_sentiment_persists_and_round_trips(storage_adapter):
     storage_adapter.update_story_sentiment(
         story_id=story.id,
         sentiment=sentiment,
-        processing_status="processed",
+        sentiment_status="processed",
     )
 
     retrieved = storage_adapter.get_story(story.id)
@@ -406,7 +406,7 @@ def test_update_story_sentiment_persists_and_round_trips(storage_adapter):
     assert retrieved.sentiment.emotion_markers == ["frustration", "relief"]
     assert retrieved.sentiment.process_sentiment == "negative"
     assert retrieved.sentiment.outcome_sentiment == "positive"
-    assert retrieved.processing_status == "processed"
+    assert retrieved.sentiment_status == "processed"
 
 
 def test_update_story_sentiment_none_round_trips(storage_adapter):
@@ -426,12 +426,12 @@ def test_update_story_sentiment_none_round_trips(storage_adapter):
     storage_adapter.update_story_sentiment(
         story_id=story.id,
         sentiment=None,
-        processing_status="failed",
+        sentiment_status="failed",
     )
 
     retrieved = storage_adapter.get_story(story.id)
     assert retrieved.sentiment is None
-    assert retrieved.processing_status == "failed"
+    assert retrieved.sentiment_status == "failed"
 
 
 def test_update_story_sentiment_not_found_raises(storage_adapter):
@@ -442,5 +442,5 @@ def test_update_story_sentiment_not_found_raises(storage_adapter):
         storage_adapter.update_story_sentiment(
             story_id="does-not-exist",
             sentiment=None,
-            processing_status="failed",
+            sentiment_status="failed",
         )

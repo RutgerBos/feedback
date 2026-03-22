@@ -59,7 +59,7 @@ class GraphProjectionService:
         """
         story = self.storage.get_story(story_id)
 
-        if story.processing_status != "processed":
+        if story.entity_status != "processed":
             return
 
         try:
@@ -87,7 +87,7 @@ class GraphProjectionService:
         """
         story = self.storage.get_story(story_id)
 
-        if story.processing_status != "processed":
+        if story.entity_status != "processed":
             return
 
         try:
@@ -104,7 +104,7 @@ class GraphProjectionService:
         """
         story = self.storage.get_story(story_id)
 
-        if story.processing_status != "processed":
+        if story.entity_status != "processed":
             return
 
         try:
