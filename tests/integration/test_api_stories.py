@@ -299,6 +299,9 @@ def test_get_story_by_id(test_db, api_client):
     assert data["id"] == story_id
     assert "deployment pipeline" in data["story_text"]
     assert "timestamp" in data
+    assert data["signification"] is not None
+    assert len(data["signification"]["responses"]) == 3
+    assert data["signification"]["responses"][0]["signifier_id"] == "workflow_nature"
 
 
 def test_get_story_returns_404_for_unknown_id(test_db, api_client):
@@ -563,6 +566,7 @@ def test_submit_story_triggers_graph_node_creation(test_db):
 
     assert len(saved_nodes) == 1
     assert saved_nodes[0]["story_id"] == story_id
+    assert len(saved_nodes[0]["triads"]) == 3
 
 
 def test_reprocess_unknown_story_returns_404(api_client):

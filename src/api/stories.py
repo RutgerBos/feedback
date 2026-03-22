@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from src.adapters.mongodb_storage import MongoDBStorageAdapter
 from src.adapters.neo4j_graph import Neo4jGraphAdapter
-from src.domain.models import SentimentAnalysis, Story
+from src.domain.models import SentimentAnalysis, Story, TriadCoordinates, TriadPlacement
 from src.ports.errors import LLMError, NotFoundError
 from src.ports.graph import GraphPort
 from src.ports.llm import EntityExtraction, LLMPort
@@ -29,24 +29,38 @@ from src.services.story_submission import (
 router = APIRouter(prefix="/api/stories", tags=["stories"])
 
 
-class TriadResponse(BaseModel):
-    triad_id: str
+class SignifierCoordinatesResponse(BaseModel):
     x: float
     y: float
 
 
-class MetadataResponse(BaseModel):
-    user_pseudonym: str | None = None
+class SignifierResponseItem(BaseModel):
+    kind: str
+    signifier_id: str
+    coordinates: SignifierCoordinatesResponse
+
+
+class SignificationResponse(BaseModel):
+    headline: str | None = None
+    responses: list[SignifierResponseItem]
+
+
+class ContextResponse(BaseModel):
     department: str | None = None
     role: str | None = None
     tool_context: str | None = None
 
 
+class ParticipantResponse(BaseModel):
+    user_pseudonym: str | None = None
+
+
 class StoryResponse(BaseModel):
     id: str
     story_text: str
-    triads: list[TriadResponse]
-    metadata: MetadataResponse | None = None
+    signification: SignificationResponse | None = None
+    context: ContextResponse | None = None
+    participant: ParticipantResponse | None = None
     timestamp: datetime
     processing_status: str
 
@@ -177,9 +191,16 @@ def get_sentiment_extraction_service(
 def _save_story_to_graph(story_id: str, storage: StoragePort, graph: GraphPort) -> None:
     """Read story from storage and persist as a graph node."""
     story = storage.get_story(story_id)
+    triads = [
+        TriadPlacement(
+            triad_id=r.signifier_id,
+            coordinates=TriadCoordinates(x=r.coordinates.x, y=r.coordinates.y),
+        )
+        for r in (story.signification.responses if story.signification else [])
+    ]
     graph.save_story_node(
         story_id=story.id,
-        triads=story.triads,
+        triads=triads,
         timestamp=story.timestamp.isoformat(),
     )
 
@@ -281,19 +302,35 @@ async def reprocess_story(
 
 
 def _story_to_response(story: Story) -> StoryResponse:
+    signification = None
+    if story.signification:
+        signification = SignificationResponse(
+            headline=story.signification.headline,
+            responses=[
+                SignifierResponseItem(
+                    kind=r.kind,
+                    signifier_id=r.signifier_id,
+                    coordinates=SignifierCoordinatesResponse(x=r.coordinates.x, y=r.coordinates.y),
+                )
+                for r in story.signification.responses
+            ],
+        )
+    context = None
+    if story.context:
+        context = ContextResponse(
+            department=story.context.department,
+            role=story.context.role,
+            tool_context=story.context.tool_context,
+        )
+    participant = None
+    if story.participant:
+        participant = ParticipantResponse(user_pseudonym=story.participant.user_pseudonym)
     return StoryResponse(
         id=story.id,
         story_text=story.story_text,
-        triads=[
-            TriadResponse(triad_id=p.triad_id, x=p.coordinates.x, y=p.coordinates.y)
-            for p in story.triads
-        ],
-        metadata=MetadataResponse(
-            user_pseudonym=story.metadata.user_pseudonym,
-            department=story.metadata.department,
-            role=story.metadata.role,
-            tool_context=story.metadata.tool_context,
-        ) if story.metadata else None,
+        signification=signification,
+        context=context,
+        participant=participant,
         timestamp=story.timestamp,
         processing_status=story.processing_status,
     )
