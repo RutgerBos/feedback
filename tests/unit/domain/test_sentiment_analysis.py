@@ -38,7 +38,7 @@ def test_sentiment_analysis_emotion_markers_is_list():
     """emotion_markers accepts a list of strings."""
     sa = SentimentAnalysis(
         emotion_markers=["confusion", "anxiety", "satisfaction"],
-        process_sentiment="mixed",
+        process_sentiment="negative",
         outcome_sentiment="positive",
     )
 
@@ -94,3 +94,66 @@ def test_story_sentiment_can_be_set():
 
     assert story_with_sentiment.sentiment is not None
     assert story_with_sentiment.sentiment.process_sentiment == "negative"
+
+
+# ── Enum constraint and normalisation ─────────────────────────────────────────
+
+def test_sentiment_analysis_rejects_free_form_values():
+    """Free-form values like 'neutral (acknowledging a change)' that don't start with a known label raise."""
+    with pytest.raises(ValueError):
+        SentimentAnalysis(
+            emotion_markers=[],
+            process_sentiment="cautious",
+            outcome_sentiment="neutral",
+        )
+
+
+def test_sentiment_analysis_normalises_positive_prefix():
+    """'positive (embracing the new process)' is normalised to 'positive'."""
+    sa = SentimentAnalysis(
+        emotion_markers=[],
+        process_sentiment="positive (embracing the new process as more effective)",
+        outcome_sentiment="neutral",
+    )
+    assert sa.process_sentiment == "positive"
+
+
+def test_sentiment_analysis_normalises_negative_prefix():
+    """'negative (with a hint of frustration)' is normalised to 'negative'."""
+    sa = SentimentAnalysis(
+        emotion_markers=[],
+        process_sentiment="negative (with a hint of frustration)",
+        outcome_sentiment="neutral",
+    )
+    assert sa.process_sentiment == "negative"
+
+
+def test_sentiment_analysis_normalises_neutral_prefix():
+    """'neutral with a hint of negativity' is normalised to 'neutral'."""
+    sa = SentimentAnalysis(
+        emotion_markers=[],
+        process_sentiment="neutral",
+        outcome_sentiment="neutral with a hint of negativity",
+    )
+    assert sa.outcome_sentiment == "neutral"
+
+
+def test_sentiment_analysis_normalises_case():
+    """'Positive' (capitalised) is normalised to 'positive'."""
+    sa = SentimentAnalysis(
+        emotion_markers=[],
+        process_sentiment="Positive",
+        outcome_sentiment="Negative",
+    )
+    assert sa.process_sentiment == "positive"
+    assert sa.outcome_sentiment == "negative"
+
+
+def test_sentiment_analysis_rejects_unknown_prefix():
+    """Values that don't start with positive/negative/neutral raise ValueError."""
+    with pytest.raises(ValueError):
+        SentimentAnalysis(
+            emotion_markers=[],
+            process_sentiment="mixed",
+            outcome_sentiment="neutral",
+        )
