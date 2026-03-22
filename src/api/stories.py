@@ -354,12 +354,25 @@ async def list_stories(
         StoryListResponse with stories and pagination info
     """
     stories = storage.list_stories(limit=limit, offset=offset)
+    v2_stories = [s for s in stories if s.signification is not None]
     return StoryListResponse(
-        stories=[_story_to_response(s) for s in stories],
+        stories=[_story_to_response(s) for s in v2_stories],
         total=storage.count_stories(),
         limit=limit,
         offset=offset,
     )
+
+
+def _require_v2(story: "Story") -> None:
+    """Raise 422 if the story is a V1 document (no signification)."""
+    if story.signification is None:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Story {story.id} is a V1 document and has not been migrated. "
+                "Run the V1→V2 migration script before accessing this story."
+            ),
+        )
 
 
 @router.get("/{story_id}", response_model=StoryResponse)
@@ -379,9 +392,11 @@ async def get_story(
 
     Raises:
         HTTPException 404: If story not found
+        HTTPException 422: If story is a V1 document (not yet migrated)
     """
     try:
         story = storage.get_story(story_id)
-        return _story_to_response(story)
     except NotFoundError as e:
         raise HTTPException(status_code=404, detail=f"Story not found: {story_id}") from e
+    _require_v2(story)
+    return _story_to_response(story)
