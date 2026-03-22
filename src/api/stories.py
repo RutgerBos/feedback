@@ -175,13 +175,31 @@ def get_sentiment_extraction_service(
 
 
 def _save_story_to_graph(story_id: str, storage: StoragePort, graph: GraphPort) -> None:
-    """Background task: read story from storage and persist as a graph node."""
+    """Read story from storage and persist as a graph node."""
     story = storage.get_story(story_id)
     graph.save_story_node(
         story_id=story.id,
         triads=story.triads,
         timestamp=story.timestamp.isoformat(),
     )
+
+
+def _process_story(
+    story_id: str,
+    storage: StoragePort,
+    graph: GraphPort,
+    entity_service: EntityExtractionService,
+    sentiment_service: SentimentExtractionService,
+) -> None:
+    """
+    Run all post-submission processing in deterministic order.
+
+    Graph node must exist before entity extraction runs graph projection,
+    so steps are chained sequentially here rather than scheduled independently.
+    """
+    _save_story_to_graph(story_id, storage, graph)
+    entity_service.extract_for_story(story_id)
+    sentiment_service.extract_for_story(story_id)
 
 
 def get_submission_service(
@@ -231,9 +249,7 @@ async def submit_story(
     """
     try:
         result = service.submit_story(request)
-        background_tasks.add_task(_save_story_to_graph, result.story_id, storage, graph)
-        background_tasks.add_task(entity_service.extract_for_story, result.story_id)
-        background_tasks.add_task(sentiment_service.extract_for_story, result.story_id)
+        background_tasks.add_task(_process_story, result.story_id, storage, graph, entity_service, sentiment_service)
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -260,9 +276,7 @@ async def reprocess_story(
         storage.get_story(story_id)
     except NotFoundError:
         raise HTTPException(status_code=404, detail="Story not found")
-    background_tasks.add_task(_save_story_to_graph, story_id, storage, graph)
-    background_tasks.add_task(entity_service.extract_for_story, story_id)
-    background_tasks.add_task(sentiment_service.extract_for_story, story_id)
+    background_tasks.add_task(_process_story, story_id, storage, graph, entity_service, sentiment_service)
     return {"story_id": story_id, "status": "reprocessing"}
 
 
