@@ -26,7 +26,7 @@
         <h3>Top Themes</h3>
         {% if data.top_themes %}
         <canvas id="themes-chart"
-                data-values="{{ data.top_themes | tojson }}"
+                data-values='{{ data.top_themes | tojson }}'
                 height="200"></canvas>
         {% else %}
         <p class="empty-state">No themes extracted yet.</p>
@@ -37,7 +37,7 @@
         <h3>Top Entities</h3>
         {% if data.top_entities %}
         <canvas id="entities-chart"
-                data-values="{{ data.top_entities | tojson }}"
+                data-values='{{ data.top_entities | tojson }}'
                 height="200"></canvas>
         {% else %}
         <p class="empty-state">No entities extracted yet.</p>
@@ -55,7 +55,7 @@
                 hx-post="/ui/insights"
                 hx-target="#insight-panel"
                 hx-swap="innerHTML"
-                hx-vals="{{ {"entity_name": entity.name, "query": "What patterns emerge for " ~ entity.name ~ "?"} | tojson }}"
+                hx-vals='{"entity_name": "{{ entity.name }}", "query": "What patterns emerge for {{ entity.name }}?"}'
                 hx-indicator="#insight-indicator">
             {{ entity.name }} <span class="chip-count">{{ entity.count }}</span>
         </button>

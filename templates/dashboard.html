@@ -45,31 +45,9 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"
-        onload="renderCharts()"></script>
 <script>
-    // Re-render charts whenever HTMX swaps new data into #dashboard-data
-    document.body.addEventListener('htmx:afterSettle', function (evt) {
-        if (evt.detail.target && evt.detail.target.id === 'dashboard-data') {
-            renderCharts();
-        }
-    });
-
-    // Keep export links in sync with the active date filter
-    function updateExportLinks() {
-        var from = document.querySelector('[name="from_date"]').value;
-        var to   = document.querySelector('[name="to_date"]').value;
-        ['json', 'csv'].forEach(function (fmt) {
-            var params = new URLSearchParams({ format: fmt });
-            if (from) params.set('from_date', from);
-            if (to)   params.set('to_date', to);
-            document.getElementById('export-' + fmt).href = '/api/dashboard?' + params.toString();
-        });
-    }
-
-    document.querySelector('[name="from_date"]').addEventListener('change', updateExportLinks);
-    document.querySelector('[name="to_date"]').addEventListener('change', updateExportLinks);
-
+    // renderCharts must be defined before Chart.js loads so the onload
+    // handler can find it when the external script fires.
     function renderCharts() {
         var themesCanvas = document.getElementById('themes-chart');
         var entitiesCanvas = document.getElementById('entities-chart');
@@ -110,5 +88,29 @@
             });
         }
     }
+
+    // Re-render charts whenever HTMX swaps new data into #dashboard-data
+    document.body.addEventListener('htmx:afterSettle', function (evt) {
+        if (evt.detail.target && evt.detail.target.id === 'dashboard-data') {
+            renderCharts();
+        }
+    });
+
+    // Keep export links in sync with the active date filter
+    function updateExportLinks() {
+        var from = document.querySelector('[name="from_date"]').value;
+        var to   = document.querySelector('[name="to_date"]').value;
+        ['json', 'csv'].forEach(function (fmt) {
+            var params = new URLSearchParams({ format: fmt });
+            if (from) params.set('from_date', from);
+            if (to)   params.set('to_date', to);
+            document.getElementById('export-' + fmt).href = '/api/dashboard?' + params.toString();
+        });
+    }
+
+    document.querySelector('[name="from_date"]').addEventListener('change', updateExportLinks);
+    document.querySelector('[name="to_date"]').addEventListener('change', updateExportLinks);
 </script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"
+        onload="renderCharts()"></script>
 {% endblock %}
