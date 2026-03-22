@@ -682,7 +682,13 @@ def test_get_clusters_returns_cluster_data(test_db):
     )
     test_db.stories.insert_one({
         "_id": "s1", "story_text": story.story_text,
-        "triads": [{"triad_id": p.triad_id, "coordinates": {"x": p.coordinates.x, "y": p.coordinates.y}} for p in story.triads],
+        "schema_version": 2,
+        "triads": [],
+        "signification": {"headline": None, "responses": [
+            {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}},
+            {"kind": "triad", "signifier_id": "understanding_quality", "coordinates": {"x": 0.5, "y": 0.4}},
+            {"kind": "triad", "signifier_id": "value_character", "coordinates": {"x": 0.2, "y": 0.7}},
+        ]},
         "processing_status": "processed",
         "themes": story.themes, "entities": story.entities,
         "timestamp": "2026-03-20T10:00:00",
@@ -842,11 +848,13 @@ def test_get_temporal_returns_theme_and_drift_data(test_db):
     test_db.stories.insert_one({
         "_id": "s1",
         "story_text": "CI failures blocked our deployment repeatedly this sprint. " * 3,
-        "triads": [
-            {"triad_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}},
-            {"triad_id": "understanding_quality", "coordinates": {"x": 0.5, "y": 0.4}},
-            {"triad_id": "value_character", "coordinates": {"x": 0.2, "y": 0.7}},
-        ],
+        "schema_version": 2,
+        "triads": [],
+        "signification": {"headline": None, "responses": [
+            {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}},
+            {"kind": "triad", "signifier_id": "understanding_quality", "coordinates": {"x": 0.5, "y": 0.4}},
+            {"kind": "triad", "signifier_id": "value_character", "coordinates": {"x": 0.2, "y": 0.7}},
+        ]},
         "processing_status": "processed",
         "themes": ["automation friction"],
         "entities": [{"name": "CI pipeline", "type": "tool"}],
@@ -912,32 +920,36 @@ def test_get_temporal_department_filter_restricts_drift(test_db):
         def find_theme_counts_by_window(self, window_size, from_date=None, to_date=None, theme=None): return []
         def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None): return []
 
-    triad_doc = [
-        {"triad_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}},
-        {"triad_id": "understanding_quality", "coordinates": {"x": 0.5, "y": 0.4}},
-        {"triad_id": "value_character", "coordinates": {"x": 0.2, "y": 0.7}},
-    ]
+    signification_doc = {"headline": None, "responses": [
+        {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}},
+        {"kind": "triad", "signifier_id": "understanding_quality", "coordinates": {"x": 0.5, "y": 0.4}},
+        {"kind": "triad", "signifier_id": "value_character", "coordinates": {"x": 0.2, "y": 0.7}},
+    ]}
     # s1: engineering dept, developer role → Jan
     test_db.stories.insert_one({
         "_id": "s1",
         "story_text": "CI failures blocked our deployment repeatedly this sprint. " * 3,
-        "triads": triad_doc,
+        "schema_version": 2,
+        "triads": [],
+        "signification": signification_doc,
         "processing_status": "processed",
         "themes": [],
         "entities": [],
         "timestamp": datetime(2026, 1, 15, 10, 0, tzinfo=UTC).replace(tzinfo=None),
-        "metadata": {"department": "engineering", "role": "developer", "user_pseudonym": None, "tool_context": None},
+        "context": {"department": "engineering", "role": "developer", "tool_context": None},
     })
     # s2: product dept, manager role → Feb
     test_db.stories.insert_one({
         "_id": "s2",
         "story_text": "CI failures blocked our deployment repeatedly this sprint. " * 3,
-        "triads": triad_doc,
+        "schema_version": 2,
+        "triads": [],
+        "signification": signification_doc,
         "processing_status": "processed",
         "themes": [],
         "entities": [],
         "timestamp": datetime(2026, 2, 10, 10, 0, tzinfo=UTC).replace(tzinfo=None),
-        "metadata": {"department": "product", "role": "manager", "user_pseudonym": None, "tool_context": None},
+        "context": {"department": "product", "role": "manager", "tool_context": None},
     })
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
