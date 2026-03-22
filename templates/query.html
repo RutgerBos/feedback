@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Ask a Question{% endblock %}
+
+{% block content %}
+<section class="query-page">
+    <div class="query-header">
+        <h2>Ask a Question</h2>
+        <a href="/dashboard" class="btn-secondary">Dashboard</a>
+    </div>
+
+    <form class="query-form"
+          hx-post="/ui/query"
+          hx-target="#conversation"
+          hx-swap="afterbegin"
+          hx-on::after-request="this.reset()">
+        <label for="question">Question</label>
+        <input type="text" id="question" name="question"
+               placeholder="e.g. What issues exist with the CI pipeline?"
+               autocomplete="off">
+        <button type="submit">Ask</button>
+    </form>
+
+    <div id="conversation" class="conversation history">
+    </div>
+</section>
+{% endblock %}

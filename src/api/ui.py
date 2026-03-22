@@ -13,12 +13,13 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
-from src.api.insights import get_insight_synthesis_service
+from src.api.insights import get_insight_synthesis_service, get_nl_query_service
 from src.api.stories import get_storage, get_submission_service
-from src.ports.errors import GraphError, LLMError, NotFoundError, StorageError
+from src.ports.errors import GraphError, LLMError, NotFoundError, QueryTranslationError, StorageError
 from src.ports.storage import StoragePort
 from src.services.dashboard import DashboardService
 from src.services.insight_synthesis import InsightSynthesisService
+from src.services.nl_query import NLQueryService
 from src.services.story_submission import StorySubmissionRequest, StorySubmissionService
 
 router = APIRouter(tags=["ui"])
@@ -128,6 +129,61 @@ async def submit_story_form(
             request=request,
             name="_error.html",
             context={"error": "Submission failed — please try again."},
+            status_code=503,
+        )
+
+
+@router.get("/query", response_class=HTMLResponse)
+async def query_page(request: Request) -> HTMLResponse:
+    """Natural language query chat page."""
+    return _templates.TemplateResponse(
+        request=request,
+        name="query.html",
+        context={},
+    )
+
+
+@router.post("/ui/query", response_class=HTMLResponse)
+async def query_fragment(
+    request: Request,
+    service: NLQueryService = Depends(get_nl_query_service),
+) -> HTMLResponse:
+    """Accept a natural language question and return an HTML fragment with the answer."""
+    form = await request.form()
+    question = str(form.get("question", "")).strip()
+
+    if not question:
+        return _templates.TemplateResponse(
+            request=request,
+            name="_error.html",
+            context={"error": "Question must not be blank."},
+            status_code=400,
+        )
+
+    try:
+        result = service.query(question)
+        return _templates.TemplateResponse(
+            request=request,
+            name="_query_response.html",
+            context={
+                "question": question,
+                "answer": result.answer,
+                "caveats": result.caveats,
+                "story_count": result.story_count,
+            },
+        )
+    except QueryTranslationError as e:
+        return _templates.TemplateResponse(
+            request=request,
+            name="_error.html",
+            context={"error": str(e)},
+            status_code=400,
+        )
+    except (GraphError, LLMError, NotFoundError, StorageError):
+        return _templates.TemplateResponse(
+            request=request,
+            name="_error.html",
+            context={"error": "Query service unavailable — please try again later."},
             status_code=503,
         )
 
