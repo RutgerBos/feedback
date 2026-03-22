@@ -394,7 +394,7 @@ def test_submit_story_triggers_entity_extraction(test_db):
 
     # Background task should have run; verify extraction results in DB
     doc = test_db.stories.find_one({"_id": story_id})
-    assert doc["processing_status"] == "processed"
+    assert doc["entity_status"] == "processed"
     assert doc["entities"] == [{"name": "CI pipeline", "type": "tool"}]
 
 
