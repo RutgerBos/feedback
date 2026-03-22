@@ -205,7 +205,7 @@ def _save_story_to_graph(story_id: str, storage: StoragePort, graph: GraphPort) 
     )
 
 
-def _process_story(
+def process_story_background(
     story_id: str,
     storage: StoragePort,
     graph: GraphPort,
@@ -217,6 +217,8 @@ def _process_story(
 
     Graph node must exist before entity extraction runs graph projection,
     so steps are chained sequentially here rather than scheduled independently.
+
+    Shared by the JSON API submit path and the UI submit path.
     """
     _save_story_to_graph(story_id, storage, graph)
     entity_service.extract_for_story(story_id)
@@ -270,7 +272,7 @@ async def submit_story(
     """
     try:
         result = service.submit_story(request)
-        background_tasks.add_task(_process_story, result.story_id, storage, graph, entity_service, sentiment_service)
+        background_tasks.add_task(process_story_background, result.story_id, storage, graph, entity_service, sentiment_service)
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -297,7 +299,7 @@ async def reprocess_story(
         storage.get_story(story_id)
     except NotFoundError:
         raise HTTPException(status_code=404, detail="Story not found")
-    background_tasks.add_task(_process_story, story_id, storage, graph, entity_service, sentiment_service)
+    background_tasks.add_task(process_story_background, story_id, storage, graph, entity_service, sentiment_service)
     return {"story_id": story_id, "status": "reprocessing"}
 
 
