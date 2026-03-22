@@ -227,6 +227,8 @@ async def get_temporal(
     window_size: str = Query(default="month", pattern="^(month|day)$"),
     theme: str | None = Query(default=None),
     entity: str | None = Query(default=None),
+    department: str | None = Query(default=None),
+    role: str | None = Query(default=None),
     service: TemporalService = Depends(get_temporal_service),
 ) -> TemporalResponse:
     """
@@ -238,6 +240,8 @@ async def get_temporal(
         window_size: Bucket size — "month" (YYYY-MM) or "day" (YYYY-MM-DD)
         theme:       Restrict theme_frequency and drift to this theme
         entity:      Restrict entity_frequency and drift to this entity
+        department:  Restrict drift to stories with this department metadata
+        role:        Restrict drift to stories with this role metadata
 
     Returns:
         TemporalResponse with windows, theme_frequency, entity_frequency, triad_drift
@@ -257,6 +261,8 @@ async def get_temporal(
             window_size=window_size,
             theme=theme,
             entity=entity,
+            department=department,
+            role=role,
         )
     except GraphError as e:
         raise HTTPException(status_code=503, detail="Graph database unavailable") from e

@@ -10,7 +10,18 @@ from src.ports.graph import GraphPort
 from src.ports.storage import StoragePort
 
 
-def make_story(story_id: str, timestamp: datetime, x: float = 0.3, y: float = 0.5) -> Story:
+from src.domain.models import StoryMetadata
+
+
+def make_story(
+    story_id: str,
+    timestamp: datetime,
+    x: float = 0.3,
+    y: float = 0.5,
+    department: str | None = None,
+    role: str | None = None,
+) -> Story:
+    metadata = StoryMetadata(department=department, role=role) if (department or role) else None
     return Story(
         id=story_id,
         story_text="CI failures blocked our deployment repeatedly this sprint. " * 3,
@@ -23,6 +34,7 @@ def make_story(story_id: str, timestamp: datetime, x: float = 0.3, y: float = 0.
         timestamp=timestamp,
         themes=["automation friction"],
         entities=[{"name": "CI pipeline", "type": "tool"}],
+        metadata=metadata,
     )
 
 
@@ -293,3 +305,133 @@ def test_temporal_combined_filters_intersect_drift():
     assert len(drift.centroids) == 1
     assert drift.centroids[0].window == "2026-01"
     assert abs(drift.centroids[0].center_x - 0.9) < 1e-9
+
+
+# ── Test 11: department filter restricts drift ────────────────────────────────
+
+
+def test_temporal_department_filter_restricts_drift():
+    """department filter limits drift to stories with matching department metadata."""
+    from src.services.temporal import TemporalService
+
+    jan = datetime(2026, 1, 15, 10, 0, tzinfo=UTC)
+    feb = datetime(2026, 2, 10, 10, 0, tzinfo=UTC)
+    s1 = make_story("s1", jan, x=0.1, y=0.1, department="engineering")
+    s2 = make_story("s2", feb, x=0.9, y=0.9, department="product")
+
+    storage = FakeStorage(stories={"s1": s1, "s2": s2})
+    service = TemporalService(graph=FakeGraph(), storage=storage)
+    result = service.query_temporal(from_date=None, to_date=None, department="engineering")
+
+    drift = next((d for d in result.triad_drift if d.triad_id == "workflow_nature"), None)
+    assert drift is not None
+    # Only s1 (engineering) contributes
+    assert len(drift.centroids) == 1
+    assert drift.centroids[0].window == "2026-01"
+    assert abs(drift.centroids[0].center_x - 0.1) < 1e-9
+
+
+# ── Test 12: role filter restricts drift ──────────────────────────────────────
+
+
+def test_temporal_role_filter_restricts_drift():
+    """role filter limits drift to stories with matching role metadata."""
+    from src.services.temporal import TemporalService
+
+    jan = datetime(2026, 1, 15, 10, 0, tzinfo=UTC)
+    feb = datetime(2026, 2, 10, 10, 0, tzinfo=UTC)
+    s1 = make_story("s1", jan, x=0.2, y=0.2, role="developer")
+    s2 = make_story("s2", feb, x=0.8, y=0.8, role="manager")
+
+    storage = FakeStorage(stories={"s1": s1, "s2": s2})
+    service = TemporalService(graph=FakeGraph(), storage=storage)
+    result = service.query_temporal(from_date=None, to_date=None, role="developer")
+
+    drift = next((d for d in result.triad_drift if d.triad_id == "workflow_nature"), None)
+    assert drift is not None
+    assert len(drift.centroids) == 1
+    assert drift.centroids[0].window == "2026-01"
+    assert abs(drift.centroids[0].center_x - 0.2) < 1e-9
+
+
+# ── Test 13: department + role both required ──────────────────────────────────
+
+
+def test_temporal_department_and_role_both_required():
+    """When both department and role given, story must match both."""
+    from src.services.temporal import TemporalService
+
+    jan = datetime(2026, 1, 15, 10, 0, tzinfo=UTC)
+    # s1: engineering + developer (matches both)
+    # s2: engineering + manager (matches department only)
+    # s3: product + developer (matches role only)
+    s1 = make_story("s1", jan, x=0.1, y=0.1, department="engineering", role="developer")
+    s2 = make_story("s2", jan, x=0.5, y=0.5, department="engineering", role="manager")
+    s3 = make_story("s3", jan, x=0.9, y=0.9, department="product", role="developer")
+
+    storage = FakeStorage(stories={"s1": s1, "s2": s2, "s3": s3})
+    service = TemporalService(graph=FakeGraph(), storage=storage)
+    result = service.query_temporal(
+        from_date=None, to_date=None, department="engineering", role="developer"
+    )
+
+    drift = next((d for d in result.triad_drift if d.triad_id == "workflow_nature"), None)
+    assert drift is not None
+    # Only s1 matches both
+    assert len(drift.centroids) == 1
+    assert abs(drift.centroids[0].center_x - 0.1) < 1e-9
+
+
+# ── Test 14: stories without metadata excluded by department filter ────────────
+
+
+def test_temporal_no_metadata_excluded_by_department_filter():
+    """Stories with no metadata are excluded when a department filter is active."""
+    from src.services.temporal import TemporalService
+
+    jan = datetime(2026, 1, 15, 10, 0, tzinfo=UTC)
+    s1 = make_story("s1", jan, x=0.3, y=0.3, department="engineering")
+    s2 = make_story("s2", jan, x=0.7, y=0.7)  # no metadata
+
+    storage = FakeStorage(stories={"s1": s1, "s2": s2})
+    service = TemporalService(graph=FakeGraph(), storage=storage)
+    result = service.query_temporal(from_date=None, to_date=None, department="engineering")
+
+    drift = next((d for d in result.triad_drift if d.triad_id == "workflow_nature"), None)
+    assert drift is not None
+    # s2 has no metadata, must be excluded
+    assert len(drift.centroids) == 1
+    assert abs(drift.centroids[0].center_x - 0.3) < 1e-9
+
+
+# ── Test 15: department + theme filter intersects both ────────────────────────
+
+
+def test_temporal_department_and_theme_intersect():
+    """department filter and theme filter both restrict drift; story must match both."""
+    from src.services.temporal import TemporalService
+
+    jan = datetime(2026, 1, 15, 10, 0, tzinfo=UTC)
+    feb = datetime(2026, 2, 10, 10, 0, tzinfo=UTC)
+    # s1: engineering, matches theme → should appear in drift
+    # s2: product, matches theme → excluded by department
+    # s3: engineering, not in theme IDs → excluded by theme
+    s1 = make_story("s1", jan, x=0.1, y=0.1, department="engineering")
+    s2 = make_story("s2", feb, x=0.5, y=0.5, department="product")
+    s3 = make_story("s3", jan, x=0.9, y=0.9, department="engineering")
+
+    # theme filter returns s1 + s2 from the graph
+    graph = FakeGraph(theme_ids=["s1", "s2"])
+    storage = FakeStorage(stories={"s1": s1, "s2": s2, "s3": s3})
+    service = TemporalService(graph=graph, storage=storage)
+    result = service.query_temporal(
+        from_date=None, to_date=None,
+        theme="automation friction", department="engineering",
+    )
+
+    drift = next((d for d in result.triad_drift if d.triad_id == "workflow_nature"), None)
+    assert drift is not None
+    # Only s1 matches theme AND engineering department
+    assert len(drift.centroids) == 1
+    assert drift.centroids[0].window == "2026-01"
+    assert abs(drift.centroids[0].center_x - 0.1) < 1e-9

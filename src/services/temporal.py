@@ -137,6 +137,23 @@ def _parse_iso_to_naive_utc(iso: str) -> datetime:
     return dt
 
 
+def _filter_by_metadata(stories, department: str | None, role: str | None):
+    """Filter stories by metadata fields. Stories without metadata are excluded when a filter is set."""
+    if department is None and role is None:
+        return stories
+    result = []
+    for story in stories:
+        meta = story.metadata
+        if meta is None:
+            continue
+        if department is not None and meta.department != department:
+            continue
+        if role is not None and meta.role != role:
+            continue
+        result.append(story)
+    return result
+
+
 class TemporalService:
     """
     Responsibilities:
@@ -167,6 +184,8 @@ class TemporalService:
         window_size: str = "month",
         theme: str | None = None,
         entity: str | None = None,
+        department: str | None = None,
+        role: str | None = None,
     ) -> TemporalResult:
         """
         Return time-windowed theme frequency, entity frequency, and triad drift.
@@ -181,13 +200,17 @@ class TemporalService:
                          drift uses only stories that mention this entity;
                          when combined with theme, drift uses intersection of
                          both ID sets (stories matching theme AND entity)
+            department:  If given: drift uses only stories with this department
+                         metadata (no effect on theme/entity frequency)
+            role:        If given: drift uses only stories with this role
+                         metadata (no effect on theme/entity frequency)
 
         Notes on filter semantics:
             Each filter dimension is independent in frequency data — theme
             restricts theme_frequency, entity restricts entity_frequency.
-            Drift, however, uses the intersection of whichever filters are
-            active, giving a view of "where are stories matching ALL filters
-            placed in signifier space over time?"
+            Drift uses the intersection of all active filters.
+            Metadata filters (department, role) apply to drift only — the graph
+            does not store story metadata.
 
         Returns:
             TemporalResult with theme_frequency, entity_frequency, triad_drift,
@@ -217,8 +240,8 @@ class TemporalService:
         for window_label, entity_name, count in entity_rows:
             entity_map.setdefault(entity_name, {})[window_label] = count
 
-        # ── Triad drift (from storage, filtered by theme/entity if specified) ─
-        stories = self._collect_stories_for_drift(from_date, to_date, theme, entity)
+        # ── Triad drift (from storage, filtered by theme/entity/metadata) ──────
+        stories = self._collect_stories_for_drift(from_date, to_date, theme, entity, department, role)
 
         drift_map: dict[str, dict[str, list[tuple[float, float]]]] = {}
         for s in stories:
@@ -293,6 +316,8 @@ class TemporalService:
         to_date: str | None,
         theme: str | None,
         entity: str | None,
+        department: str | None,
+        role: str | None,
     ):
         """
         Collect stories for triad drift computation.
@@ -301,8 +326,12 @@ class TemporalService:
         the graph (paginated), intersects them, then loads each story individually.
         Otherwise paginates through storage.
 
+        Metadata filters (department, role) are applied in memory after loading
+        because the graph does not store story metadata.
+
         Notes:
-        - N+1 storage reads for filtered case — acceptable for current dataset sizes
+        - N+1 storage reads for the theme/entity filtered case — acceptable for
+          current dataset sizes
         """
         if theme is not None or entity is not None:
             # Filtered: collect IDs from graph, intersect, load individually
@@ -330,12 +359,14 @@ class TemporalService:
                 )
                 ids = entity_ids if ids is None else ids & entity_ids
 
-            return [self._storage.get_story(sid) for sid in (ids or set())]
+            stories = [self._storage.get_story(sid) for sid in (ids or set())]
+        else:
+            # Unfiltered: paginate through storage
+            dt_from = _parse_iso_to_naive_utc(from_date) if from_date else None
+            dt_to = _parse_iso_to_naive_utc(to_date) if to_date else None
+            stories = self._collect_stories_paginated(dt_from, dt_to)
 
-        # Unfiltered: paginate through storage
-        dt_from = _parse_iso_to_naive_utc(from_date) if from_date else None
-        dt_to = _parse_iso_to_naive_utc(to_date) if to_date else None
-        return self._collect_stories_paginated(dt_from, dt_to)
+        return _filter_by_metadata(stories, department, role)
 
     def _collect_stories_paginated(self, from_date, to_date, page_size: int = 100):
         """Paginate through storage and collect all stories in date range."""
