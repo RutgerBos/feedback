@@ -826,3 +826,103 @@ def test_get_temporal_returns_theme_and_drift_data(test_db):
         app.dependency_overrides.pop(get_storage, None)
         app.dependency_overrides.pop(get_llm, None)
         app.dependency_overrides.pop(get_graph, None)
+
+
+def test_get_temporal_department_filter_restricts_drift(test_db):
+    """GET /api/patterns/temporal?department=... filters drift to matching stories."""
+    from datetime import datetime, UTC
+    from src.adapters.mongodb_storage import MongoDBStorageAdapter
+    from src.api.main import app
+    from src.api.stories import get_graph, get_llm, get_storage
+    from src.domain.models import SentimentAnalysis
+    from src.ports.graph import GraphPort
+    from src.ports.llm import EntityExtraction, LLMPort
+
+    class NoOpLLM(LLMPort):
+        def extract_entities(self, story_text): return EntityExtraction(entities=[])
+        def extract_themes(self, story_text): return []
+        def extract_relationships(self, story_text): return []
+        def extract_sentiment(self, story_text):
+            return SentimentAnalysis(emotion_markers=[], process_sentiment="neutral", outcome_sentiment="neutral")
+        def synthesize_insights(self, context):
+            from src.domain.models import InsightOutput
+            return InsightOutput(narrative="")
+
+    class NoOpGraph(GraphPort):
+        def save_story_node(self, story_id, triads, timestamp): pass
+        def save_entity_nodes(self, story_id, entities): pass
+        def save_theme_nodes(self, story_id, themes): pass
+        def save_proximity_relationships(self, story_id, pairs): pass
+        def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None): return []
+        def count_stories_by_entity(self, entity_name): return 0
+        def find_themes_ranked(self, limit, from_date=None, to_date=None): return []
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None): return []
+        def count_stories_by_theme(self, theme_name): return 0
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None): return []
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0): return []
+        def find_story_communities(self, triad_id): return []
+        def find_theme_counts_by_window(self, window_size, from_date=None, to_date=None, theme=None): return []
+        def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None): return []
+
+    triad_doc = [
+        {"triad_id": "workflow_nature", "coordinates": {"x": 0.3, "y": 0.6}},
+        {"triad_id": "understanding_quality", "coordinates": {"x": 0.5, "y": 0.4}},
+        {"triad_id": "value_character", "coordinates": {"x": 0.2, "y": 0.7}},
+    ]
+    # s1: engineering dept, developer role → Jan
+    test_db.stories.insert_one({
+        "_id": "s1",
+        "story_text": "CI failures blocked our deployment repeatedly this sprint. " * 3,
+        "triads": triad_doc,
+        "processing_status": "processed",
+        "themes": [],
+        "entities": [],
+        "timestamp": datetime(2026, 1, 15, 10, 0, tzinfo=UTC).replace(tzinfo=None),
+        "metadata": {"department": "engineering", "role": "developer", "user_pseudonym": None, "tool_context": None},
+    })
+    # s2: product dept, manager role → Feb
+    test_db.stories.insert_one({
+        "_id": "s2",
+        "story_text": "CI failures blocked our deployment repeatedly this sprint. " * 3,
+        "triads": triad_doc,
+        "processing_status": "processed",
+        "themes": [],
+        "entities": [],
+        "timestamp": datetime(2026, 2, 10, 10, 0, tzinfo=UTC).replace(tzinfo=None),
+        "metadata": {"department": "product", "role": "manager", "user_pseudonym": None, "tool_context": None},
+    })
+
+    app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
+    app.dependency_overrides[get_llm] = lambda: NoOpLLM()
+    app.dependency_overrides[get_graph] = lambda: NoOpGraph()
+    try:
+        with TestClient(app) as client:
+            # Without filter: both stories contribute → drift has 2 windows
+            response_all = client.get("/api/patterns/temporal")
+            assert response_all.status_code == 200
+            all_drift = response_all.json()["triad_drift"]
+            wf_all = next((d for d in all_drift if d["triad_id"] == "workflow_nature"), None)
+            assert wf_all is not None
+            assert len(wf_all["centroids"]) == 2
+
+            # With department=engineering: only s1 contributes → drift has 1 window (Jan)
+            response_eng = client.get("/api/patterns/temporal?department=engineering")
+            assert response_eng.status_code == 200
+            eng_drift = response_eng.json()["triad_drift"]
+            wf_eng = next((d for d in eng_drift if d["triad_id"] == "workflow_nature"), None)
+            assert wf_eng is not None
+            assert len(wf_eng["centroids"]) == 1
+            assert wf_eng["centroids"][0]["window"] == "2026-01"
+
+            # With role=manager: only s2 contributes → drift has 1 window (Feb)
+            response_mgr = client.get("/api/patterns/temporal?role=manager")
+            assert response_mgr.status_code == 200
+            mgr_drift = response_mgr.json()["triad_drift"]
+            wf_mgr = next((d for d in mgr_drift if d["triad_id"] == "workflow_nature"), None)
+            assert wf_mgr is not None
+            assert len(wf_mgr["centroids"]) == 1
+            assert wf_mgr["centroids"][0]["window"] == "2026-02"
+    finally:
+        app.dependency_overrides.pop(get_storage, None)
+        app.dependency_overrides.pop(get_llm, None)
+        app.dependency_overrides.pop(get_graph, None)
