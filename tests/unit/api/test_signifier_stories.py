@@ -69,7 +69,7 @@ def test_query_signifier_polygon_returns_evidence_without_overlays_by_default():
                 "story_excerpt": "A detailed participant account of a difficult deployment.",
                 "coordinates": {"x": 0.4, "y": 0.4},
                 "timestamp": "2026-01-02T00:00:00Z",
-                "context": {
+                "context_metadata": {
                     "department": "engineering",
                 },
             }
