@@ -420,6 +420,9 @@ class Story(BaseModel):
     participant: ParticipantMetadata | None = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     processing_status: str = Field(default="pending")
+    processing_attempts: int = Field(default=0, ge=0)
+    next_processing_at: datetime | None = None
+    processing_error: str | None = None
     entity_status: str = Field(default="pending")
     sentiment_status: str = Field(default="pending")
     entities: list[dict[str, Any]] = Field(default_factory=list)

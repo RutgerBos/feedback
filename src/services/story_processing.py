@@ -3,7 +3,6 @@ StoryProcessingService: orchestrates graph save, entity extraction, and sentimen
 """
 
 from src.domain.models import TriadCoordinates, TriadPlacement
-from src.ports.errors import GraphError
 from src.ports.graph import GraphPort
 from src.ports.storage import StoragePort
 from src.services.entity_extraction import EntityExtractionService
@@ -43,7 +42,7 @@ class StoryProcessingService:
         self.entity_service = entity_service
         self.sentiment_service = sentiment_service
 
-    def process(self, story_id: str) -> None:
+    def process(self, story_id: str) -> bool:
         """
         Run full post-submission processing for a story.
 
@@ -64,5 +63,6 @@ class StoryProcessingService:
             triads=triads,
             timestamp=story.timestamp.isoformat(),
         )
-        self.entity_service.extract_for_story(story_id)
-        self.sentiment_service.extract_for_story(story_id)
+        entities_processed = self.entity_service.extract_for_story(story_id)
+        sentiment_processed = self.sentiment_service.extract_for_story(story_id)
+        return entities_processed is not False and sentiment_processed is not False

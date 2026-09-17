@@ -46,7 +46,7 @@ class EntityExtractionService:
         self.llm = llm
         self.graph_projection = graph_projection
 
-    def extract_for_story(self, story_id: str) -> None:
+    def extract_for_story(self, story_id: str) -> bool:
         """
         Run entity extraction for a single story and persist results.
 
@@ -78,3 +78,5 @@ class EntityExtractionService:
 
         if entity_status == "processed" and self.graph_projection is not None:
             self.graph_projection.project_story(story_id)
+
+        return entity_status == "processed"

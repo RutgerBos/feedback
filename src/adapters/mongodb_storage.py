@@ -4,7 +4,7 @@ MongoDB storage adapter implementing StoragePort.
 This adapter provides concrete MongoDB implementation of the StoragePort interface.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from pymongo.database import Database
@@ -229,17 +229,57 @@ class MongoDBStorageAdapter(StoragePort):
 
     def find_story_ids_requiring_processing(self) -> list[str]:
         """
-        Return IDs of stories where entity_status or sentiment_status is not 'processed'.
-        Used by the background worker sweep to catch stories missed by the queue.
+        Return pending stories and retries whose backoff has elapsed.
+
+        Terminal failures and future retries are deliberately excluded.
         """
         docs = self.collection.find(
             {"$or": [
-                {"entity_status": {"$ne": "processed"}},
-                {"sentiment_status": {"$ne": "processed"}},
+                {
+                    "processing_status": "pending",
+                    "$or": [
+                        {"entity_status": {"$ne": "processed"}},
+                        {"sentiment_status": {"$ne": "processed"}},
+                    ],
+                },
+                {
+                    "processing_status": "retrying",
+                    "$or": [
+                        {"next_processing_at": None},
+                        {"next_processing_at": {"$lte": datetime.now(UTC)}},
+                    ],
+                },
             ]},
             {"_id": 1},
         )
         return [str(doc["_id"]) for doc in docs]
+
+    def update_story_processing(
+        self,
+        story_id: str,
+        *,
+        processing_status: str,
+        processing_attempts: int,
+        next_processing_at: datetime | None,
+        processing_error: str | None,
+    ) -> None:
+        """Persist processing completion or bounded-retry state."""
+        try:
+            result = self.collection.update_one(
+                {"_id": story_id},
+                {"$set": {
+                    "processing_status": processing_status,
+                    "processing_attempts": processing_attempts,
+                    "next_processing_at": next_processing_at,
+                    "processing_error": processing_error,
+                }},
+            )
+            if result.matched_count == 0:
+                raise NotFoundError(f"Story not found: {story_id}")
+        except NotFoundError:
+            raise
+        except Exception as e:
+            raise StorageError(f"Failed to update story processing state: {e}") from e
 
     def _story_to_document(self, story: Story) -> dict[str, Any]:
         """
@@ -322,6 +362,9 @@ class MongoDBStorageAdapter(StoragePort):
             "participant": participant_dict,
             "timestamp": story.timestamp,
             "processing_status": story.processing_status,
+            "processing_attempts": story.processing_attempts,
+            "next_processing_at": story.next_processing_at,
+            "processing_error": story.processing_error,
             "entity_status": story.entity_status,
             "sentiment_status": story.sentiment_status,
             "entities": story.entities,
@@ -428,6 +471,9 @@ class MongoDBStorageAdapter(StoragePort):
             participant=participant,
             timestamp=document["timestamp"],
             processing_status=document.get("processing_status", "pending"),
+            processing_attempts=document.get("processing_attempts", 0),
+            next_processing_at=document.get("next_processing_at"),
+            processing_error=document.get("processing_error"),
             entity_status=document.get("entity_status", "pending"),
             sentiment_status=document.get("sentiment_status", "pending"),
             entities=document.get("entities", []),

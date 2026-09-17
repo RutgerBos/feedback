@@ -136,13 +136,25 @@ class StoragePort(ABC):
         """
         Return IDs of stories that have not yet been fully processed.
 
-        A story requires processing if either entity_status or sentiment_status
-        is not 'processed'. Used by the background worker as a sweep fallback.
+        A story requires processing when it is pending, or when it is retrying
+        and its persisted backoff deadline has elapsed.
 
         Returns:
             list[str]: Story IDs needing (re)processing
         """
         pass
+
+    def update_story_processing(
+        self,
+        story_id: str,
+        *,
+        processing_status: str,
+        processing_attempts: int,
+        next_processing_at: datetime | None,
+        processing_error: str | None,
+    ) -> None:
+        """Persist worker retry state for a story."""
+        raise NotImplementedError
 
     @abstractmethod
     def update_story_sentiment(

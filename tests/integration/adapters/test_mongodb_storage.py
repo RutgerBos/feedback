@@ -1,6 +1,6 @@
 """Integration tests for MongoDB storage adapter."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -599,6 +599,59 @@ def test_find_story_ids_requiring_processing_empty_when_all_processed(storage_ad
     result = storage_adapter.find_story_ids_requiring_processing()
 
     assert result == []
+
+
+def test_find_story_ids_requiring_processing_excludes_terminal_failure(storage_adapter):
+    """A story that exhausted retries is not hot-looped by the sweep."""
+    story = Story(
+        id=str(uuid4()),
+        story_text="This story permanently failed processing after bounded retries.",
+        timestamp=datetime.now(UTC).replace(tzinfo=None),
+    )
+    storage_adapter.save_story(story)
+    storage_adapter.update_story_processing(
+        story.id,
+        processing_status="failed",
+        processing_attempts=3,
+        next_processing_at=None,
+        processing_error="LLM unavailable",
+    )
+
+    assert story.id not in storage_adapter.find_story_ids_requiring_processing()
+
+
+def test_find_story_ids_requiring_processing_only_returns_due_retry(storage_adapter):
+    """Persisted backoff prevents a retry until its deadline has elapsed."""
+    future_story = Story(
+        id=str(uuid4()),
+        story_text="This retry should remain delayed until its future deadline.",
+        timestamp=datetime.now(UTC).replace(tzinfo=None),
+    )
+    due_story = Story(
+        id=str(uuid4()),
+        story_text="This retry deadline elapsed and the story should run again.",
+        timestamp=datetime.now(UTC).replace(tzinfo=None),
+    )
+    storage_adapter.save_story(future_story)
+    storage_adapter.save_story(due_story)
+    storage_adapter.update_story_processing(
+        future_story.id,
+        processing_status="retrying",
+        processing_attempts=1,
+        next_processing_at=datetime.now(UTC) + timedelta(hours=1),
+        processing_error="temporary",
+    )
+    storage_adapter.update_story_processing(
+        due_story.id,
+        processing_status="retrying",
+        processing_attempts=1,
+        next_processing_at=datetime.now(UTC) - timedelta(seconds=1),
+        processing_error="temporary",
+    )
+
+    result = storage_adapter.find_story_ids_requiring_processing()
+    assert due_story.id in result
+    assert future_story.id not in result
 
 
 def test_v1_document_reads_back_without_v2_fields(storage_adapter):

@@ -33,7 +33,7 @@ class SentimentExtractionService:
         self.storage = storage
         self.llm = llm
 
-    def extract_for_story(self, story_id: str) -> None:
+    def extract_for_story(self, story_id: str) -> bool:
         """
         Run sentiment extraction for a single story and persist results.
 
@@ -58,3 +58,4 @@ class SentimentExtractionService:
             sentiment=sentiment,
             sentiment_status=sentiment_status,
         )
+        return sentiment_status == "processed"

@@ -78,6 +78,8 @@ def build_worker(settings: Settings) -> StoryWorker:
         processing_service=processing_service,
         storage=storage,
         dequeue_timeout=settings.worker_dequeue_timeout,
+        max_attempts=settings.worker_max_attempts,
+        retry_base_delay=settings.worker_retry_base_delay,
     )
 
 

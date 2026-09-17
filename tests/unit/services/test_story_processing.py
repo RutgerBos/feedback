@@ -8,8 +8,9 @@ class FakeStorage:
         self._story_id = story_id
 
     def get_story(self, story_id):
-        from src.domain.models import Story, StorySignification
         from datetime import datetime
+
+        from src.domain.models import Story, StorySignification
         return Story(
             id=story_id,
             story_text="A story about CI friction that is at least fifty chars.",
@@ -77,8 +78,8 @@ def test_process_calls_graph_save_then_entity_then_sentiment():
 
 def test_process_propagates_graph_error():
     """process() does not swallow GraphError from graph.save_story_node."""
-    from src.services.story_processing import StoryProcessingService
     from src.ports.errors import GraphError
+    from src.services.story_processing import StoryProcessingService
 
     class FailGraph(FakeGraph):
         def save_story_node(self, **kwargs):
@@ -97,8 +98,8 @@ def test_process_propagates_graph_error():
 
 def test_process_does_not_run_entity_if_graph_fails():
     """entity extraction is skipped when graph save fails."""
-    from src.services.story_processing import StoryProcessingService
     from src.ports.errors import GraphError
+    from src.services.story_processing import StoryProcessingService
 
     entity = FakeEntityService()
 
@@ -117,3 +118,25 @@ def test_process_does_not_run_entity_if_graph_fails():
         svc.process("s1")
 
     assert entity.processed == []
+
+
+def test_process_reports_incomplete_when_an_extraction_fails():
+    """The worker can distinguish recorded LLM failure from successful processing."""
+    from src.services.story_processing import StoryProcessingService
+
+    class FailedEntity(FakeEntityService):
+        def extract_for_story(self, story_id):
+            return False
+
+    class SuccessfulSentiment(FakeSentimentService):
+        def extract_for_story(self, story_id):
+            return True
+
+    svc = StoryProcessingService(
+        storage=FakeStorage(),
+        graph=FakeGraph(),
+        entity_service=FailedEntity(),
+        sentiment_service=SuccessfulSentiment(),
+    )
+
+    assert svc.process("s1") is False
