@@ -192,7 +192,7 @@ def test_ranking_reasons_and_limit_are_deterministic():
 
 
 def test_storage_is_read_in_fixed_size_pages():
-    from src.services.anomaly_detection import AnomalyDetectionService, _PAGE_SIZE
+    from src.services.anomaly_detection import _PAGE_SIZE, AnomalyDetectionService
 
     stories = [make_story(f"s{i}") for i in range(_PAGE_SIZE + 1)]
     storage = FakeStorage(stories)

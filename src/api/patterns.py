@@ -11,8 +11,8 @@ from src.api.stories import StoryListResponse, _story_to_response, get_graph, ge
 from src.ports.errors import GraphError, NotFoundError, StorageError
 from src.ports.graph import GraphPort
 from src.ports.storage import StoragePort
-from src.services.clustering import ClusteringService
 from src.services.anomaly_detection import AnomalyDetectionService
+from src.services.clustering import ClusteringService
 from src.services.pattern_query import PatternQueryService
 from src.services.temporal import TemporalService
 
