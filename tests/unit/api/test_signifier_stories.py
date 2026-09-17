@@ -105,6 +105,32 @@ def test_query_rejects_selection_points_outside_triad_triangle():
     assert response.status_code == 422
 
 
+def test_query_rejects_polygon_without_area():
+    from src.api.main import app
+    from src.api.stories import get_storage
+
+    app.dependency_overrides[get_storage] = lambda: FakeStorage()
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/signifiers/workflow_nature/stories/query",
+                json={
+                    "selection": {
+                        "kind": "polygon",
+                        "points": [
+                            {"x": 0.5, "y": 0.2},
+                            {"x": 0.5, "y": 0.4},
+                            {"x": 0.5, "y": 0.6},
+                        ],
+                    }
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 422
+
+
 def test_query_includes_machine_overlays_only_when_requested():
     from src.api.main import app
     from src.api.stories import get_storage
