@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from src.api.stories import ContextResponse, SignifierCoordinatesResponse, get_storage
 from src.domain.models import Story
@@ -22,6 +22,14 @@ class PolygonPoint(BaseModel):
 class PolygonSelection(BaseModel):
     kind: Literal["polygon"]
     points: list[PolygonPoint] = Field(min_length=3)
+
+    @model_validator(mode="after")
+    def points_must_lie_in_triad_triangle(self) -> "PolygonSelection":
+        """Reject bounding-box coordinates outside the rendered triangle."""
+        for point in self.points:
+            if not _inside_triad_triangle(point.x, point.y):
+                raise ValueError("polygon points must lie inside the triad triangle")
+        return self
 
 
 class SpatialStoryQuery(BaseModel):
@@ -46,6 +54,11 @@ class SpatialStoryResponse(BaseModel):
     stories: list[SpatialStoryItem]
     limit: int
     offset: int
+
+
+def _inside_triad_triangle(x: float, y: float) -> bool:
+    """Match the UI triangle with vertices (0.5, 0), (0, 1), and (1, 1)."""
+    return 0 <= y <= 1 and 0 <= x <= 1 and abs(x - 0.5) <= y / 2
 
 
 def _to_spatial_item(
