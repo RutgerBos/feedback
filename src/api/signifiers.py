@@ -30,6 +30,13 @@ class PolygonSelection(BaseModel):
         for point in self.points:
             if not is_point_in_triad_triangle(point.x, point.y):
                 raise ValueError("polygon points must lie inside the triad triangle")
+        doubled_area = sum(
+            point.x * self.points[(index + 1) % len(self.points)].y
+            - self.points[(index + 1) % len(self.points)].x * point.y
+            for index, point in enumerate(self.points)
+        )
+        if abs(doubled_area) <= 1e-12:
+            raise ValueError("polygon must enclose a non-zero area")
         return self
 
 
