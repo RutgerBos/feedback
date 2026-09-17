@@ -108,7 +108,7 @@ def test_unusually_low_and_high_nonzero_degree_are_detected():
     from src.services.anomaly_detection import AnomalyDetectionService
 
     ids = [f"s{i}" for i in range(10)]
-    degrees = [1, 5, 5, 5, 5, 5, 5, 5, 5, 9]
+    degrees = [1, 4, 4, 5, 5, 5, 6, 6, 7, 20]
     neighbourhoods = [
         (story_id, [f"external-{story_id}-{i}" for i in range(degree)])
         for story_id, degree in zip(ids, degrees, strict=True)
@@ -120,6 +120,47 @@ def test_unusually_low_and_high_nonzero_degree_are_detected():
     reasons = {a.story_id: {reason.kind for reason in a.reasons} for a in result.anomalies}
     assert "low_degree" in reasons["s0"]
     assert "high_degree" in reasons["s9"]
+
+
+def test_degenerate_degree_iqr_does_not_flag_every_deviation():
+    from src.services.anomaly_detection import AnomalyDetectionService
+
+    ids = [f"s{i}" for i in range(10)]
+    degrees = [1, 5, 5, 5, 5, 5, 5, 5, 5, 9]
+    neighbourhoods = [
+        (story_id, [f"external-{story_id}-{i}" for i in range(degree)])
+        for story_id, degree in zip(ids, degrees, strict=True)
+    ]
+
+    result = AnomalyDetectionService(
+        FakeGraph(neighbourhoods), FakeStorage([make_story(story_id) for story_id in ids])
+    ).find_anomalies(limit=25)
+
+    assert all(
+        reason.kind not in {"low_degree", "high_degree"}
+        for anomaly in result.anomalies
+        for reason in anomaly.reasons
+    )
+
+
+def test_disconnected_stories_do_not_skew_connected_degree_fences():
+    from src.services.anomaly_detection import AnomalyDetectionService
+
+    connected_ids = [f"connected-{i}" for i in range(10)]
+    connected_degrees = [3, 4, 4, 5, 5, 5, 6, 6, 7, 10]
+    disconnected_ids = [f"disconnected-{i}" for i in range(10)]
+    neighbourhoods = [
+        (story_id, [f"external-{story_id}-{i}" for i in range(degree)])
+        for story_id, degree in zip(connected_ids, connected_degrees, strict=True)
+    ] + [(story_id, []) for story_id in disconnected_ids]
+    stories = [make_story(story_id) for story_id in connected_ids + disconnected_ids]
+
+    result = AnomalyDetectionService(
+        FakeGraph(neighbourhoods), FakeStorage(stories)
+    ).find_anomalies(limit=25)
+
+    high_degree_story = next(a for a in result.anomalies if a.story_id == "connected-9")
+    assert "high_degree" in {reason.kind for reason in high_degree_story.reasons}
 
 
 def test_coordinate_outlier_is_detected_but_fence_equality_and_sparse_data_are_not():

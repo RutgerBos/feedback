@@ -11,6 +11,30 @@ def test_graph_port_is_abstract():
         GraphPort()
 
 
+def test_graph_port_requires_neighbourhood_query_implementation():
+    """Concrete graph adapters must implement the anomaly neighbourhood snapshot."""
+    from src.ports.graph import GraphPort
+
+    class MissingNeighbourhoodGraph(GraphPort):
+        def save_story_node(self, story_id, triads, timestamp): pass
+        def save_entity_nodes(self, story_id, entities): pass
+        def save_theme_nodes(self, story_id, themes): pass
+        def save_proximity_relationships(self, story_id, pairs): pass
+        def find_story_ids_by_entity(self, entity_name, limit, offset, from_date=None, to_date=None): return []
+        def count_stories_by_entity(self, entity_name): return 0
+        def find_themes_ranked(self, limit, from_date=None, to_date=None): return []
+        def find_story_ids_by_theme(self, theme_name, limit, offset, from_date=None, to_date=None): return []
+        def find_theme_counts_by_window(self, window_size, from_date=None, to_date=None, theme=None): return []
+        def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None): return []
+        def find_story_communities(self, triad_id): return []
+        def count_stories_by_theme(self, theme_name): return 0
+        def find_entity_correlations(self, limit, threshold=0.0, entity_type=None): return []
+        def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0): return []
+
+    with pytest.raises(TypeError, match="find_story_neighbourhoods"):
+        MissingNeighbourhoodGraph()
+
+
 def test_can_implement_graph_port():
     """Can create a valid GraphPort implementation."""
     from src.domain.models import TriadCoordinates, TriadPlacement
@@ -52,6 +76,9 @@ def test_can_implement_graph_port():
         def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None): return []
 
         def find_story_communities(self, triad_id):
+            return []
+
+        def find_story_neighbourhoods(self):
             return []
 
 
