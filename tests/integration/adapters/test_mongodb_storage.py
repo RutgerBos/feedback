@@ -153,6 +153,54 @@ def test_list_stories_returns_empty_when_no_stories(storage_adapter):
     assert storage_adapter.list_stories() == []
 
 
+def test_find_stories_in_polygon_filters_signifier_and_paginates(storage_adapter):
+    """Spatial selection is boundary-inclusive, newest-first, and signifier-specific."""
+    def spatial_story(story_id, signifier_id, x, y, timestamp):
+        return Story(
+            id=story_id,
+            story_text="A participant account detailed enough for spatial selection.",
+            schema_version=2,
+            signification=StorySignification(
+                headline=story_id,
+                responses=[
+                    TriadResponseItem(
+                        signifier_id=signifier_id,
+                        coordinates=TriadCoordinates(x=x, y=y),
+                    )
+                ],
+            ),
+            timestamp=timestamp,
+        )
+
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    storage_adapter.save_story(
+        spatial_story("older-boundary", "workflow_nature", 0.25, 0.5, base)
+    )
+    storage_adapter.save_story(
+        spatial_story(
+            "newer-inside", "workflow_nature", 0.5, 0.25, base + timedelta(days=1)
+        )
+    )
+    storage_adapter.save_story(
+        spatial_story("outside", "workflow_nature", 0.5, 0.8, base + timedelta(days=2))
+    )
+    storage_adapter.save_story(
+        spatial_story("other-signifier", "value_character", 0.5, 0.25, base)
+    )
+
+    polygon = [(0.5, 0.0), (0.25, 0.5), (0.75, 0.5)]
+
+    first_page = storage_adapter.find_stories_in_polygon(
+        "workflow_nature", polygon, limit=1
+    )
+    second_page = storage_adapter.find_stories_in_polygon(
+        "workflow_nature", polygon, limit=1, offset=1
+    )
+
+    assert [story.id for story in first_page] == ["newer-inside"]
+    assert [story.id for story in second_page] == ["older-boundary"]
+
+
 def test_list_stories_returns_all_stories(storage_adapter):
     """list_stories returns all saved stories."""
     base_text = "A story long enough to pass validation. " * 3

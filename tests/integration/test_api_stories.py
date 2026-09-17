@@ -262,9 +262,9 @@ def test_submit_story_with_metadata(test_db, api_client):
             "story_text": "The deployment process has become much smoother after the recent automation improvements. " * 2,
             "signification": {
                 "responses": [
-                    {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.8, "y": 0.1}},
+                        {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.8, "y": 0.7}},
                     {"kind": "triad", "signifier_id": "understanding_quality", "coordinates": {"x": 0.6, "y": 0.3}},
-                    {"kind": "triad", "signifier_id": "value_character", "coordinates": {"x": 0.7, "y": 0.2}},
+                        {"kind": "triad", "signifier_id": "value_character", "coordinates": {"x": 0.7, "y": 0.5}},
                 ]
             },
             "context": {"department": "engineering", "role": "senior_developer", "tool_context": None},
@@ -384,9 +384,9 @@ def test_submit_story_without_metadata(test_db, api_client):
             "story_text": "The new feature made my workflow much faster and more efficient today. " * 2,
             "signification": {
                 "responses": [
-                    {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.9, "y": 0.05}},
-                    {"kind": "triad", "signifier_id": "understanding_quality", "coordinates": {"x": 0.7, "y": 0.2}},
-                    {"kind": "triad", "signifier_id": "value_character", "coordinates": {"x": 0.8, "y": 0.1}},
+                        {"kind": "triad", "signifier_id": "workflow_nature", "coordinates": {"x": 0.9, "y": 0.9}},
+                        {"kind": "triad", "signifier_id": "understanding_quality", "coordinates": {"x": 0.7, "y": 0.5}},
+                        {"kind": "triad", "signifier_id": "value_character", "coordinates": {"x": 0.8, "y": 0.7}},
                 ]
             },
             # No context or participant fields
