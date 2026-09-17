@@ -957,6 +957,58 @@ def test_find_story_communities_raises_graph_error_on_failure():
         adapter.find_story_communities("workflow_nature")
 
 
+# ── Story 4.8: find_story_neighbourhoods ─────────────────────────────────────
+
+
+def test_find_story_neighbourhoods_uses_one_optional_match_query():
+    """Neighbourhood snapshot includes disconnected stories without N+1 queries."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    adapter.find_story_neighbourhoods()
+
+    assert len(driver.session_instance.queries) == 1
+    query, params = driver.session_instance.queries[0]
+    assert "OPTIONAL MATCH" in query
+    assert "NEAR_IN_SIGNIFIER_SPACE" in query
+    assert "DISTINCT" in query
+    assert params == {}
+
+
+def test_find_story_neighbourhoods_maps_ordered_story_and_neighbour_ids():
+    """Neighbourhood rows map to the graph-port tuple contract."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver(FakeResult(rows=[
+        {"story_id": "s1", "neighbour_ids": ["s2", "s3"]},
+        {"story_id": "s4", "neighbour_ids": []},
+    ]))
+
+    result = Neo4jGraphAdapter(driver=driver).find_story_neighbourhoods()
+
+    assert result == [("s1", ["s2", "s3"]), ("s4", [])]
+
+
+def test_find_story_neighbourhoods_wraps_driver_failure():
+    """Neo4j failures are exposed as the port-level GraphError."""
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+    from src.ports.errors import GraphError
+
+    class FailingSession:
+        def run(self, query: str, **params):
+            raise RuntimeError("down")
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+
+    class FailingDriver:
+        def session(self): return FailingSession()
+
+    with pytest.raises(GraphError, match="neighbourhoods"):
+        Neo4jGraphAdapter(driver=FailingDriver()).find_story_neighbourhoods()
+
+
 # ── Story 4.5: find_theme_counts_by_window / find_entity_counts_by_window ─────
 
 
