@@ -12,6 +12,13 @@ def test_storage_port_is_abstract():
         StoragePort()
 
 
+def test_storage_port_requires_spatial_story_query():
+    """Storage adapters must implement polygon selection in signifier space."""
+    from src.ports.storage import StoragePort
+
+    assert "find_stories_in_polygon" in StoragePort.__abstractmethods__
+
+
 def test_storage_port_has_save_story_method():
     """StoragePort requires save_story implementation."""
     from src.ports.storage import StoragePort
