@@ -49,6 +49,25 @@ class FakeStorage(StoragePort):
     def find_story_ids_requiring_processing(self): return []
 
 
+def test_submission_rejects_coordinates_outside_triad_triangle():
+    """Bounding-box coordinates outside the rendered triangle are invalid."""
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match="inside the triad triangle"):
+        StorySubmissionRequest(
+            story_text=STORY_TEXT,
+            signification={
+                "responses": [
+                    {
+                        "kind": "triad",
+                        "signifier_id": "workflow_nature",
+                        "coordinates": {"x": 0.0, "y": 0.0},
+                    }
+                ]
+            },
+        )
+
+
 def test_submit_story_generates_uuid():
     """Submitting a story generates a UUID for it."""
     storage = FakeStorage()
