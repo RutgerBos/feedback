@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from src.domain.models import (
     ContextMetadata,
@@ -27,6 +27,13 @@ class CoordinatesRequest(BaseModel):
 
     x: float = Field(..., ge=0.0, le=1.0)
     y: float = Field(..., ge=0.0, le=1.0)
+
+    @model_validator(mode="after")
+    def must_lie_in_triad_triangle(self) -> "CoordinatesRequest":
+        """Match the normalized triangle used by the submission UI."""
+        if abs(self.x - 0.5) > self.y / 2:
+            raise ValueError("coordinates must lie inside the triad triangle")
+        return self
 
 
 class TriadResponseRequest(BaseModel):
