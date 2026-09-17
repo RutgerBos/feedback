@@ -21,6 +21,40 @@
 <p class="empty-state">No stories match the selected date range. <a href="/">Submit one?</a></p>
 {% else %}
 
+<section class="spatial-exploration" aria-labelledby="spatial-heading">
+    <h3 id="spatial-heading">Explore stories by signifier</h3>
+    <p class="instructions">Click three or more positions in a triangle to select participant stories.</p>
+    {% if data.signifier_distributions %}
+    <div class="signifier-plots">
+        {% for distribution in data.signifier_distributions %}
+        <figure class="signifier-plot" data-signifier-id="{{ distribution.signifier_id }}">
+            <figcaption>{{ distribution.signifier_id | replace('_', ' ') | title }}</figcaption>
+            <svg viewBox="0 0 200 180"
+                 role="img"
+                 aria-label="Story distribution for {{ distribution.signifier_id }}">
+                <polygon points="100,10 10,170 190,170" class="triad-triangle"></polygon>
+                {% for story in distribution.stories %}
+                <circle class="spatial-story-point"
+                        cx="{{ 10 + story.x * 180 }}"
+                        cy="{{ 10 + story.y * 160 }}"
+                        r="5"
+                        tabindex="0"
+                        data-story-id="{{ story.story_id }}"
+                        data-x="{{ story.x }}"
+                        data-y="{{ story.y }}">
+                    <title>{{ story.headline or story.story_id }}</title>
+                </circle>
+                {% endfor %}
+            </svg>
+        </figure>
+        {% endfor %}
+    </div>
+    <div id="spatial-story-results" aria-live="polite"></div>
+    {% else %}
+    <p class="empty-state">No signifier placements are available yet.</p>
+    {% endif %}
+</section>
+
 <div class="charts-row">
     <div class="chart-panel">
         <h3>Top Themes</h3>

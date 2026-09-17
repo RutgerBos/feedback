@@ -96,6 +96,14 @@ textarea:focus { outline: none; border-color: #2c3e50; box-shadow: 0 0 0 3px rgb
 
 .triad-marker:active { cursor: grabbing; }
 
+.signifier-plots { display: flex; flex-wrap: wrap; gap: 1rem; }
+.signifier-plot { margin: 0; width: min(260px, 100%); }
+.signifier-plot figcaption { font-weight: 600; margin-bottom: .35rem; }
+.signifier-plot svg { width: 100%; cursor: crosshair; }
+.spatial-story-point { fill: #2c3e50; stroke: white; stroke-width: 2; }
+.selection-vertex { fill: #e74c3c; pointer-events: none; }
+.spatial-story-card { margin-top: .75rem; padding: .75rem; border-left: 4px solid #2c3e50; background: #f7f9fa; }
+
 /* ── Submit ── */
 
 .submit-row { display: flex; align-items: center; gap: 1rem; }
