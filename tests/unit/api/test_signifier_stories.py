@@ -71,8 +71,6 @@ def test_query_signifier_polygon_returns_evidence_without_overlays_by_default():
                 "timestamp": "2026-01-02T00:00:00Z",
                 "context": {
                     "department": "engineering",
-                    "role": None,
-                    "tool_context": None,
                 },
             }
         ],
