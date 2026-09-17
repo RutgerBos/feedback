@@ -32,6 +32,9 @@ def test_dashboard_fragment_leads_with_signifier_story_distribution():
     assert 'data-x="0.3"' in html
     assert 'data-y="0.6"' in html
     assert "Blocked by CI" in html
+    assert 'class="selection-outline"' in html
+    assert 'class="clear-spatial-selection"' in html
+    assert 'aria-label="Add Blocked by CI to polygon selection"' in html
 
 
 def test_dashboard_loads_polygon_selection_interaction():

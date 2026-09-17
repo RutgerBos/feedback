@@ -131,6 +131,69 @@ def test_query_rejects_polygon_without_area():
     assert response.status_code == 422
 
 
+def test_query_rejects_excessively_complex_polygon():
+    from src.api.main import app
+    from src.api.stories import get_storage
+
+    points = [
+        {"x": 0.5, "y": 0.0},
+        {"x": 0.25, "y": 0.5},
+        {"x": 0.75, "y": 0.5},
+    ] * 17
+    app.dependency_overrides[get_storage] = lambda: FakeStorage()
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/signifiers/workflow_nature/stories/query",
+                json={"selection": {"kind": "polygon", "points": points}},
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 422
+
+
+def test_query_ignores_storage_story_without_requested_signifier():
+    from src.api.main import app
+    from src.api.stories import get_storage
+
+    class MismatchedStorage(FakeStorage):
+        def find_stories_in_polygon(self, *args, **kwargs):
+            story = super().find_stories_in_polygon(*args, **kwargs)[0]
+            return [story.model_copy(update={
+                "signification": StorySignification(
+                    responses=[
+                        TriadResponseItem(
+                            signifier_id="different_signifier",
+                            coordinates=TriadCoordinates(x=0.5, y=0.5),
+                        )
+                    ]
+                )
+            })]
+
+    app.dependency_overrides[get_storage] = lambda: MismatchedStorage()
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/signifiers/workflow_nature/stories/query",
+                json={
+                    "selection": {
+                        "kind": "polygon",
+                        "points": [
+                            {"x": 0.5, "y": 0.0},
+                            {"x": 0.25, "y": 0.5},
+                            {"x": 0.75, "y": 0.5},
+                        ],
+                    }
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["stories"] == []
+
+
 def test_query_includes_machine_overlays_only_when_requested():
     from src.api.main import app
     from src.api.stories import get_storage
