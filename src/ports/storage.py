@@ -108,6 +108,23 @@ class StoragePort(ABC):
         """
         pass
 
+    def find_stories_in_polygon(
+        self,
+        signifier_id: str,
+        polygon_points: list[tuple[float, float]],
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[Story]:
+        """Return stories whose response for ``signifier_id`` lies in a polygon.
+
+        Results are ordered newest first and paginated after spatial filtering.
+        Polygon boundary points are considered inside.
+
+        Raises:
+            StorageError: If the spatial query fails.
+        """
+        raise NotImplementedError
+
     @abstractmethod
     def update_story_entities(
         self,

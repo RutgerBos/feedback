@@ -147,6 +147,46 @@ class MongoDBStorageAdapter(StoragePort):
         except Exception as e:
             raise StorageError(f"Failed to list stories: {e}") from e
 
+    def find_stories_in_polygon(
+        self,
+        signifier_id: str,
+        polygon_points: list[tuple[float, float]],
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[Story]:
+        """Return V2 stories selected by a polygon in one signifier space."""
+        try:
+            cursor = self.collection.find(
+                {
+                    "signification.responses": {
+                        "$elemMatch": {
+                            "kind": "triad",
+                            "signifier_id": signifier_id,
+                        }
+                    }
+                }
+            ).sort([("timestamp", -1), ("_id", 1)])
+            matches = []
+            for document in cursor:
+                response = next(
+                    (
+                        item
+                        for item in document["signification"]["responses"]
+                        if item.get("kind") == "triad"
+                        and item.get("signifier_id") == signifier_id
+                    ),
+                    None,
+                )
+                if response is None:
+                    continue
+                coordinates = response.get("coordinates", {})
+                point = (coordinates.get("x"), coordinates.get("y"))
+                if None not in point and _point_in_polygon(point, polygon_points):
+                    matches.append(self._document_to_story(document))
+            return matches[offset : offset + limit]
+        except Exception as e:
+            raise StorageError(f"Failed to query stories in polygon: {e}") from e
+
     @staticmethod
     def _date_filter(
         from_date: datetime | None,
@@ -161,7 +201,6 @@ class MongoDBStorageAdapter(StoragePort):
         if to_date is not None:
             ts["$lte"] = to_date
         return {"timestamp": ts}
-
     def update_story_entities(
         self,
         story_id: str,
@@ -480,3 +519,30 @@ class MongoDBStorageAdapter(StoragePort):
             themes=document.get("themes", []),
             sentiment=sentiment,
         )
+
+
+def _point_in_polygon(
+    point: tuple[float, float], polygon: list[tuple[float, float]]
+) -> bool:
+    """Return whether a point lies inside or on the boundary of a polygon."""
+    x, y = point
+    inside = False
+    previous_x, previous_y = polygon[-1]
+    for current_x, current_y in polygon:
+        cross = (x - previous_x) * (current_y - previous_y) - (
+            y - previous_y
+        ) * (current_x - previous_x)
+        if (
+            abs(cross) <= 1e-12
+            and min(previous_x, current_x) <= x <= max(previous_x, current_x)
+            and min(previous_y, current_y) <= y <= max(previous_y, current_y)
+        ):
+            return True
+        if (current_y > y) != (previous_y > y):
+            intersection_x = (previous_x - current_x) * (y - current_y) / (
+                previous_y - current_y
+            ) + current_x
+            if x < intersection_x:
+                inside = not inside
+        previous_x, previous_y = current_x, current_y
+    return inside
