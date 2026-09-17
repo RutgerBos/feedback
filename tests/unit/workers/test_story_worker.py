@@ -1,6 +1,5 @@
 """Unit tests for StoryWorker."""
 
-import pytest
 
 
 class FakeQueue:
@@ -9,12 +8,18 @@ class FakeQueue:
     def __init__(self, story_ids: list[str]):
         self._ids = list(story_ids)
         self.enqueued: list[str] = []
+        self.completed: list[str] = []
+        self.dequeue_timeouts: list[int] = []
 
     def dequeue(self, timeout=5) -> str | None:
+        self.dequeue_timeouts.append(timeout)
         return self._ids.pop(0) if self._ids else None
 
     def enqueue(self, story_id: str) -> None:
         self.enqueued.append(story_id)
+
+    def complete(self, story_id: str) -> None:
+        self.completed.append(story_id)
 
 
 class FakeProcessingService:
@@ -54,6 +59,7 @@ def test_run_once_processes_story_from_queue():
     worker.run_once()
 
     assert "story-abc" in service.processed
+    assert queue.completed == ["story-abc"]
 
 
 def test_run_once_does_nothing_when_queue_empty():
@@ -78,6 +84,8 @@ def test_run_once_does_not_crash_on_processing_error():
 
     worker = StoryWorker(queue=queue, processing_service=service, storage=FakeSweepStorage([]))
     worker.run_once()  # should not raise
+
+    assert queue.completed == ["story-bad"]
 
 
 def test_sweep_enqueues_pending_stories():
@@ -107,3 +115,19 @@ def test_sweep_enqueues_nothing_when_all_processed():
     worker.sweep()
 
     assert queue.enqueued == []
+
+
+def test_run_once_uses_configured_dequeue_timeout():
+    from src.workers.story_worker import StoryWorker
+
+    queue = FakeQueue([])
+    worker = StoryWorker(
+        queue=queue,
+        processing_service=FakeProcessingService(),
+        storage=FakeSweepStorage([]),
+        dequeue_timeout=17,
+    )
+
+    worker.run_once()
+
+    assert queue.dequeue_timeouts == [17]

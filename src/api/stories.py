@@ -4,6 +4,7 @@ Stories API endpoints.
 Handles story submission and retrieval.
 """
 
+import logging
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -28,6 +29,7 @@ from src.services.story_submission import (
 from src.workers.worker_queue import WorkerQueue
 
 router = APIRouter(prefix="/api/stories", tags=["stories"])
+logger = logging.getLogger(__name__)
 
 
 class SignifierCoordinatesResponse(BaseModel):
@@ -236,13 +238,18 @@ async def submit_story(
     """
     try:
         result = service.submit_story(request)
-        queue.enqueue(result.story_id)
-        return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        # Log the error in production
         raise HTTPException(status_code=500, detail="Failed to submit story") from e
+
+    try:
+        queue.enqueue(result.story_id)
+    except Exception:
+        # MongoDB is the source of truth. The worker's periodic sweep will recover
+        # persisted stories after Redis becomes available again.
+        logger.exception("Story %s was saved but could not be enqueued", result.story_id)
+    return result
 
 
 def _story_to_response(story: Story) -> StoryResponse:

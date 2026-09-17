@@ -5,6 +5,7 @@ Handles story submission form rendering and form-based submission,
 returning HTML fragments for HTMX to swap into the page.
 """
 
+import logging
 from datetime import datetime
 from pathlib import Path
 
@@ -19,15 +20,22 @@ from src.api.stories import (
     get_storage,
     get_submission_service,
 )
-from src.ports.errors import GraphError, LLMError, NotFoundError, QueryTranslationError, StorageError
+from src.ports.errors import (
+    GraphError,
+    LLMError,
+    NotFoundError,
+    QueryTranslationError,
+    StorageError,
+)
 from src.ports.storage import StoragePort
 from src.services.dashboard import DashboardService
-from src.workers.worker_queue import WorkerQueue
 from src.services.insight_synthesis import InsightSynthesisService
 from src.services.nl_query import NLQueryService
 from src.services.story_submission import StorySubmissionRequest, StorySubmissionService
+from src.workers.worker_queue import WorkerQueue
 
 router = APIRouter(tags=["ui"])
+logger = logging.getLogger(__name__)
 
 _templates = Jinja2Templates(
     directory=str(Path(__file__).parent.parent.parent / "templates")
@@ -124,7 +132,10 @@ async def submit_story_form(
             signification={"responses": responses},
         )
         result = service.submit_story(submission)
-        queue.enqueue(result.story_id)
+        try:
+            queue.enqueue(result.story_id)
+        except Exception:
+            logger.exception("Story %s was saved but could not be enqueued", result.story_id)
         return _templates.TemplateResponse(
             request=request,
             name="_confirmation.html",

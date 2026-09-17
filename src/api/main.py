@@ -70,7 +70,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         auth=(_settings.neo4j_user, _settings.neo4j_password),
     )
     redis_client = redis_lib.from_url(_settings.redis_url)
-    app.state.worker_queue = WorkerQueue(redis=redis_client, queue_key=_settings.worker_queue_key)
+    app.state.worker_queue = WorkerQueue(
+        redis=redis_client,
+        queue_key=_settings.worker_queue_key,
+        visibility_timeout=_settings.worker_visibility_timeout,
+    )
 
     yield
 
@@ -121,5 +125,4 @@ async def health_check() -> dict[str, str]:
         "status": "healthy",
         "version": "0.1.0",
     }
-
 

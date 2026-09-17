@@ -35,5 +35,6 @@ class Settings(BaseSettings):
     worker_queue_key: str = "feedback:story-processing:v1"
     worker_sweep_interval: int = 60  # seconds between periodic sweeps
     worker_dequeue_timeout: int = 5  # seconds to block on brpop
+    worker_visibility_timeout: int = 300  # seconds before a crashed task can be swept again
 
     model_config = {"env_file": ".env", "extra": "ignore"}

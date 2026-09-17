@@ -67,3 +67,14 @@ def test_factory_raises_for_unknown_provider():
 
     with pytest.raises(ValueError, match="Unknown LLM provider"):
         create_llm_provider({"provider": "gpt-99"})
+
+
+def test_factory_creates_unavailable_provider_for_none_config():
+    """The worker can be constructed without leaking None into its services."""
+    from src.adapters.llm_factory import create_llm_provider
+    from src.ports.errors import LLMError
+
+    provider = create_llm_provider({"provider": "none"})
+
+    with pytest.raises(LLMError, match="No LLM provider configured"):
+        provider.extract_entities("A story")

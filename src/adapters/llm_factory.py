@@ -24,6 +24,11 @@ def create_llm_provider(config: dict) -> LLMPort:
     """
     provider = config.get("provider", "").lower()
 
+    if provider == "none":
+        from src.adapters.unavailable_llm import UnavailableLLMAdapter
+
+        return UnavailableLLMAdapter()
+
     if provider == "claude":
         from src.adapters.claude_llm import ClaudeLLMAdapter
         api_key = config.get("api_key")
@@ -37,4 +42,6 @@ def create_llm_provider(config: dict) -> LLMPort:
             model=config.get("model", OllamaLLMAdapter.DEFAULT_MODEL),
         )
 
-    raise ValueError(f"Unknown LLM provider: '{provider}'. Expected 'claude' or 'ollama'.")
+    raise ValueError(
+        f"Unknown LLM provider: '{provider}'. Expected 'claude', 'ollama', or 'none'."
+    )

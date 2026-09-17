@@ -1,6 +1,7 @@
 """StoryWorker: dequeues story IDs and triggers processing."""
 
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -23,20 +24,29 @@ class StoryWorker:
     - Caller (main loop) controls timing between run_once/sweep calls
     """
 
-    def __init__(self, queue, processing_service, storage) -> None:
+    def __init__(
+        self,
+        queue: Any,
+        processing_service: Any,
+        storage: Any,
+        dequeue_timeout: int = 5,
+    ) -> None:
         self._queue = queue
         self._service = processing_service
         self._storage = storage
+        self._dequeue_timeout = dequeue_timeout
 
     def run_once(self) -> None:
         """Dequeue one story and process it; silently skip errors."""
-        story_id = self._queue.dequeue()
+        story_id = self._queue.dequeue(timeout=self._dequeue_timeout)
         if story_id is None:
             return
         try:
             self._service.process(story_id)
         except Exception:
             logger.exception("Failed to process story %s", story_id)
+        finally:
+            self._queue.complete(story_id)
 
     def sweep(self) -> None:
         """Enqueue all stories that still require processing."""

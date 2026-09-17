@@ -11,14 +11,15 @@ The worker:
 
 import logging
 import time
+from typing import Any
 
-import redis as redis_lib
 import neo4j
+import redis as redis_lib
 from pymongo import MongoClient
 
+from src.adapters.llm_factory import create_llm_provider
 from src.adapters.mongodb_storage import MongoDBStorageAdapter
 from src.adapters.neo4j_graph import Neo4jGraphAdapter
-from src.adapters.llm_factory import create_llm_provider
 from src.config.settings import Settings
 from src.services.entity_extraction import EntityExtractionService
 from src.services.graph_projection import GraphProjectionService
@@ -34,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 def build_worker(settings: Settings) -> StoryWorker:
     """Wire up all dependencies and return a ready StoryWorker."""
-    mongo_client = MongoClient(settings.mongodb_url)
+    mongo_client: MongoClient[dict[str, Any]] = MongoClient(settings.mongodb_url)
     db = mongo_client[settings.mongodb_database]
     storage = MongoDBStorageAdapter(db)
 
@@ -48,12 +49,16 @@ def build_worker(settings: Settings) -> StoryWorker:
         "provider": settings.llm_provider,
         "model": settings.llm_model,
         "base_url": settings.local_model_url,
-    }) if settings.llm_provider != "none" else None
+    })
 
     proximity = ProximityCalculationService(storage=storage, graph=graph, threshold=settings.proximity_threshold)
     graph_projection = GraphProjectionService(storage=storage, graph=graph, proximity=proximity)
-    entity_service = EntityExtractionService(storage=storage, llm=llm, graph_projection=graph_projection)  # type: ignore[arg-type]
-    sentiment_service = SentimentExtractionService(storage=storage, llm=llm)  # type: ignore[arg-type]
+    entity_service = EntityExtractionService(
+        storage=storage,
+        llm=llm,
+        graph_projection=graph_projection,
+    )
+    sentiment_service = SentimentExtractionService(storage=storage, llm=llm)
     processing_service = StoryProcessingService(
         storage=storage,
         graph=graph,
@@ -62,9 +67,18 @@ def build_worker(settings: Settings) -> StoryWorker:
     )
 
     redis_client = redis_lib.from_url(settings.redis_url)
-    queue = WorkerQueue(redis=redis_client, queue_key=settings.worker_queue_key)
+    queue = WorkerQueue(
+        redis=redis_client,
+        queue_key=settings.worker_queue_key,
+        visibility_timeout=settings.worker_visibility_timeout,
+    )
 
-    return StoryWorker(queue=queue, processing_service=processing_service, storage=storage)
+    return StoryWorker(
+        queue=queue,
+        processing_service=processing_service,
+        storage=storage,
+        dequeue_timeout=settings.worker_dequeue_timeout,
+    )
 
 
 def main() -> None:
