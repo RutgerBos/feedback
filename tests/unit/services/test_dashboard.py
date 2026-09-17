@@ -4,8 +4,10 @@ from datetime import UTC, datetime
 
 from src.domain.models import (
     Story,
+    StorySignification,
     TriadCoordinates,
     TriadPlacement,
+    TriadResponseItem,
 )
 from src.ports.storage import StoragePort
 
@@ -85,6 +87,38 @@ class FakeStorage(StoragePort):
 
 
 # ── Tests ──────────────────────────────────────────────────────────────────────
+
+
+def test_dashboard_exposes_story_evidence_grouped_by_signifier():
+    """Spatial dashboard data leads from coordinates to participant headlines."""
+    story = Story(
+        id="s1",
+        story_text="The CI pipeline kept failing and blocked our team. " * 2,
+        schema_version=2,
+        signification=StorySignification(
+            headline="Blocked by CI",
+            responses=[
+                TriadResponseItem(
+                    signifier_id="workflow_nature",
+                    coordinates=TriadCoordinates(x=0.3, y=0.6),
+                )
+            ],
+        ),
+        processing_status="processed",
+    )
+
+    from src.services.dashboard import DashboardService
+
+    data = DashboardService(storage=FakeStorage([story])).get_data()
+
+    assert data.signifier_distributions == [
+        {
+            "signifier_id": "workflow_nature",
+            "stories": [
+                {"story_id": "s1", "headline": "Blocked by CI", "x": 0.3, "y": 0.6}
+            ],
+        }
+    ]
 
 
 def test_dashboard_returns_total_story_count():
