@@ -337,3 +337,18 @@ class GraphPort(ABC):
             GraphError: If the query fails
         """
         pass
+
+    def find_story_neighbourhoods(self) -> list[tuple[str, list[str]]]:
+        """
+        Return every graph story with its distinct proximity-neighbour IDs.
+
+        Disconnected Story nodes are included with an empty neighbour list.
+        Neighbours are distinct across all triad-specific proximity edges.
+
+        Returns:
+            Ordered list of (story_id, ordered_neighbour_ids) tuples
+
+        Raises:
+            GraphError: If the query fails
+        """
+        raise NotImplementedError

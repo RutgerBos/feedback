@@ -394,6 +394,28 @@ class Neo4jGraphAdapter(GraphPort):
             except Exception:
                 pass
 
+    def find_story_neighbourhoods(self) -> list[tuple[str, list[str]]]:
+        """Return all Story nodes and their distinct proximity neighbours."""
+        try:
+            with self._driver.session() as session:
+                result = session.run(
+                    """
+                    MATCH (story:Story)
+                    OPTIONAL MATCH (story)-[:NEAR_IN_SIGNIFIER_SPACE]-(neighbour:Story)
+                    WITH story,
+                         [story_id IN collect(DISTINCT neighbour.story_id)
+                          WHERE story_id IS NOT NULL] AS neighbour_ids
+                    RETURN story.story_id AS story_id, neighbour_ids
+                    ORDER BY story_id ASC
+                    """
+                )
+                return [
+                    (row["story_id"], row["neighbour_ids"])
+                    for row in result.data()
+                ]
+        except Exception as e:
+            raise GraphError(f"Failed to find story neighbourhoods: {e}") from e
+
     def find_theme_counts_by_window(
         self,
         window_size: str,
