@@ -103,3 +103,64 @@ def test_query_rejects_selection_points_outside_triad_triangle():
         app.dependency_overrides.clear()
 
     assert response.status_code == 422
+
+
+def test_query_includes_machine_overlays_only_when_requested():
+    from src.api.main import app
+    from src.api.stories import get_storage
+
+    app.dependency_overrides[get_storage] = lambda: FakeStorage()
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/signifiers/workflow_nature/stories/query",
+                json={
+                    "selection": {
+                        "kind": "polygon",
+                        "points": [
+                            {"x": 0.5, "y": 0.0},
+                            {"x": 0.25, "y": 0.5},
+                            {"x": 0.75, "y": 0.5},
+                        ],
+                    },
+                    "include_overlays": True,
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    story = response.json()["stories"][0]
+    assert story["themes"] == ["automation friction"]
+    assert story["entities"] == [{"name": "CI pipeline", "type": "tool"}]
+
+
+def test_query_maps_storage_failure_to_generic_503():
+    from src.api.main import app
+    from src.api.stories import get_storage
+    from src.ports.errors import StorageError
+
+    class FailingStorage:
+        def find_stories_in_polygon(self, *args, **kwargs):
+            raise StorageError("secret database details")
+
+    app.dependency_overrides[get_storage] = lambda: FailingStorage()
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/signifiers/workflow_nature/stories/query",
+                json={
+                    "selection": {
+                        "kind": "polygon",
+                        "points": [
+                            {"x": 0.5, "y": 0.0},
+                            {"x": 0.25, "y": 0.5},
+                            {"x": 0.75, "y": 0.5},
+                        ],
+                    }
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Story data unavailable"}
