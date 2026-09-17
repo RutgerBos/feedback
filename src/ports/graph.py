@@ -338,6 +338,7 @@ class GraphPort(ABC):
         """
         pass
 
+    @abstractmethod
     def find_story_neighbourhoods(self) -> list[tuple[str, list[str]]]:
         """
         Return every graph story with its distinct proximity-neighbour IDs.

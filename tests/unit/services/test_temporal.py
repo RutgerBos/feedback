@@ -69,6 +69,8 @@ class FakeGraph(GraphPort):
     def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None):
         self.entity_window_calls.append({"window_size": window_size, "entity": entity})
         return self._entity_windows
+    def find_story_neighbourhoods(self): return []
+
     def find_story_communities(self, triad_id): return []
 
 

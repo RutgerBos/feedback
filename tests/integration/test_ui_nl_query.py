@@ -37,6 +37,8 @@ def nl_query_client():
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0): return []
         def find_theme_counts_by_window(self, window_size, from_date=None, to_date=None, theme=None): return []
         def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None): return []
+        def find_story_neighbourhoods(self): return []
+
         def find_story_communities(self, triad_id): return []
 
     class AnsweringLLM(LLMPort):
@@ -164,6 +166,8 @@ def nl_query_client_with_answer():
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0): return []
         def find_theme_counts_by_window(self, window_size, from_date=None, to_date=None, theme=None): return []
         def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None): return []
+        def find_story_neighbourhoods(self): return []
+
         def find_story_communities(self, triad_id): return []
 
     class RichLLM(LLMPort):
@@ -272,6 +276,8 @@ def test_ui_query_untranslatable_question_returns_error_fragment():
         def find_story_ids_by_entity_pair(self, entity_a, entity_b, limit, offset=0): return []
         def find_theme_counts_by_window(self, window_size, from_date=None, to_date=None, theme=None): return []
         def find_entity_counts_by_window(self, window_size, from_date=None, to_date=None, entity=None): return []
+        def find_story_neighbourhoods(self): return []
+
         def find_story_communities(self, triad_id): return []
 
     class UnknownLLM(LLMPort):

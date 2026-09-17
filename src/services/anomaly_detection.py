@@ -115,8 +115,16 @@ class AnomalyDetectionService:
 
         if len(degrees) < _MIN_IQR_SAMPLE:
             return
-        values = list(degrees.values())
-        lower, upper = _tukey_fences(values)
+        values = [degree for degree in degrees.values() if degree > 0]
+        if len(values) < _MIN_IQR_SAMPLE:
+            return
+        q1 = _percentile(values, 0.25)
+        q3 = _percentile(values, 0.75)
+        iqr = q3 - q1
+        if iqr == 0:
+            return
+        lower = q1 - 1.5 * iqr
+        upper = q3 + 1.5 * iqr
         observed_range = max(values) - min(values)
         if observed_range == 0:
             return
@@ -225,10 +233,3 @@ def _percentile(values: list[int] | list[float], fraction: float) -> float:
     upper_index = min(lower_index + 1, len(ordered) - 1)
     weight = position - lower_index
     return ordered[lower_index] * (1 - weight) + ordered[upper_index] * weight
-
-
-def _tukey_fences(values: list[int] | list[float]) -> tuple[float, float]:
-    q1 = _percentile(values, 0.25)
-    q3 = _percentile(values, 0.75)
-    iqr = q3 - q1
-    return q1 - 1.5 * iqr, q3 + 1.5 * iqr
