@@ -46,7 +46,7 @@ class SpatialStoryItem(BaseModel):
     story_excerpt: str
     coordinates: SignifierCoordinatesResponse
     timestamp: datetime
-    context: ContextResponse | None
+    context_metadata: ContextResponse | None
     themes: list[str] | None = None
     entities: list[dict[str, str]] | None = None
 
@@ -75,7 +75,7 @@ def _to_spatial_item(
             x=response.coordinates.x, y=response.coordinates.y
         ),
         timestamp=story.timestamp,
-        context=ContextResponse(
+        context_metadata=ContextResponse(
             department=story.context.department,
             role=story.context.role,
             tool_context=story.context.tool_context,
