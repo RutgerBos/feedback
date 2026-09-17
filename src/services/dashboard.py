@@ -33,6 +33,7 @@ class DashboardData:
     top_themes: list[dict] = field(default_factory=list)
     top_entities: list[dict] = field(default_factory=list)
     recent_story_ids: list[str] = field(default_factory=list)
+    signifier_distributions: list[dict] = field(default_factory=list)
     distinct_theme_count: int = 0
     distinct_entity_count: int = 0
     sample_capped: bool = False
@@ -117,11 +118,30 @@ class DashboardService:
         top_themes = [{"name": n, "count": c} for n, c in sorted_themes[:_TOP_N]]
         top_entities = [{"name": n, "count": c} for n, c in sorted_entities[:_TOP_N]]
 
+        distribution_stories: dict[str, list[dict]] = {}
+        for story in stories:
+            if story.signification is None:
+                continue
+            for response in story.signification.responses:
+                distribution_stories.setdefault(response.signifier_id, []).append(
+                    {
+                        "story_id": story.id,
+                        "headline": story.signification.headline,
+                        "x": response.coordinates.x,
+                        "y": response.coordinates.y,
+                    }
+                )
+        signifier_distributions = [
+            {"signifier_id": signifier_id, "stories": distribution_stories[signifier_id]}
+            for signifier_id in sorted(distribution_stories)
+        ]
+
         return DashboardData(
             total_stories=total_in_range,
             top_themes=top_themes,
             top_entities=top_entities,
             recent_story_ids=[s.id for s in stories[:5]],
+            signifier_distributions=signifier_distributions,
             distinct_theme_count=len(theme_counts),
             distinct_entity_count=len(entity_counts),
             sample_capped=sample_capped,
