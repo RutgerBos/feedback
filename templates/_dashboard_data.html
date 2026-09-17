@@ -33,6 +33,7 @@
                  role="img"
                  aria-label="Story distribution for {{ distribution.signifier_id }}">
                 <polygon points="100,10 10,170 190,170" class="triad-triangle"></polygon>
+                <polygon points="" class="selection-outline"></polygon>
                 {% for story in distribution.stories %}
                 <circle class="spatial-story-point"
                         cx="{{ 10 + story.x * 180 }}"
@@ -41,11 +42,14 @@
                         tabindex="0"
                         data-story-id="{{ story.story_id }}"
                         data-x="{{ story.x }}"
-                        data-y="{{ story.y }}">
+                        data-y="{{ story.y }}"
+                        role="button"
+                        aria-label="Add {{ story.headline or story.story_id }} to polygon selection">
                     <title>{{ story.headline or story.story_id }}</title>
                 </circle>
                 {% endfor %}
             </svg>
+            <button type="button" class="clear-spatial-selection">Clear selection</button>
         </figure>
         {% endfor %}
     </div>

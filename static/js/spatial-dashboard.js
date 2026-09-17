@@ -32,25 +32,24 @@
         });
     }
 
-    document.addEventListener('click', function (event) {
-        var svg = event.target.closest('.signifier-plot svg');
-        if (!svg || event.target.classList.contains('spatial-story-point')) return;
-        var figure = svg.closest('.signifier-plot');
-        var point = normalizedPoint(svg, event);
-        if (!insideTriad(point)) return;
+    function clearSelection(figure, clearResults) {
+        figure.dataset.selectionPoints = '[]';
+        figure.dataset.selectionComplete = 'false';
+        figure.querySelectorAll('.selection-vertex').forEach(function (marker) {
+            marker.remove();
+        });
+        figure.querySelector('.selection-outline').setAttribute('points', '');
+        if (clearResults) {
+            document.getElementById('spatial-story-results').replaceChildren();
+        }
+    }
 
-        var points = JSON.parse(figure.dataset.selectionPoints || '[]');
-        points.push({x: Number(point.x.toFixed(4)), y: Number(point.y.toFixed(4))});
-        figure.dataset.selectionPoints = JSON.stringify(points);
+    function svgCoordinates(point) {
+        return (10 + point.x * 180) + ',' + (10 + point.y * 160);
+    }
 
-        var marker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        marker.setAttribute('class', 'selection-vertex');
-        marker.setAttribute('cx', String(10 + point.x * 180));
-        marker.setAttribute('cy', String(10 + point.y * 160));
-        marker.setAttribute('r', '4');
-        svg.appendChild(marker);
-
-        if (points.length < 3) return;
+    function querySelection(figure, points) {
+        figure.dataset.selectionComplete = 'true';
         fetch('/api/signifiers/' + encodeURIComponent(figure.dataset.signifierId) + '/stories/query', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -65,5 +64,54 @@
                 document.getElementById('spatial-story-results').textContent =
                     'Story selection is temporarily unavailable.';
             });
+    }
+
+    function addSelectionPoint(figure, point) {
+        if (!insideTriad(point)) return;
+        if (figure.dataset.selectionComplete === 'true') {
+            clearSelection(figure, false);
+        }
+        var points = JSON.parse(figure.dataset.selectionPoints || '[]');
+        points.push({x: Number(point.x.toFixed(4)), y: Number(point.y.toFixed(4))});
+        figure.dataset.selectionPoints = JSON.stringify(points);
+
+        var svg = figure.querySelector('svg');
+        var marker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        marker.setAttribute('class', 'selection-vertex');
+        marker.setAttribute('cx', String(10 + point.x * 180));
+        marker.setAttribute('cy', String(10 + point.y * 160));
+        marker.setAttribute('r', '4');
+        svg.appendChild(marker);
+        figure.querySelector('.selection-outline').setAttribute(
+            'points', points.map(svgCoordinates).join(' ')
+        );
+
+        if (points.length === 3) querySelection(figure, points);
+    }
+
+    document.addEventListener('click', function (event) {
+        var clearButton = event.target.closest('.clear-spatial-selection');
+        if (clearButton) {
+            clearSelection(clearButton.closest('.signifier-plot'), true);
+            return;
+        }
+        var svg = event.target.closest('.signifier-plot svg');
+        if (!svg) return;
+        var figure = svg.closest('.signifier-plot');
+        var point = event.target.classList.contains('spatial-story-point') ? {
+            x: Number(event.target.dataset.x),
+            y: Number(event.target.dataset.y),
+        } : normalizedPoint(svg, event);
+        addSelectionPoint(figure, point);
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (!event.target.classList.contains('spatial-story-point') ||
+            (event.key !== 'Enter' && event.key !== ' ')) return;
+        event.preventDefault();
+        addSelectionPoint(event.target.closest('.signifier-plot'), {
+            x: Number(event.target.dataset.x),
+            y: Number(event.target.dataset.y),
+        });
     });
 }());

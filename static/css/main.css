@@ -102,6 +102,7 @@ textarea:focus { outline: none; border-color: #2c3e50; box-shadow: 0 0 0 3px rgb
 .signifier-plot svg { width: 100%; cursor: crosshair; }
 .spatial-story-point { fill: #2c3e50; stroke: white; stroke-width: 2; }
 .selection-vertex { fill: #e74c3c; pointer-events: none; }
+.selection-outline { fill: rgba(231,76,60,.15); stroke: #e74c3c; stroke-width: 2; pointer-events: none; }
 .spatial-story-card { margin-top: .75rem; padding: .75rem; border-left: 4px solid #2c3e50; background: #f7f9fa; }
 
 /* ── Submit ── */

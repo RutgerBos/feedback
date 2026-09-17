@@ -22,7 +22,7 @@ class PolygonPoint(BaseModel):
 
 class PolygonSelection(BaseModel):
     kind: Literal["polygon"]
-    points: list[PolygonPoint] = Field(min_length=3)
+    points: list[PolygonPoint] = Field(min_length=3, max_length=50)
 
     @model_validator(mode="after")
     def points_must_lie_in_triad_triangle(self) -> "PolygonSelection":
@@ -66,14 +66,19 @@ class SpatialStoryResponse(BaseModel):
 
 def _to_spatial_item(
     story: Story, signifier_id: str, include_overlays: bool
-) -> SpatialStoryItem:
+) -> SpatialStoryItem | None:
     if story.signification is None:
-        raise ValueError("Spatial query returned a story without signification")
+        return None
     response = next(
-        item
-        for item in story.signification.responses
-        if item.signifier_id == signifier_id
+        (
+            item
+            for item in story.signification.responses
+            if item.signifier_id == signifier_id
+        ),
+        None,
     )
+    if response is None:
+        return None
     return SpatialStoryItem(
         id=story.id,
         headline=story.signification.headline,
@@ -113,10 +118,9 @@ def query_signifier_stories(
     except StorageError as exc:
         raise HTTPException(status_code=503, detail="Story data unavailable") from exc
     return SpatialStoryResponse(
-        stories=[
-            _to_spatial_item(story, signifier_id, query.include_overlays)
-            for story in stories
-        ],
+        stories=[item for story in stories if (item := _to_spatial_item(
+            story, signifier_id, query.include_overlays
+        )) is not None],
         limit=query.limit,
         offset=query.offset,
     )
