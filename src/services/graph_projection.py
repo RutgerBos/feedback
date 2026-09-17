@@ -15,23 +15,14 @@ logger = logging.getLogger(__name__)
 class GraphProjectionService:
     """
     Responsibilities:
-    - Read a processed story from storage (once per projection)
-    - Project extracted entities into Neo4j as Entity nodes + MENTIONS relationships
-    - Project extracted themes into Neo4j as Theme nodes + HAS_THEME relationships
-    - Compute and persist proximity relationships to other stories
-    - Handle graph failures gracefully (log, do not propagate)
+    - Project processed story concepts into the knowledge graph
+    - Coordinate proximity relationships for projected stories
+    - Keep enrichment processing available when graph projection fails
 
     Collaborators:
-    - StoragePort (to read story data)
-    - GraphPort (to write graph nodes and relationships)
-    - ProximityCalculationService (to write proximity relationships)
-
-    Notes:
-    - Only projects stories with processing_status == "processed"
-    - GraphError is caught and logged — caller is never blocked
-    - NotFoundError from storage IS propagated (caller must handle)
-    - Story is loaded once and passed to each projection step to avoid redundant reads
-    - proximity is optional; pass None to skip proximity calculation
+    - StoragePort
+    - GraphPort
+    - ProximityCalculationService
     """
 
     def __init__(

@@ -13,13 +13,10 @@ from src.ports.storage import StoragePort
 class EntityQueryResult:
     """
     Responsibilities:
-    - Hold query results (stories + total count for pagination)
+    - Represent a paginated set of stories associated with an entity
 
     Collaborators:
-    - Story (domain model)
-
-    Notes:
-    - total is the full count, not just the page size
+    - Story
     """
 
     stories: list[Story]
@@ -30,10 +27,10 @@ class EntityQueryResult:
 class CorrelationPair:
     """
     Responsibilities:
-    - Hold one entity-pair correlation result
+    - Represent the observed association between two entities
 
     Collaborators:
-    - None (value object)
+    - None
     """
 
     entity_a: str
@@ -47,13 +44,10 @@ class CorrelationPair:
 class CorrelationQueryResult:
     """
     Responsibilities:
-    - Hold ranked entity-pair correlation results
+    - Represent ranked entity-pair correlations
 
     Collaborators:
-    - CorrelationPair (value object)
-
-    Notes:
-    - pairs sorted by jaccard descending
+    - CorrelationPair
     """
 
     pairs: list[CorrelationPair] = field(default_factory=list)
@@ -63,14 +57,10 @@ class CorrelationQueryResult:
 class ThemeQueryResult:
     """
     Responsibilities:
-    - Hold ranked theme results with sample story IDs
+    - Represent ranked themes with supporting story samples
 
     Collaborators:
-    - None (value object)
-
-    Notes:
-    - themes is sorted by story_count descending
-    - each entry: {name, story_count, sample_story_ids}
+    - None
     """
 
     themes: list[dict] = field(default_factory=list)
@@ -79,18 +69,12 @@ class ThemeQueryResult:
 class PatternQueryService:
     """
     Responsibilities:
-    - Query story IDs from graph by entity name or theme
-    - Return ranked themes with sample story IDs
-    - Load full story objects from storage
-    - Return paginated results with total count
+    - Provide ranked theme and entity-correlation evidence
+    - Retrieve paginated stories associated with an entity
 
     Collaborators:
-    - GraphPort (to query story IDs, themes, and totals)
-    - StoragePort (to load full story objects)
-
-    Notes:
-    - GraphError propagates to caller (not swallowed)
-    - Order of stories follows graph's ordering (timestamp DESC)
+    - GraphPort
+    - StoragePort
     """
 
     def __init__(self, graph: GraphPort, storage: StoragePort) -> None:

@@ -16,15 +16,10 @@ if TYPE_CHECKING:
 class EntityExtraction:
     """
     Responsibilities:
-    - Hold extracted entities from an extraction pass
+    - Represent entities identified in one narrative-analysis pass
 
     Collaborators:
-    - None (value object)
-
-    Notes:
-    - Used by extract_entities() for entity-only extraction
-    - entities: [{"name": "...", "type": "..."}]
-    - Themes are extracted separately via extract_themes()
+    - None
     """
 
     def __init__(self, entities: list[dict[str, Any]]):
@@ -34,21 +29,12 @@ class EntityExtraction:
 class LLMPort(ABC):
     """
     Responsibilities:
-    - Extract entities from story text
-    - Extract themes from story text
-    - Extract sentiment and emotional tone from story text
-    - Provide LLM-powered analysis of narratives
+    - Define structured narrative enrichment and synthesis
+    - Define translation of natural-language questions into query intent
 
     Collaborators:
-    - EntityExtraction (result object)
-    - SentimentAnalysis (result object)
-
-    Notes:
-    - No knowledge of LLM provider (Claude, OpenAI, local, etc)
-    - Returns structured data, not raw LLM responses
-    - Interface designed for current needs (Story processing)
-    - Will expand with additional analysis methods as needed
-    - May raise LLMError for API failures
+    - EntityExtraction
+    - SentimentAnalysis
     """
 
     @abstractmethod

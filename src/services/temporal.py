@@ -13,10 +13,10 @@ from src.ports.storage import StoragePort
 class WindowedCount:
     """
     Responsibilities:
-    - Hold a count for one time window
+    - Represent an observation count for one time window
 
     Collaborators:
-    - None (value object)
+    - None
     """
 
     window: str
@@ -27,10 +27,10 @@ class WindowedCount:
 class ThemeTimeline:
     """
     Responsibilities:
-    - Hold per-window story counts for one theme
+    - Represent a theme's frequency over time
 
     Collaborators:
-    - WindowedCount (value object)
+    - WindowedCount
     """
 
     theme: str
@@ -41,10 +41,10 @@ class ThemeTimeline:
 class EntityTimeline:
     """
     Responsibilities:
-    - Hold per-window story counts for one entity
+    - Represent an entity's frequency over time
 
     Collaborators:
-    - WindowedCount (value object)
+    - WindowedCount
     """
 
     entity: str
@@ -55,10 +55,10 @@ class EntityTimeline:
 class WindowedCentroid:
     """
     Responsibilities:
-    - Hold the mean triad coordinate and story count for one time window
+    - Represent the centroid of triad responses in one time window
 
     Collaborators:
-    - None (value object)
+    - None
     """
 
     window: str
@@ -71,10 +71,10 @@ class WindowedCentroid:
 class TriadDrift:
     """
     Responsibilities:
-    - Hold centroid movement over time for one triad
+    - Represent movement through one triad's signifier space over time
 
     Collaborators:
-    - WindowedCentroid (value object)
+    - WindowedCentroid
     """
 
     triad_id: str
@@ -85,10 +85,12 @@ class TriadDrift:
 class TemporalResult:
     """
     Responsibilities:
-    - Hold all temporal analysis results for one query
+    - Represent frequency and signifier movement across a temporal query
 
     Collaborators:
-    - ThemeTimeline, EntityTimeline, TriadDrift (value objects)
+    - ThemeTimeline
+    - EntityTimeline
+    - TriadDrift
     """
 
     windows: list[str] = field(default_factory=list)
@@ -157,20 +159,13 @@ def _filter_by_metadata(stories, department: str | None, role: str | None):
 class TemporalService:
     """
     Responsibilities:
-    - Query per-window theme/entity counts from graph
-    - Compute triad coordinate drift from storage stories
-    - Apply theme/entity filters consistently across all result components
-    - Generate full window sequences for bounded queries
+    - Analyze theme and entity frequency over time
+    - Analyze movement through triad signifier space over time
+    - Apply a consistent evidence scope across temporal results
 
     Collaborators:
-    - GraphPort (theme/entity windowed counts, filtered story ID lookups)
-    - StoragePort (story coordinates for drift computation)
-
-    Notes:
-    - GraphError propagates to caller
-    - StoragePort receives datetime objects (UTC-naive); ISO strings are parsed here
-    - When both theme and entity filters are given, drift uses intersection of IDs
-    - N+1 storage reads for filtered drift — acceptable for current dataset sizes
+    - GraphPort
+    - StoragePort
     """
 
     def __init__(self, graph: GraphPort, storage: StoragePort) -> None:

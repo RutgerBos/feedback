@@ -14,23 +14,12 @@ from src.domain.models import TriadPlacement, TriadProximity
 class GraphPort(ABC):
     """
     Responsibilities:
-    - Create story nodes in knowledge graph
-    - Create entity and theme nodes
-    - Create relationships between nodes
-    - Create proximity relationships between stories
-    - Query stories by entity or theme
-    - Count matching stories for pagination
+    - Define persistence of stories, concepts, and relationships in a knowledge graph
+    - Define graph-backed pattern, proximity, and temporal queries
 
     Collaborators:
-    - TriadPlacement (domain model)
-    - TriadProximity (domain model)
-
-    Notes:
-    - No knowledge of graph database implementation (Neo4j, Neptune, etc)
-    - Operates on domain concepts, not graph database primitives
-    - Interface designed for current needs (Story nodes)
-    - Will expand with relationship and query methods as needed
-    - May raise GraphError for database failures
+    - TriadPlacement
+    - TriadProximity
     """
 
     @abstractmethod

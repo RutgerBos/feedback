@@ -6,7 +6,13 @@ from src.ports.llm import EntityExtraction, LLMPort
 
 
 class UnavailableLLMAdapter(LLMPort):
-    """Report a configuration error through the normal LLM error contract."""
+    """
+    Responsibilities:
+    - Report unavailable narrative analysis through the LLM error contract
+
+    Collaborators:
+    - None
+    """
 
     _MESSAGE = "No LLM provider configured"
 

@@ -40,16 +40,11 @@ def _normalise_sentiment(value: str) -> str:
 class TriadCoordinates(BaseModel):
     """
     Responsibilities:
-    - Hold barycentric coordinates for triad placement
-    - Ensure coordinates are in valid range (0-1)
+    - Represent a valid position in triad signifier space
+    - Measure distance to another triad position
 
     Collaborators:
-    - None (value object)
-
-    Notes:
-    - Immutable value object
-    - Barycentric coordinates: x and y in range [0, 1]
-    - Third coordinate z is implicit: z = 1 - x - y
+    - None
     """
 
     x: float = Field(..., ge=0.0, le=1.0)
@@ -65,15 +60,10 @@ class TriadCoordinates(BaseModel):
 class TriadPlacement(BaseModel):
     """
     Responsibilities:
-    - Associate a triad ID with user's coordinate placement
-    - Ensure placement references a valid triad
+    - Associate a triad signifier with a participant's position
 
     Collaborators:
-    - TriadCoordinates (value object)
-
-    Notes:
-    - Immutable value object
-    - triad_id should match a configured triad
+    - TriadCoordinates
     """
 
     triad_id: str = Field(..., min_length=1)
@@ -88,17 +78,11 @@ _SQRT2 = math.sqrt(2)
 class TriadProximity(BaseModel):
     """
     Responsibilities:
-    - Represent a proximity relationship between two stories in one triad's signifier space
-    - Ensure canonical ordering of story IDs to prevent duplicate pairs
-    - Compute weight from distance
+    - Represent a unique proximity relationship between two stories
+    - Express proximity distance as graph weight
 
     Collaborators:
-    - None (value object)
-
-    Notes:
-    - Immutable value object
-    - story_id_a is always lexicographically <= story_id_b (canonical ordering)
-    - weight = 1 - distance / sqrt(2); ranges from 1.0 (identical) to ~0.0 (far apart)
+    - None
     """
 
     story_id_a: str
@@ -126,16 +110,10 @@ class TriadProximity(BaseModel):
 class StoryExcerpt(BaseModel):
     """
     Responsibilities:
-    - Hold a brief excerpt and triad positions for one story
-    - Provide evidence context for LLM synthesis
+    - Represent bounded story evidence for insight synthesis
 
     Collaborators:
-    - None (value object)
-
-    Notes:
-    - Immutable value object
-    - text_excerpt is capped at 300 characters
-    - triad_positions: {triad_id: {x, y}} for spatial context
+    - None
     """
 
     story_id: str
@@ -148,15 +126,10 @@ class StoryExcerpt(BaseModel):
 class SentimentSummary(BaseModel):
     """
     Responsibilities:
-    - Hold aggregated sentiment counts across a set of stories
-    - Provide deterministic statistics for LLM synthesis context
+    - Represent aggregate process and outcome sentiment evidence
 
     Collaborators:
-    - None (value object)
-
-    Notes:
-    - Immutable value object
-    - Counts are absolute (not percentages) so the LLM can reason about scale
+    - None
     """
 
     positive_process: int = 0
@@ -172,18 +145,11 @@ class SentimentSummary(BaseModel):
 class InsightContext(BaseModel):
     """
     Responsibilities:
-    - Bundle all structured context for an LLM synthesis call
-    - Provide deterministic evidence: excerpts, theme counts, sentiment summary
+    - Provide bounded, structured evidence for insight synthesis
 
     Collaborators:
-    - StoryExcerpt (value object)
-    - SentimentSummary (value object)
-
-    Notes:
-    - Immutable value object
-    - theme_counts: {theme: count} computed before calling LLM
-    - total_stories is the full match count (not just sampled_stories)
-    - Capped at 20 story excerpts before reaching the LLM
+    - StoryExcerpt
+    - SentimentSummary
     """
 
     query: str
@@ -199,14 +165,10 @@ class InsightContext(BaseModel):
 class InsightOutput(BaseModel):
     """
     Responsibilities:
-    - Hold structured LLM synthesis response
+    - Represent a synthesized insight and its qualifications
 
     Collaborators:
-    - None (value object)
-
-    Notes:
-    - Immutable value object
-    - caveats: known limitations or low-confidence observations from the LLM
+    - None
     """
 
     narrative: str
@@ -218,18 +180,10 @@ class InsightOutput(BaseModel):
 class QueryIntent(BaseModel):
     """
     Responsibilities:
-    - Hold the LLM's interpretation of a natural language query
-    - Specify which graph operation should be dispatched
+    - Represent an interpreted natural-language query for graph dispatch
 
     Collaborators:
-    - None (value object)
-
-    Notes:
-    - operation: "by_entity" | "by_theme" | "unknown"
-    - entity: populated when operation is "by_entity"
-    - theme: populated when operation is "by_theme"
-    - explanation: human-readable reason when operation is "unknown"
-    - Immutable value object
+    - None
     """
 
     operation: str
@@ -243,17 +197,10 @@ class QueryIntent(BaseModel):
 class StoryMetadata(BaseModel):
     """
     Responsibilities:
-    - Hold optional contextual metadata about the story (V1 — deprecated)
-    - Support pseudonymous identification
+    - Represent legacy contextual and pseudonymous story metadata
 
     Collaborators:
-    - None (value object)
-
-    Notes:
-    - All fields are optional
-    - No PII (personally identifiable information)
-    - Immutable value object
-    - V1 compat: replaced by ContextMetadata + ParticipantMetadata in V2
+    - None
     """
 
     user_pseudonym: str | None = None
@@ -267,16 +214,10 @@ class StoryMetadata(BaseModel):
 class ContextMetadata(BaseModel):
     """
     Responsibilities:
-    - Hold segmentation/organisational context for a story
-    - Enable filtering and grouping by department, role, and tool context
+    - Represent organisational context used to segment stories
 
     Collaborators:
-    - None (value object)
-
-    Notes:
-    - All fields are optional
-    - Immutable value object
-    - V2 replacement for StoryMetadata (minus user_pseudonym)
+    - None
     """
 
     department: str | None = None
@@ -289,16 +230,10 @@ class ContextMetadata(BaseModel):
 class ParticipantMetadata(BaseModel):
     """
     Responsibilities:
-    - Hold participant identity data separate from organisational segmentation
-    - Support pseudonymous identification without mixing with context fields
+    - Represent pseudonymous participant identity separately from story context
 
     Collaborators:
-    - None (value object)
-
-    Notes:
-    - All fields are optional
-    - Immutable value object
-    - V2 split from StoryMetadata.user_pseudonym
+    - None
     """
 
     user_pseudonym: str | None = None
@@ -309,16 +244,10 @@ class ParticipantMetadata(BaseModel):
 class TriadResponseItem(BaseModel):
     """
     Responsibilities:
-    - Hold a participant's response to a single triad signifier
-    - Carry the discriminator kind="triad" for union dispatch
+    - Represent a participant's response to one triad signifier
 
     Collaborators:
-    - TriadCoordinates (value object)
-
-    Notes:
-    - Immutable value object
-    - kind field enables SignifierResponse discriminated union
-    - Named TriadResponseItem to avoid collision with API-layer TriadResponse
+    - TriadCoordinates
     """
 
     kind: Literal["triad"] = "triad"
@@ -336,17 +265,11 @@ SignifierResponse = TriadResponseItem
 class StorySignification(BaseModel):
     """
     Responsibilities:
-    - Hold the participant's self-signification of their story
-    - Capture headline label and one response per signifier
+    - Represent a participant's self-signification of a story
+    - Preserve the participant's headline and signifier responses
 
     Collaborators:
-    - SignifierResponse (union value object)
-
-    Notes:
-    - Immutable value object
-    - headline: short label in the participant's own words (optional)
-    - responses: one entry per signifier the participant completed
-    - Absorbs feedback-bkf (headline) and feedback-0ct (extensibility point)
+    - SignifierResponse
     """
 
     headline: str | None = None
@@ -358,18 +281,11 @@ class StorySignification(BaseModel):
 class SentimentAnalysis(BaseModel):
     """
     Responsibilities:
-    - Hold sentiment analysis results for a story
-    - Capture emotion markers, process sentiment, and outcome sentiment
+    - Represent normalized process and outcome sentiment for a story
+    - Preserve the emotional evidence supporting that sentiment
 
     Collaborators:
-    - None (value object)
-
-    Notes:
-    - Immutable value object
-    - Distinguishes between emotion about process vs outcome
-    - emotion_markers: specific emotions detected (e.g. "frustration", "relief")
-    - process_sentiment: overall sentiment about the process experienced
-    - outcome_sentiment: overall sentiment about the outcome achieved
+    - None
     """
 
     emotion_markers: list[str] = Field(default_factory=list)
@@ -389,23 +305,15 @@ class SentimentAnalysis(BaseModel):
 class Story(BaseModel):
     """
     Responsibilities:
-    - Hold complete story data (text, triads/signification, metadata)
-    - Validate story meets requirements (text length)
-    - Ensure story is always valid when constructed
+    - Represent a valid participant story and its self-signification
+    - Preserve enrichment and processing state across the story lifecycle
 
     Collaborators:
-    - TriadPlacement (value object, V1 compat)
-    - StoryMetadata (value object, V1 compat — deprecated)
-    - StorySignification (value object, V2)
-    - ContextMetadata (value object, V2)
-    - ParticipantMetadata (value object, V2)
-
-    Notes:
-    - Core domain aggregate root
-    - schema_version=1: legacy path — triads + metadata present
-    - schema_version=2: V2 path — signification + context + participant
-    - triads constraint relaxed to [] in V2 (participant used signification)
-    - Story text: 50-2000 characters
+    - TriadPlacement
+    - StoryMetadata
+    - StorySignification
+    - ContextMetadata
+    - ParticipantMetadata
     """
 
     id: str = Field(..., min_length=1)

@@ -13,7 +13,13 @@ _PROFILE_MISMATCH_THRESHOLD = 0.75
 
 @dataclass(frozen=True)
 class AnomalyReason:
-    """Describe one independently computed reason that a story is unusual."""
+    """
+    Responsibilities:
+    - Represent one explainable signal that makes a story unusual
+
+    Collaborators:
+    - None
+    """
 
     kind: str
     score: float
@@ -22,7 +28,13 @@ class AnomalyReason:
 
 @dataclass(frozen=True)
 class StoryAnomaly:
-    """Hold the combined score and supporting reasons for one story."""
+    """
+    Responsibilities:
+    - Represent a story's combined anomaly score and evidence
+
+    Collaborators:
+    - AnomalyReason
+    """
 
     story_id: str
     score: float
@@ -31,7 +43,13 @@ class StoryAnomaly:
 
 @dataclass(frozen=True)
 class AnomalyResult:
-    """Hold the ranked anomaly result set."""
+    """
+    Responsibilities:
+    - Represent a ranked set of story anomalies
+
+    Collaborators:
+    - StoryAnomaly
+    """
 
     anomalies: list[StoryAnomaly] = field(default_factory=list)
 
@@ -39,17 +57,12 @@ class AnomalyResult:
 class AnomalyDetectionService:
     """
     Responsibilities:
-    - Combine graph-degree, triad-coordinate, and neighbour-profile signals
-    - Rank only processed stories with at least one positive anomaly signal
-    - Produce deterministic, human-readable reasons
+    - Identify unusual processed stories from structural and signifier evidence
+    - Rank anomalies with deterministic, explainable reasons
 
     Collaborators:
-    - GraphPort (batched proximity neighbourhood snapshot)
-    - StoragePort (paged story records)
-
-    Notes:
-    - Uses no embeddings, machine-learning model, or LLM
-    - Infrastructure exceptions propagate to the API layer
+    - GraphPort
+    - StoragePort
     """
 
     def __init__(self, graph: GraphPort, storage: StoragePort) -> None:

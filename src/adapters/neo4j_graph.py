@@ -13,17 +13,11 @@ from src.ports.graph import GraphPort
 class Neo4jGraphAdapter(GraphPort):
     """
     Responsibilities:
-    - Create story nodes in Neo4j
-    - Translate domain objects to Cypher queries
+    - Persist the feedback knowledge graph
+    - Answer graph-backed pattern and relationship queries
 
     Collaborators:
-    - neo4j.Driver (injected for testability)
-    - GraphPort (interface)
-
-    Notes:
-    - Driver is injected; no direct neo4j import at module level
-    - Raises GraphError on any driver failure
-    - Story nodes only for Story 3.1; entity/theme nodes added in 3.2/3.3
+    - None
     """
 
     def __init__(self, driver: Any) -> None:

@@ -6,15 +6,11 @@ from typing import Any
 class WorkerQueue:
     """
     Responsibilities:
-    - Enqueue story IDs for background processing
-    - Dequeue story IDs for the worker to consume
+    - Coordinate reliable delivery of story-processing work
+    - Track outstanding work through completion
 
     Collaborators:
-    - Redis client (injected)
-
-    Notes:
-    - Uses lpush/brpop to implement FIFO semantics
-    - queue_key is configurable so tests can use isolated keys
+    - None
     """
 
     def __init__(self, redis: Any, queue_key: str, visibility_timeout: int = 3600) -> None:

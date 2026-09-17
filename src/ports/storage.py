@@ -15,18 +15,11 @@ from src.domain.models import SentimentAnalysis, Story
 class StoragePort(ABC):
     """
     Responsibilities:
-    - Persist story data
-    - Retrieve story data by ID
-    - Provide atomic operations for story storage
+    - Define durable storage and retrieval of stories
+    - Define story selection and enrichment updates
 
     Collaborators:
-    - Story (domain model)
-
-    Notes:
-    - No knowledge of storage implementation (MongoDB, PostgreSQL, etc)
-    - Operations are atomic
-    - May raise StorageError for infrastructure issues
-    - May raise NotFoundError if story doesn't exist
+    - Story
     """
 
     @abstractmethod

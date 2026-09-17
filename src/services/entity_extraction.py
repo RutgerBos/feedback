@@ -18,22 +18,14 @@ logger = logging.getLogger(__name__)
 class EntityExtractionService:
     """
     Responsibilities:
-    - Retrieve a story from storage
-    - Call LLM to extract entities (via extract_entities())
-    - Call LLM to extract themes (via extract_themes())
-    - Persist extraction results back to storage
-    - Handle LLM failures gracefully (log, store empty results, set status)
+    - Enrich stories with extracted entities and themes
+    - Preserve a consistent processing outcome when enrichment fails
+    - Coordinate graph projection after successful enrichment
 
     Collaborators:
-    - StoragePort (to retrieve and update stories)
-    - LLMPort (to extract entities and themes via separate calls)
-    - GraphProjectionService (optional; projects entities into graph after extraction)
-
-    Notes:
-    - Failure is atomic: if either LLM call fails, both results are stored empty
-    - Failed extractions do NOT raise — caller is never blocked
-    - NotFoundError from storage IS propagated (caller must handle)
-    - graph_projection is optional for backwards compatibility
+    - StoragePort
+    - LLMPort
+    - GraphProjectionService
     """
 
     def __init__(

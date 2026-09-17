@@ -11,19 +11,14 @@ logger = logging.getLogger(__name__)
 class StoryWorker:
     """
     Responsibilities:
-    - Dequeue story IDs from the queue and process them
-    - Sweep storage for unprocessed stories and enqueue them
-    - Swallow processing errors so the loop does not crash
+    - Consume and coordinate queued story-processing work
+    - Recover unqueued stories that still require processing
+    - Keep processing available when individual work items fail
 
     Collaborators:
-    - WorkerQueue (dequeue/enqueue)
-    - StoryProcessingService (process)
-    - StoragePort subset (find_story_ids_requiring_processing)
-
-    Notes:
-    - run_once() handles exactly one dequeue cycle
-    - sweep() enqueues all currently unprocessed stories
-    - Caller (main loop) controls timing between run_once/sweep calls
+    - WorkerQueue
+    - StoryProcessingService
+    - StoragePort
     """
 
     def __init__(

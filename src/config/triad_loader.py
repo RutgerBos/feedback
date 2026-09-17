@@ -13,15 +13,10 @@ from pydantic import BaseModel, Field, field_validator
 class TriadVertex(BaseModel):
     """
     Responsibilities:
-    - Hold single vertex data (id, label, description)
-    - Ensure vertex is always valid when constructed
+    - Represent a validated vertex in a triad definition
 
     Collaborators:
-    - None (value object)
-
-    Notes:
-    - Immutable after creation
-    - Validation in constructor
+    - None
     """
 
     id: str = Field(..., min_length=1)
@@ -32,16 +27,11 @@ class TriadVertex(BaseModel):
 class TriadDefinition(BaseModel):
     """
     Responsibilities:
-    - Hold complete triad definition (id, name, description, vertices)
-    - Ensure triad has exactly 3 vertices
-    - Ensure vertex IDs are unique within triad
+    - Represent a valid three-vertex triad definition
+    - Preserve unique vertex identities within the triad
 
     Collaborators:
-    - TriadVertex (value object)
-
-    Notes:
-    - Immutable after creation
-    - Validates structure in constructor
+    - TriadVertex
     """
 
     id: str = Field(..., min_length=1)
@@ -62,16 +52,11 @@ class TriadDefinition(BaseModel):
 class TriadConfig(BaseModel):
     """
     Responsibilities:
-    - Hold top-level config structure (version, context, triads)
-    - Ensure triad IDs are unique across config
-    - Provide validated config data to application
+    - Represent the application's validated triad catalogue
+    - Preserve unique triad identities across the catalogue
 
     Collaborators:
-    - TriadDefinition (value object)
-
-    Notes:
-    - Immutable after creation
-    - Validates entire config structure
+    - TriadDefinition
     """
 
     version: str = Field(..., min_length=1)

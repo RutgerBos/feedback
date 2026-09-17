@@ -87,16 +87,13 @@ class ParticipantRequest(BaseModel):
 
 class StorySubmissionRequest(BaseModel):
     """
-    Request model for story submission.
-
     Responsibilities:
-    - Hold and validate story submission data
+    - Represent a valid story-submission request
 
-    Notes:
-    - Used as input to StorySubmissionService
-    - Validates on construction via Pydantic
-    - triads field is kept to provide a clear rejection message for old V1 clients
-    - signification, context, participant are the V2 fields
+    Collaborators:
+    - SignificationRequest
+    - ContextRequest
+    - ParticipantRequest
     """
 
     story_text: str = Field(..., min_length=50, max_length=2000)
@@ -119,15 +116,11 @@ class StorySubmissionRequest(BaseModel):
 
 class StorySubmissionResult(BaseModel):
     """
-    Result of story submission.
-
     Responsibilities:
-    - Hold submission result data
-    - Provide story ID to caller
+    - Represent successful story submission
 
-    Notes:
-    - Simple data holder
-    - Returned from StorySubmissionService
+    Collaborators:
+    - None
     """
 
     story_id: str
@@ -137,22 +130,12 @@ class StorySubmissionResult(BaseModel):
 class StorySubmissionService:
     """
     Responsibilities:
-    - Coordinate story submission workflow
-    - Generate story ID (UUID)
-    - Convert request data to domain model
-    - Delegate storage to StoragePort
+    - Accept valid participant stories into the system
+    - Translate submission data into the story domain model
 
     Collaborators:
-    - StoragePort (interface)
-    - Story (domain model)
-    - StorySubmissionRequest (input)
-    - StorySubmissionResult (output)
-
-    Notes:
-    - Pure coordination - no business logic
-    - All validation delegated to domain models and request model
-    - Doesn't know about MongoDB or specific storage
-    - valid_triad_ids: when provided, submitted signifier_ids must be in the set
+    - StoragePort
+    - Story
     """
 
     def __init__(self, storage: StoragePort, valid_triad_ids: set[str] | None = None):

@@ -27,19 +27,11 @@ from src.ports.storage import StoragePort
 class MongoDBStorageAdapter(StoragePort):
     """
     Responsibilities:
-    - Persist stories to MongoDB
-    - Retrieve stories from MongoDB
-    - Convert between domain models and MongoDB documents
+    - Persist and retrieve stories in document storage
+    - Preserve domain story data across the storage boundary
 
     Collaborators:
-    - Story (domain model)
-    - MongoDB Database
-
-    Notes:
-    - Implements StoragePort interface
-    - Uses _id field for story ID
-    - Converts domain models to/from dict for storage
-    - Collection name: "stories"
+    - Story
     """
 
     def __init__(self, database: Database):

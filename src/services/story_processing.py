@@ -12,22 +12,13 @@ from src.services.sentiment_extraction import SentimentExtractionService
 class StoryProcessingService:
     """
     Responsibilities:
-    - Load a story from storage
-    - Save its graph node
-    - Trigger entity extraction
-    - Trigger sentiment extraction
+    - Coordinate graph projection and narrative enrichment for a story
 
     Collaborators:
-    - StoragePort (read story)
-    - GraphPort (save story node)
-    - EntityExtractionService (extract entities and themes)
-    - SentimentExtractionService (extract sentiment)
-
-    Notes:
-    - Order is deterministic: graph → entity → sentiment
-    - GraphError from graph save is propagated (caller must handle)
-    - LLMErrors from extraction services are swallowed by those services
-    - Used by both the API submit path and the background worker
+    - StoragePort
+    - GraphPort
+    - EntityExtractionService
+    - SentimentExtractionService
     """
 
     def __init__(

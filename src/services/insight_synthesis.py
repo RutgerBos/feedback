@@ -23,15 +23,11 @@ _EXCERPT_LEN = 300
 class InsightResponse:
     """
     Responsibilities:
-    - Hold synthesis result: narrative, caveats, and supporting evidence
+    - Represent a synthesized narrative with its evidence and caveats
 
     Collaborators:
-    - StoryExcerpt (value object)
-    - SentimentSummary (value object)
-
-    Notes:
-    - narrative is empty string when no stories match (LLM not called)
-    - story_count is the full graph match count, not the sample size
+    - StoryExcerpt
+    - SentimentSummary
     """
 
     narrative: str
@@ -45,21 +41,13 @@ class InsightResponse:
 class InsightSynthesisService:
     """
     Responsibilities:
-    - Fetch story IDs for an entity from the graph
-    - Load stories from storage and compute theme/sentiment statistics
-    - Build a bounded InsightContext and call the LLM
-    - Return InsightResponse with narrative and supporting evidence
+    - Synthesize narrative insight for stories associated with an entity
+    - Ground synthesized insight in bounded story, theme, and sentiment evidence
 
     Collaborators:
-    - GraphPort (to query story IDs and total count)
-    - StoragePort (to load full story objects)
-    - LLMPort (to synthesize the narrative)
-
-    Notes:
-    - MVP scope: entity-name query only (free-text pattern retrieval not yet supported)
-    - Capped at 20 stories; excerpts are truncated to 300 chars
-    - LLMError propagates to the caller
-    - When no stories match, returns empty narrative without calling the LLM
+    - GraphPort
+    - StoragePort
+    - LLMPort
     """
 
     def __init__(

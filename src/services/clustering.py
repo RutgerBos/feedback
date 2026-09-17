@@ -13,15 +13,10 @@ from src.ports.storage import StoragePort
 class Cluster:
     """
     Responsibilities:
-    - Hold one identified cluster in signifier space
+    - Represent a story cluster and its distinguishing evidence
 
     Collaborators:
-    - None (value object)
-
-    Notes:
-    - center_x / center_y are the mean coordinates of member stories
-      for the requested triad
-    - top_themes and top_entities are ranked by frequency across members
+    - None
     """
 
     story_ids: list[str]
@@ -35,10 +30,10 @@ class Cluster:
 class ClusterResult:
     """
     Responsibilities:
-    - Hold the full set of clusters for one triad
+    - Represent the clusters identified for one triad
 
     Collaborators:
-    - Cluster (value object)
+    - Cluster
     """
 
     clusters: list[Cluster] = field(default_factory=list)
@@ -47,18 +42,12 @@ class ClusterResult:
 class ClusteringService:
     """
     Responsibilities:
-    - Retrieve Louvain community assignments from graph
-    - Load story objects from storage for coordinate and metadata
-    - Compute per-cluster centroid, themes, and entities
+    - Identify communities of stories in triad signifier space
+    - Characterize each community by position, themes, and entities
 
     Collaborators:
-    - GraphPort (community assignments via GDS)
-    - StoragePort (story coordinate and metadata lookup)
-
-    Notes:
-    - GraphError propagates to caller
-    - Stories lacking a placement for the requested triad are excluded
-      from centroid calculation but still contribute themes/entities
+    - GraphPort
+    - StoragePort
     """
 
     def __init__(self, graph: GraphPort, storage: StoragePort) -> None:

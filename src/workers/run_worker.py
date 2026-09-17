@@ -38,7 +38,14 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class WorkerRuntime:
-    """Own the worker and the connection pools used by its process."""
+    """
+    Responsibilities:
+    - Own the active worker and its process-scoped resources
+    - Release worker resources during shutdown
+
+    Collaborators:
+    - StoryWorker
+    """
 
     worker: StoryWorker
     mongo_client: Any

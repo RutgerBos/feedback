@@ -14,18 +14,12 @@ from src.ports.llm import EntityExtraction, LLMPort
 class ClaudeLLMAdapter(LLMPort):
     """
     Responsibilities:
-    - Call Anthropic Claude API for LLM-powered extraction
-    - Parse structured JSON responses into domain types
-    - Handle API errors uniformly
+    - Provide narrative analysis through the configured Claude model
+    - Translate model responses into the application's domain results
+    - Report provider and response failures through the LLM error contract
 
     Collaborators:
-    - anthropic.Anthropic (injected HTTP client)
-    - EntityExtraction (result value object)
-
-    Notes:
-    - Client is injected for testability (no real API calls in unit tests)
-    - All methods expect JSON responses from the model
-    - Raises LLMError on API or parse failure
+    - None
     """
 
     MODEL = "claude-haiku-4-5-20251001"

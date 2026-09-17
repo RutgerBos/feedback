@@ -14,18 +14,12 @@ from src.ports.llm import EntityExtraction, LLMPort
 class OllamaLLMAdapter(LLMPort):
     """
     Responsibilities:
-    - Call a local ollama server for LLM-powered extraction
-    - Parse structured JSON responses into domain types
-    - Handle HTTP and parse errors uniformly
+    - Provide narrative analysis through the configured Ollama model
+    - Translate model responses into the application's domain results
+    - Report provider and response failures through the LLM error contract
 
     Collaborators:
-    - httpx.Client (injected HTTP client)
-    - EntityExtraction (result value object)
-
-    Notes:
-    - http_client is injected for testability (no real HTTP calls in unit tests)
-    - Defaults to localhost:11434 (standard ollama port)
-    - Raises LLMError on HTTP or parse failure
+    - None
     """
 
     DEFAULT_BASE_URL = "http://localhost:11434"

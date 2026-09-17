@@ -9,16 +9,10 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """
     Responsibilities:
-    - Load infrastructure connection settings from environment
-    - Provide typed, validated configuration to the application
+    - Provide validated runtime configuration to the application
 
     Collaborators:
-    - None (value object, read at startup)
-
-    Notes:
-    - Values come from environment variables or .env file
-    - All fields have sensible defaults for local development
-    - CORS_ORIGINS must be a JSON array: '["http://a.com","http://b.com"]'
+    - None
     """
 
     mongodb_url: str = "mongodb://admin:password@mongodb:27017/"

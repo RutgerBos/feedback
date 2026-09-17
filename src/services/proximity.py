@@ -12,19 +12,12 @@ _PAGE_SIZE = 100
 class ProximityCalculationService:
     """
     Responsibilities:
-    - For a given story, compute proximity to every other processed story per triad
-    - Persist qualifying pairs via GraphPort (replacing stale edges)
+    - Identify nearby processed stories in shared triad signifier spaces
+    - Keep graph proximity relationships consistent with current positions
 
     Collaborators:
-    - StoragePort (to page through all stories)
-    - GraphPort (to write proximity relationships)
-
-    Notes:
-    - Triads are matched by triad_id, not list position
-    - Candidate stories with no matching triad_id for a given triad are skipped for that triad
-    - Unprocessed stories are excluded
-    - Uses configurable threshold; pairs with distance >= threshold are not written
-    - Paginates storage reads to avoid loading all stories at once
+    - StoragePort
+    - GraphPort
     """
 
     def __init__(

@@ -18,14 +18,10 @@ _EXCERPT_LEN = 300
 class NLQueryResult:
     """
     Responsibilities:
-    - Hold the synthesized answer and supporting evidence for an NL query
+    - Represent a synthesized answer with its supporting evidence
 
     Collaborators:
-    - None (value object)
-
-    Notes:
-    - answer is empty string when no stories match (LLM not called)
-    - story_count is the total graph match count, not the sample size
+    - None
     """
 
     answer: str
@@ -36,20 +32,13 @@ class NLQueryResult:
 class NLQueryService:
     """
     Responsibilities:
-    - Translate natural language questions into structured query intents via LLM
-    - Dispatch to GraphPort based on intent operation type
-    - Load matching stories and synthesize a narrative answer via LLM
+    - Answer natural-language questions about feedback evidence
+    - Ground answers in graph-selected stories and bounded synthesis context
 
     Collaborators:
-    - LLMPort (query translation and answer synthesis)
-    - GraphPort (story ID lookup by entity or theme)
-    - StoragePort (load full story objects for synthesis context)
-
-    Notes:
-    - Raises QueryTranslationError when intent.operation is "unknown"
-    - LLMError and GraphError propagate to the caller
-    - Synthesis uses the same InsightContext/synthesize_insights path as InsightSynthesisService
-    - Capped at 20 stories; excerpts truncated to 300 chars
+    - LLMPort
+    - GraphPort
+    - StoragePort
     """
 
     def __init__(self, graph: GraphPort, storage: StoragePort, llm: LLMPort) -> None:

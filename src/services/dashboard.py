@@ -17,16 +17,10 @@ _TOP_N = 10        # max items in top_themes / top_entities
 class DashboardData:
     """
     Responsibilities:
-    - Hold aggregated dashboard statistics
+    - Represent aggregate dashboard evidence and sampling limits
 
     Collaborators:
-    - None (value object)
-
-    Notes:
-    - top_themes and top_entities are sorted by count descending, capped at _TOP_N
-    - distinct_theme_count / distinct_entity_count are the full unique counts
-    - sample_capped is True when the dataset exceeded _MAX_STORIES
-    - total_stories reflects stories within the requested date range
+    - None
     """
 
     total_stories: int
@@ -42,18 +36,11 @@ class DashboardData:
 class DashboardService:
     """
     Responsibilities:
-    - Aggregate theme and entity frequencies from stored stories
-    - Apply optional date range filter
-    - Return top-N themes and entities sorted by frequency
+    - Summarize story, theme, and entity evidence for the dashboard
+    - Scope dashboard evidence to a requested date range
 
     Collaborators:
-    - StoragePort (to load stories for aggregation)
-
-    Notes:
-    - Loads up to _MAX_STORIES stories for aggregation (MVP scope)
-    - sample_capped flag is set when the full dataset exceeds _MAX_STORIES
-    - Date filtering converts all timestamps to UTC before comparison
-    - to_date is treated as end-of-day (23:59:59) when time is midnight
+    - StoragePort
     """
 
     def __init__(self, storage: StoragePort) -> None:

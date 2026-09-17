@@ -14,19 +14,12 @@ logger = logging.getLogger(__name__)
 class SentimentExtractionService:
     """
     Responsibilities:
-    - Retrieve a story from storage
-    - Call LLM to extract sentiment (via extract_sentiment())
-    - Persist sentiment results back to storage
-    - Handle LLM failures gracefully (log, store None, set status to "failed")
+    - Enrich stories with process, outcome, and emotional sentiment
+    - Preserve a consistent processing outcome when enrichment fails
 
     Collaborators:
-    - StoragePort (to retrieve and update stories)
-    - LLMPort (to extract sentiment)
-
-    Notes:
-    - Failure does NOT raise — caller is never blocked
-    - NotFoundError from storage IS propagated (caller must handle)
-    - Stores None sentiment on failure, not an empty/partial result
+    - StoragePort
+    - LLMPort
     """
 
     def __init__(self, storage: StoragePort, llm: LLMPort) -> None:
