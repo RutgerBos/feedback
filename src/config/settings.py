@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     worker_queue_key: str = "feedback:story-processing:v1"
     worker_sweep_interval: int = 60  # seconds between periodic sweeps
     worker_dequeue_timeout: int = 5  # seconds to block on brpop
-    worker_visibility_timeout: int = 300  # seconds before a crashed task can be swept again
+    worker_visibility_timeout: int = 3600  # exceed worst-case chained LLM processing time
     worker_max_attempts: int = 3
     worker_retry_base_delay: int = 30  # exponential backoff base in seconds
 

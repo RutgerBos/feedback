@@ -17,7 +17,7 @@ class WorkerQueue:
     - queue_key is configurable so tests can use isolated keys
     """
 
-    def __init__(self, redis: Any, queue_key: str, visibility_timeout: int = 300) -> None:
+    def __init__(self, redis: Any, queue_key: str, visibility_timeout: int = 3600) -> None:
         self._redis = redis
         self._queue_key = queue_key
         self._visibility_timeout = visibility_timeout

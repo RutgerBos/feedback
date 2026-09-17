@@ -8,14 +8,14 @@ class FakeStorage:
         self._story_id = story_id
 
     def get_story(self, story_id):
-        from datetime import datetime
+        from datetime import UTC, datetime
 
         from src.domain.models import Story, StorySignification
         return Story(
             id=story_id,
             story_text="A story about CI friction that is at least fifty chars.",
             signification=StorySignification(responses=[]),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
         )
 
 

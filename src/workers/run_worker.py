@@ -10,7 +10,10 @@ The worker:
 """
 
 import logging
+import signal
 import time
+from dataclasses import dataclass
+from threading import Event
 from typing import Any
 
 import neo4j
@@ -33,8 +36,30 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 logger = logging.getLogger(__name__)
 
 
-def build_worker(settings: Settings) -> StoryWorker:
-    """Wire up all dependencies and return a ready StoryWorker."""
+@dataclass
+class WorkerRuntime:
+    """Own the worker and the connection pools used by its process."""
+
+    worker: StoryWorker
+    mongo_client: Any
+    neo4j_driver: Any
+    redis_client: Any
+
+    def close(self) -> None:
+        """Best-effort cleanup; one failed close must not skip the others."""
+        for name, client in (
+            ("redis", self.redis_client),
+            ("neo4j", self.neo4j_driver),
+            ("mongodb", self.mongo_client),
+        ):
+            try:
+                client.close()
+            except Exception:
+                logger.exception("Failed to close %s client", name)
+
+
+def build_runtime(settings: Settings) -> WorkerRuntime:
+    """Wire all dependencies and retain their clients for shutdown."""
     mongo_client: MongoClient[dict[str, Any]] = MongoClient(settings.mongodb_url)
     db = mongo_client[settings.mongodb_database]
     storage = MongoDBStorageAdapter(db)
@@ -73,7 +98,7 @@ def build_worker(settings: Settings) -> StoryWorker:
         visibility_timeout=settings.worker_visibility_timeout,
     )
 
-    return StoryWorker(
+    worker = StoryWorker(
         queue=queue,
         processing_service=processing_service,
         storage=storage,
@@ -81,17 +106,22 @@ def build_worker(settings: Settings) -> StoryWorker:
         max_attempts=settings.worker_max_attempts,
         retry_base_delay=settings.worker_retry_base_delay,
     )
+    return WorkerRuntime(
+        worker=worker,
+        mongo_client=mongo_client,
+        neo4j_driver=neo4j_driver,
+        redis_client=redis_client,
+    )
 
 
-def main() -> None:
-    settings = Settings()
-    worker = build_worker(settings)
+def _run_loop(runtime: WorkerRuntime, settings: Settings, stop_event: Event) -> None:
+    """Process queued work until a termination signal requests shutdown."""
+    worker = runtime.worker
     sweep_interval = settings.worker_sweep_interval
-
     logger.info("Worker started. Queue: %s, sweep every %ds", settings.worker_queue_key, sweep_interval)
 
     last_sweep = 0.0
-    while True:
+    while not stop_event.is_set():
         now = time.monotonic()
         if now - last_sweep >= sweep_interval:
             logger.info("Running periodic sweep")
@@ -99,6 +129,23 @@ def main() -> None:
             last_sweep = now
 
         worker.run_once()
+
+
+def main() -> None:
+    settings = Settings()
+    runtime = build_runtime(settings)
+    stop_event = Event()
+
+    def request_shutdown(signum: int, frame: Any) -> None:
+        logger.info("Received signal %s; shutting down worker", signum)
+        stop_event.set()
+
+    signal.signal(signal.SIGTERM, request_shutdown)
+    signal.signal(signal.SIGINT, request_shutdown)
+    try:
+        _run_loop(runtime, settings, stop_event)
+    finally:
+        runtime.close()
 
 
 if __name__ == "__main__":

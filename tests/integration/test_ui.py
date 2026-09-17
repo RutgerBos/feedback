@@ -172,3 +172,27 @@ def test_submit_enqueues_story_for_processing(test_db):
     assert story_id in fake_queue.enqueued, "story_id must be enqueued after UI submit"
     doc = test_db.stories.find_one({"_id": story_id})
     assert doc["entity_status"] == "pending", "worker has not run yet — status stays pending"
+
+
+def test_submit_succeeds_when_redis_is_unavailable(test_db):
+    """A persisted UI submission is recovered by the sweep after Redis returns."""
+    from src.adapters.mongodb_storage import MongoDBStorageAdapter
+    from src.api.main import app
+    from src.api.stories import get_queue, get_storage
+
+    class FailingQueue:
+        def enqueue(self, story_id: str) -> None:
+            raise ConnectionError("redis unavailable")
+
+    app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
+    app.dependency_overrides[get_queue] = lambda: FailingQueue()
+    try:
+        with TestClient(app) as client:
+            response = client.post("/ui/submit", data=_VALID_FORM)
+    finally:
+        app.dependency_overrides.pop(get_storage, None)
+        app.dependency_overrides.pop(get_queue, None)
+
+    assert response.status_code == 200
+    assert test_db.stories.count_documents({}) == 1
+    assert test_db.stories.find_one({})["processing_status"] == "pending"
