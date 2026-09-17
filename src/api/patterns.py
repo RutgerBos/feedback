@@ -8,10 +8,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from src.api.stories import StoryListResponse, _story_to_response, get_graph, get_storage
-from src.ports.errors import GraphError, NotFoundError
+from src.ports.errors import GraphError, NotFoundError, StorageError
 from src.ports.graph import GraphPort
 from src.ports.storage import StoragePort
 from src.services.clustering import ClusteringService
+from src.services.anomaly_detection import AnomalyDetectionService
 from src.services.pattern_query import PatternQueryService
 from src.services.temporal import TemporalService
 
@@ -40,6 +41,14 @@ def get_temporal_service(
 ) -> TemporalService:
     """Dependency that provides the temporal analysis service."""
     return TemporalService(graph=graph, storage=storage)
+
+
+def get_anomaly_detection_service(
+    graph: GraphPort = Depends(get_graph),
+    storage: StoragePort = Depends(get_storage),
+) -> AnomalyDetectionService:
+    """Dependency that provides deterministic anomaly detection."""
+    return AnomalyDetectionService(graph=graph, storage=storage)
 
 
 class WindowedCount(BaseModel):
@@ -108,6 +117,52 @@ class ThemeEntry(BaseModel):
 
 class ThemeListResponse(BaseModel):
     themes: list[ThemeEntry]
+
+
+class AnomalyReasonEntry(BaseModel):
+    kind: str
+    score: float
+    explanation: str
+
+
+class AnomalyEntry(BaseModel):
+    story_id: str
+    score: float
+    reasons: list[AnomalyReasonEntry]
+
+
+class AnomalyListResponse(BaseModel):
+    anomalies: list[AnomalyEntry]
+
+
+@router.get("/anomalies", response_model=AnomalyListResponse)
+async def get_anomalies(
+    limit: int = Query(default=25, ge=1, le=100),
+    service: AnomalyDetectionService = Depends(get_anomaly_detection_service),
+) -> AnomalyListResponse:
+    """Return processed stories ranked by deterministic anomaly signals."""
+    try:
+        result = service.find_anomalies(limit=limit)
+    except (GraphError, StorageError) as e:
+        raise HTTPException(status_code=503, detail="Pattern data unavailable") from e
+
+    return AnomalyListResponse(
+        anomalies=[
+            AnomalyEntry(
+                story_id=anomaly.story_id,
+                score=round(anomaly.score, 6),
+                reasons=[
+                    AnomalyReasonEntry(
+                        kind=reason.kind,
+                        score=round(reason.score, 6),
+                        explanation=reason.explanation,
+                    )
+                    for reason in anomaly.reasons
+                ],
+            )
+            for anomaly in result.anomalies
+        ]
+    )
 
 
 @router.get("/themes", response_model=ThemeListResponse)
