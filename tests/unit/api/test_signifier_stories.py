@@ -25,7 +25,7 @@ class FakeStorage:
                     responses=[
                         TriadResponseItem(
                             signifier_id="workflow_nature",
-                            coordinates=TriadCoordinates(x=0.25, y=0.4),
+                            coordinates=TriadCoordinates(x=0.4, y=0.4),
                         )
                     ],
                 ),
@@ -50,9 +50,9 @@ def test_query_signifier_polygon_returns_evidence_without_overlays_by_default():
                     "selection": {
                         "kind": "polygon",
                         "points": [
-                            {"x": 0.0, "y": 0.0},
-                            {"x": 0.5, "y": 0.8},
                             {"x": 0.5, "y": 0.0},
+                            {"x": 0.25, "y": 0.5},
+                            {"x": 0.75, "y": 0.5},
                         ],
                     }
                 },
@@ -67,7 +67,7 @@ def test_query_signifier_polygon_returns_evidence_without_overlays_by_default():
                 "id": "story-1",
                 "headline": "Deployment friction",
                 "story_excerpt": "A detailed participant account of a difficult deployment.",
-                "coordinates": {"x": 0.25, "y": 0.4},
+                "coordinates": {"x": 0.4, "y": 0.4},
                 "timestamp": "2026-01-02T00:00:00Z",
                 "context": {
                     "department": "engineering",
@@ -77,3 +77,29 @@ def test_query_signifier_polygon_returns_evidence_without_overlays_by_default():
         "limit": 50,
         "offset": 0,
     }
+
+
+def test_query_rejects_selection_points_outside_triad_triangle():
+    from src.api.main import app
+    from src.api.stories import get_storage
+
+    app.dependency_overrides[get_storage] = lambda: FakeStorage()
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/signifiers/workflow_nature/stories/query",
+                json={
+                    "selection": {
+                        "kind": "polygon",
+                        "points": [
+                            {"x": 0.0, "y": 0.0},
+                            {"x": 0.25, "y": 0.5},
+                            {"x": 0.75, "y": 0.5},
+                        ],
+                    }
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 422
