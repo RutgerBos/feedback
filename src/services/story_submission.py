@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from src.domain.geometry import is_point_in_triad_triangle
 from src.domain.models import (
     ContextMetadata,
     ParticipantMetadata,
@@ -31,7 +32,7 @@ class CoordinatesRequest(BaseModel):
     @model_validator(mode="after")
     def must_lie_in_triad_triangle(self) -> "CoordinatesRequest":
         """Match the normalized triangle used by the submission UI."""
-        if abs(self.x - 0.5) > self.y / 2:
+        if not is_point_in_triad_triangle(self.x, self.y):
             raise ValueError("coordinates must lie inside the triad triangle")
         return self
 
