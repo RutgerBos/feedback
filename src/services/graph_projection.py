@@ -2,14 +2,10 @@
 GraphProjectionService: projects extracted story data into the knowledge graph.
 """
 
-import logging
 from typing import Any
 
-from src.ports.errors import GraphError
 from src.ports.graph import GraphPort
 from src.ports.storage import StoragePort
-
-logger = logging.getLogger(__name__)
 
 
 class GraphProjectionService:
@@ -40,7 +36,7 @@ class GraphProjectionService:
         Project all extracted data from a processed story into the knowledge graph.
 
         Loads the story once, then runs entity, theme, and proximity projection.
-        Each step is independent; a GraphError in one does not block the others.
+        Every projection is required; failures propagate to the processing worker.
 
         Args:
             story_id: ID of the story to project
@@ -53,21 +49,11 @@ class GraphProjectionService:
         if story.entity_status != "processed":
             return
 
-        try:
-            self.graph.save_entity_nodes(story_id=story_id, entities=story.entities)
-        except GraphError as e:
-            logger.warning("Entity graph projection failed for story %s: %s", story_id, e)
-
-        try:
-            self.graph.save_theme_nodes(story_id=story_id, themes=story.themes)
-        except GraphError as e:
-            logger.warning("Theme graph projection failed for story %s: %s", story_id, e)
+        self.graph.save_entity_nodes(story_id=story_id, entities=story.entities)
+        self.graph.save_theme_nodes(story_id=story_id, themes=story.themes)
 
         if self._proximity is not None:
-            try:
-                self._proximity.calculate_for_story(story_id)
-            except GraphError as e:
-                logger.warning("Proximity projection failed for story %s: %s", story_id, e)
+            self._proximity.calculate_for_story(story_id)
 
     def save_entities_for_story(self, story_id: str) -> None:
         """
@@ -81,10 +67,7 @@ class GraphProjectionService:
         if story.entity_status != "processed":
             return
 
-        try:
-            self.graph.save_entity_nodes(story_id=story_id, entities=story.entities)
-        except GraphError as e:
-            logger.warning("Entity graph projection failed for story %s: %s", story_id, e)
+        self.graph.save_entity_nodes(story_id=story_id, entities=story.entities)
 
     def save_themes_for_story(self, story_id: str) -> None:
         """
@@ -98,7 +81,4 @@ class GraphProjectionService:
         if story.entity_status != "processed":
             return
 
-        try:
-            self.graph.save_theme_nodes(story_id=story_id, themes=story.themes)
-        except GraphError as e:
-            logger.warning("Theme graph projection failed for story %s: %s", story_id, e)
+        self.graph.save_theme_nodes(story_id=story_id, themes=story.themes)
