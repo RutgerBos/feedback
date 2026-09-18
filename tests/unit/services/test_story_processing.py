@@ -4,8 +4,10 @@ import pytest
 
 
 class FakeStorage:
-    def __init__(self, story_id="s1"):
+    def __init__(self, story_id="s1", entity_status="pending", sentiment_status="pending"):
         self._story_id = story_id
+        self.entity_status = entity_status
+        self.sentiment_status = sentiment_status
 
     def get_story(self, story_id):
         from datetime import UTC, datetime
@@ -16,6 +18,8 @@ class FakeStorage:
             story_text="A story about CI friction that is at least fifty chars.",
             signification=StorySignification(responses=[]),
             timestamp=datetime.now(UTC),
+            entity_status=self.entity_status,
+            sentiment_status=self.sentiment_status,
         )
 
 
@@ -30,6 +34,7 @@ class FakeGraph:
 class FakeEntityService:
     def __init__(self):
         self.processed = []
+        self.graph_projection = None
 
     def extract_for_story(self, story_id):
         self.processed.append(story_id)
@@ -140,3 +145,32 @@ def test_process_reports_incomplete_when_an_extraction_fails():
     )
 
     assert svc.process("s1") is False
+
+
+def test_process_replays_persisted_entities_and_only_runs_incomplete_sentiment():
+    """A retry preserves completed enrichment while repairing its graph projection."""
+    from src.services.story_processing import StoryProcessingService
+
+    class RecordingProjection:
+        def __init__(self):
+            self.projected = []
+
+        def project_story(self, story_id):
+            self.projected.append(story_id)
+
+    projection = RecordingProjection()
+    entity = FakeEntityService()
+    entity.graph_projection = projection
+    sentiment = FakeSentimentService()
+
+    svc = StoryProcessingService(
+        storage=FakeStorage(entity_status="processed", sentiment_status="pending"),
+        graph=FakeGraph(),
+        entity_service=entity,
+        sentiment_service=sentiment,
+    )
+
+    assert svc.process("s1") is True
+    assert entity.processed == []
+    assert projection.projected == ["s1"]
+    assert sentiment.processed == ["s1"]
