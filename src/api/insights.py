@@ -7,13 +7,16 @@ LLM-powered insight synthesis from pattern queries.
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
-from src.api.stories import get_graph, get_llm, get_storage
-from src.ports.errors import GraphError, LLMError, NotFoundError, QueryTranslationError, StorageError
-from src.ports.graph import GraphPort
-from src.ports.llm import LLMPort
-from src.ports.storage import StoragePort
+from src.composition import get_insight_synthesis_service, get_nl_query_service
+from src.ports.errors import (
+    GraphError,
+    LLMError,
+    NotFoundError,
+    QueryTranslationError,
+    StorageError,
+)
 from src.services.insight_synthesis import InsightResponse, InsightSynthesisService
-from src.services.nl_query import NLQueryResult, NLQueryService
+from src.services.nl_query import NLQueryService
 
 router = APIRouter(prefix="/api/insights", tags=["insights"])
 
@@ -52,24 +55,6 @@ class SynthesizeResponse(BaseModel):
     theme_counts: dict[str, int]
     sentiment_summary: SentimentSummaryResponse
     excerpts: list[StoryExcerptResponse]
-
-
-def get_insight_synthesis_service(
-    graph: GraphPort = Depends(get_graph),
-    storage: StoragePort = Depends(get_storage),
-    llm: LLMPort = Depends(get_llm),
-) -> InsightSynthesisService:
-    """Dependency that provides the insight synthesis service."""
-    return InsightSynthesisService(graph=graph, storage=storage, llm=llm)
-
-
-def get_nl_query_service(
-    graph: GraphPort = Depends(get_graph),
-    storage: StoragePort = Depends(get_storage),
-    llm: LLMPort = Depends(get_llm),
-) -> NLQueryService:
-    """Dependency that provides the natural language query service."""
-    return NLQueryService(graph=graph, storage=storage, llm=llm)
 
 
 def _to_response(result: InsightResponse) -> SynthesizeResponse:

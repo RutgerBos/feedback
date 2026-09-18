@@ -1,5 +1,7 @@
 """Integration tests for application startup."""
 
+from unittest.mock import Mock
+
 from fastapi.testclient import TestClient
 
 
@@ -75,3 +77,19 @@ def test_app_creates_mongo_client_singleton_on_startup():
         first = app.state.mongo_client
         second = app.state.mongo_client
         assert first is second
+
+
+def test_app_creates_one_process_scoped_llm(monkeypatch):
+    """Application composition creates and reuses one LLM provider per process."""
+    import src.api.main as main_module
+
+    provider = Mock()
+    factory = Mock(return_value=provider)
+    monkeypatch.setattr(main_module, "create_configured_llm", factory)
+
+    with TestClient(main_module.app) as client:
+        client.get("/health")
+        assert main_module.app.state.llm is provider
+        assert main_module.app.state.llm is provider
+
+    factory.assert_called_once_with(main_module._settings)

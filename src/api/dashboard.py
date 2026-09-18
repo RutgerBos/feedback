@@ -12,17 +12,10 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
-from src.api.stories import get_storage
-from src.ports.storage import StoragePort
+from src.composition import get_dashboard_service
 from src.services.dashboard import DashboardData, DashboardService
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
-
-
-def get_dashboard_service(
-    storage: StoragePort = Depends(get_storage),
-) -> DashboardService:
-    return DashboardService(storage=storage)
 
 
 @router.get("")

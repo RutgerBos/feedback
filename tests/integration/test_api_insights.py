@@ -21,7 +21,7 @@ def api_client(test_db):
     """TestClient with NoOp graph and LLM that returns a fixed synthesis."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_queue, get_storage
+    from src.composition import get_graph, get_llm, get_queue, get_storage
     from src.domain.models import InsightContext, InsightOutput, SentimentAnalysis
     from src.ports.graph import GraphPort
     from src.ports.llm import EntityExtraction, LLMPort
@@ -140,7 +140,7 @@ def test_synthesize_returns_narrative_when_stories_exist(test_db):
     """Narrative and evidence are returned when matching stories exist."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
+    from src.composition import get_graph, get_llm, get_storage
     from src.domain.models import InsightContext, InsightOutput, SentimentAnalysis
     from src.ports.graph import GraphPort
     from src.ports.llm import EntityExtraction, LLMPort
@@ -209,7 +209,7 @@ def test_synthesize_returns_narrative_when_stories_exist(test_db):
             return []
 
 
-    from src.api.stories import get_queue
+    from src.composition import get_queue
 
     class FakeQueue:
         def __init__(self): pass
@@ -291,7 +291,7 @@ def test_synthesize_rejects_whitespace_query(test_db, api_client):
 def test_synthesize_returns_503_on_storage_error(test_db):
     """StorageError during story hydration returns 503."""
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
+    from src.composition import get_graph, get_llm, get_storage
     from src.domain.models import InsightContext, InsightOutput, SentimentAnalysis, Story
     from src.ports.errors import StorageError
     from src.ports.graph import GraphPort
@@ -401,7 +401,7 @@ def test_synthesize_returns_503_on_graph_error(test_db):
     """GraphError from the graph returns 503."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
+    from src.composition import get_graph, get_llm, get_storage
     from src.domain.models import InsightContext, InsightOutput, SentimentAnalysis
     from src.ports.errors import GraphError
     from src.ports.graph import GraphPort
@@ -493,7 +493,7 @@ def test_nl_query_returns_200_with_answer(test_db):
     from datetime import datetime, UTC
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
+    from src.composition import get_graph, get_llm, get_storage
     from src.domain.models import InsightOutput, QueryIntent, SentimentAnalysis
     from src.ports.graph import GraphPort
     from src.ports.llm import EntityExtraction, LLMPort
@@ -568,7 +568,7 @@ def test_nl_query_returns_422_for_blank_question(test_db):
     """POST /api/insights/query returns 422 for blank question."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
+    from src.composition import get_graph, get_llm, get_storage
     from src.domain.models import InsightOutput, QueryIntent, SentimentAnalysis
     from src.ports.graph import GraphPort
     from src.ports.llm import EntityExtraction, LLMPort
@@ -618,7 +618,7 @@ def test_nl_query_returns_422_on_untranslatable_question(test_db):
     """POST /api/insights/query returns 422 when LLM returns unknown intent."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
+    from src.composition import get_graph, get_llm, get_storage
     from src.domain.models import InsightOutput, QueryIntent, SentimentAnalysis
     from src.ports.graph import GraphPort
     from src.ports.llm import EntityExtraction, LLMPort

@@ -21,7 +21,7 @@ def api_client(test_db):
     """TestClient with MongoDB storage and a capturing graph for entity queries."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_queue, get_storage
+    from src.composition import get_graph, get_llm, get_queue, get_storage
     from src.domain.models import SentimentAnalysis
     from src.ports.graph import GraphPort
     from src.ports.llm import EntityExtraction, LLMPort
@@ -142,7 +142,7 @@ def test_query_by_entity_returns_503_on_graph_error(test_db):
     """GraphError from the graph adapter returns 503."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
+    from src.composition import get_graph, get_llm, get_storage
     from src.domain.models import SentimentAnalysis
     from src.ports.errors import GraphError
     from src.ports.graph import GraphPort
@@ -232,7 +232,7 @@ def test_query_by_entity_returns_stories_from_graph(test_db):
     """Stories whose IDs are returned by the graph are loaded from storage."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
+    from src.composition import get_graph, get_llm, get_storage
     from src.domain.models import SentimentAnalysis
     from src.ports.graph import GraphPort
     from src.ports.llm import EntityExtraction, LLMPort
@@ -309,7 +309,7 @@ def test_query_by_entity_returns_stories_from_graph(test_db):
             return []
 
 
-    from src.api.stories import get_queue
+    from src.composition import get_queue
 
     class FakeQueue:
         def __init__(self): pass
@@ -361,7 +361,7 @@ def test_get_themes_returns_503_on_graph_error(test_db):
     """GraphError from graph adapter returns 503."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
+    from src.composition import get_graph, get_llm, get_storage
     from src.domain.models import SentimentAnalysis
     from src.ports.errors import GraphError
     from src.ports.graph import GraphPort
@@ -424,7 +424,7 @@ def test_get_themes_returns_ranked_themes_with_sample_ids(test_db):
     """GET /api/patterns/themes returns themes with story_count and sample_story_ids."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
+    from src.composition import get_graph, get_llm, get_storage
     from src.domain.models import SentimentAnalysis
     from src.ports.graph import GraphPort
     from src.ports.llm import EntityExtraction, LLMPort
@@ -502,7 +502,7 @@ def test_get_correlations_returns_503_on_graph_error(test_db):
     """GET /api/patterns/correlations returns 503 when graph is unavailable."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
+    from src.composition import get_graph, get_llm, get_storage
     from src.domain.models import SentimentAnalysis
     from src.ports.errors import GraphError
     from src.ports.graph import GraphPort
@@ -558,7 +558,7 @@ def test_get_correlations_returns_ranked_pairs_with_sample_ids(test_db):
     """GET /api/patterns/correlations returns pairs with jaccard and sample story IDs."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
+    from src.composition import get_graph, get_llm, get_storage
     from src.domain.models import SentimentAnalysis
     from src.ports.graph import GraphPort
     from src.ports.llm import EntityExtraction, LLMPort
@@ -632,7 +632,7 @@ def test_get_clusters_returns_503_on_graph_error(test_db):
     """GET /api/patterns/clusters returns 503 when GDS is unavailable."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
+    from src.composition import get_graph, get_llm, get_storage
     from src.domain.models import SentimentAnalysis
     from src.ports.errors import GraphError
     from src.ports.graph import GraphPort
@@ -687,7 +687,7 @@ def test_get_clusters_returns_cluster_data(test_db):
     """GET /api/patterns/clusters returns clusters with story_ids, center, themes, entities."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
+    from src.composition import get_graph, get_llm, get_storage
     from src.domain.models import SentimentAnalysis, Story, TriadCoordinates, TriadPlacement
     from src.ports.graph import GraphPort
     from src.ports.llm import EntityExtraction, LLMPort
@@ -792,7 +792,7 @@ def test_get_temporal_returns_503_on_graph_error(test_db):
     """GET /api/patterns/temporal returns 503 when graph is unavailable."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
+    from src.composition import get_graph, get_llm, get_storage
     from src.domain.models import SentimentAnalysis
     from src.ports.errors import GraphError
     from src.ports.graph import GraphPort
@@ -849,7 +849,7 @@ def test_get_temporal_returns_theme_and_drift_data(test_db):
     from datetime import datetime, UTC
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
+    from src.composition import get_graph, get_llm, get_storage
     from src.domain.models import SentimentAnalysis
     from src.ports.graph import GraphPort
     from src.ports.llm import EntityExtraction, LLMPort
@@ -929,7 +929,7 @@ def test_get_temporal_department_filter_restricts_drift(test_db):
     from datetime import datetime, UTC
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
+    from src.composition import get_graph, get_llm, get_storage
     from src.domain.models import SentimentAnalysis
     from src.ports.graph import GraphPort
     from src.ports.llm import EntityExtraction, LLMPort

@@ -3,7 +3,25 @@
 import logging
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Protocol
+
+from src.ports.storage import StoragePort
+
+
+class StoryQueue(Protocol):
+    """Queue operations required by StoryWorker."""
+
+    def enqueue(self, story_id: str) -> None: ...
+
+    def dequeue(self, timeout: int = 5) -> str | None: ...
+
+    def complete(self, story_id: str) -> None: ...
+
+
+class StoryProcessor(Protocol):
+    """Processing operation required by StoryWorker."""
+
+    def process(self, story_id: str) -> bool | None: ...
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +41,9 @@ class StoryWorker:
 
     def __init__(
         self,
-        queue: Any,
-        processing_service: Any,
-        storage: Any,
+        queue: StoryQueue,
+        processing_service: StoryProcessor,
+        storage: StoragePort,
         dequeue_timeout: int = 5,
         max_attempts: int = 3,
         retry_base_delay: int = 30,
@@ -52,25 +70,25 @@ class StoryWorker:
                 completed = self._service.process(story_id)
                 if completed is False:
                     raise RuntimeError("Story enrichment did not complete")
-                state = {
-                    "processing_status": "processed",
-                    "processing_attempts": attempt,
-                    "next_processing_at": None,
-                    "processing_error": None,
-                }
+                processing_status = "processed"
+                next_processing_at = None
+                processing_error = None
             except Exception as error:
                 logger.exception("Failed to process story %s", story_id)
                 terminal = attempt >= self._max_attempts
                 delay = self._retry_base_delay * (2 ** (attempt - 1))
-                state = {
-                    "processing_status": "failed" if terminal else "retrying",
-                    "processing_attempts": attempt,
-                    "next_processing_at": (
-                        None if terminal else self._clock() + timedelta(seconds=delay)
-                    ),
-                    "processing_error": str(error),
-                }
-            self._storage.update_story_processing(story_id, **state)
+                processing_status = "failed" if terminal else "retrying"
+                next_processing_at = (
+                    None if terminal else self._clock() + timedelta(seconds=delay)
+                )
+                processing_error = str(error)
+            self._storage.update_story_processing(
+                story_id,
+                processing_status=processing_status,
+                processing_attempts=attempt,
+                next_processing_at=next_processing_at,
+                processing_error=processing_error,
+            )
             state_persisted = True
         except Exception:
             logger.exception("Failed to persist processing state for story %s", story_id)

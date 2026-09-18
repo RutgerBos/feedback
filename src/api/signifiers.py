@@ -6,7 +6,8 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, model_validator
 
-from src.api.stories import ContextResponse, SignifierCoordinatesResponse, get_storage
+from src.api.stories import ContextResponse, SignifierCoordinatesResponse
+from src.composition import get_storage
 from src.domain.geometry import is_point_in_triad_triangle
 from src.domain.models import Story
 from src.ports.errors import StorageError

@@ -30,7 +30,7 @@ def submit_client(test_db):
     """TestClient with real MongoDB wired up for submit tests."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_storage
+    from src.composition import get_storage
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     try:
@@ -150,7 +150,7 @@ def test_submit_enqueues_story_for_processing(test_db):
     """POST /ui/submit enqueues the story for the background worker; status stays pending."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_queue, get_storage
+    from src.composition import get_queue, get_storage
 
     class FakeQueue:
         def __init__(self): self.enqueued: list[str] = []
@@ -178,7 +178,7 @@ def test_submit_succeeds_when_redis_is_unavailable(test_db):
     """A persisted UI submission is recovered by the sweep after Redis returns."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_queue, get_storage
+    from src.composition import get_queue, get_storage
 
     class FailingQueue:
         def enqueue(self, story_id: str) -> None:

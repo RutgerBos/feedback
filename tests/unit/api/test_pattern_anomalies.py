@@ -32,7 +32,8 @@ def make_story(story_id: str) -> Story:
 
 
 def make_client(graph=None, storage=None) -> TestClient:
-    from src.api.patterns import get_anomaly_detection_service, router
+    from src.api.patterns import router
+    from src.composition import get_anomaly_detection_service
 
     app = FastAPI()
     app.include_router(router)

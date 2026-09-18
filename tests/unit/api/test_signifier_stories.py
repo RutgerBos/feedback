@@ -39,7 +39,7 @@ class FakeStorage:
 
 def test_query_signifier_polygon_returns_evidence_without_overlays_by_default():
     from src.api.main import app
-    from src.api.stories import get_storage
+    from src.composition import get_storage
 
     app.dependency_overrides[get_storage] = lambda: FakeStorage()
     try:
@@ -81,7 +81,7 @@ def test_query_signifier_polygon_returns_evidence_without_overlays_by_default():
 
 def test_query_rejects_selection_points_outside_triad_triangle():
     from src.api.main import app
-    from src.api.stories import get_storage
+    from src.composition import get_storage
 
     app.dependency_overrides[get_storage] = lambda: FakeStorage()
     try:
@@ -107,7 +107,7 @@ def test_query_rejects_selection_points_outside_triad_triangle():
 
 def test_query_rejects_polygon_without_area():
     from src.api.main import app
-    from src.api.stories import get_storage
+    from src.composition import get_storage
 
     app.dependency_overrides[get_storage] = lambda: FakeStorage()
     try:
@@ -133,7 +133,7 @@ def test_query_rejects_polygon_without_area():
 
 def test_query_rejects_excessively_complex_polygon():
     from src.api.main import app
-    from src.api.stories import get_storage
+    from src.composition import get_storage
 
     points = [
         {"x": 0.5, "y": 0.0},
@@ -155,7 +155,7 @@ def test_query_rejects_excessively_complex_polygon():
 
 def test_query_ignores_storage_story_without_requested_signifier():
     from src.api.main import app
-    from src.api.stories import get_storage
+    from src.composition import get_storage
 
     class MismatchedStorage(FakeStorage):
         def find_stories_in_polygon(self, *args, **kwargs):
@@ -196,7 +196,7 @@ def test_query_ignores_storage_story_without_requested_signifier():
 
 def test_query_includes_machine_overlays_only_when_requested():
     from src.api.main import app
-    from src.api.stories import get_storage
+    from src.composition import get_storage
 
     app.dependency_overrides[get_storage] = lambda: FakeStorage()
     try:
@@ -225,7 +225,7 @@ def test_query_includes_machine_overlays_only_when_requested():
 
 def test_query_maps_storage_failure_to_generic_503():
     from src.api.main import app
-    from src.api.stories import get_storage
+    from src.composition import get_storage
     from src.ports.errors import StorageError
 
     class FailingStorage:

@@ -19,7 +19,7 @@ def test_db():
 def api_client(test_db):
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_storage
+    from src.composition import get_storage
 
     app.dependency_overrides[get_storage] = lambda: MongoDBStorageAdapter(test_db)
     try:

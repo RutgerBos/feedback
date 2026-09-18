@@ -14,8 +14,9 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
-from src.api.insights import get_insight_synthesis_service, get_nl_query_service
-from src.api.stories import (
+from src.composition import (
+    get_insight_synthesis_service,
+    get_nl_query_service,
     get_queue,
     get_storage,
     get_submission_service,

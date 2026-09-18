@@ -36,6 +36,7 @@ from src.api.patterns import router as patterns_router
 from src.api.signifiers import router as signifiers_router
 from src.api.stories import router as stories_router
 from src.api.ui import router as ui_router
+from src.composition import create_configured_llm
 from src.config.settings import Settings
 from src.config.triad_loader import load_triad_config
 from src.workers.worker_queue import WorkerQueue
@@ -65,6 +66,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Reuse the module-level settings (same instance used for CORS wiring)
     app.state.settings = _settings
+    app.state.llm = create_configured_llm(_settings)
     app.state.mongo_client = MongoClient(_settings.mongodb_url)
     app.state.neo4j_driver = neo4j.GraphDatabase.driver(
         _settings.neo4j_url,

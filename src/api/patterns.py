@@ -7,48 +7,20 @@ Query stories by entity or theme.
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from src.api.stories import StoryListResponse, _story_to_response, get_graph, get_storage
+from src.api.stories import StoryListResponse, _story_to_response
+from src.composition import (
+    get_anomaly_detection_service,
+    get_clustering_service,
+    get_pattern_query_service,
+    get_temporal_service,
+)
 from src.ports.errors import GraphError, NotFoundError, StorageError
-from src.ports.graph import GraphPort
-from src.ports.storage import StoragePort
 from src.services.anomaly_detection import AnomalyDetectionService
 from src.services.clustering import ClusteringService
 from src.services.pattern_query import PatternQueryService
 from src.services.temporal import TemporalService
 
 router = APIRouter(prefix="/api/patterns", tags=["patterns"])
-
-
-def get_pattern_query_service(
-    graph: GraphPort = Depends(get_graph),
-    storage: StoragePort = Depends(get_storage),
-) -> PatternQueryService:
-    """Dependency that provides the pattern query service."""
-    return PatternQueryService(graph=graph, storage=storage)
-
-
-def get_clustering_service(
-    graph: GraphPort = Depends(get_graph),
-    storage: StoragePort = Depends(get_storage),
-) -> ClusteringService:
-    """Dependency that provides the clustering service."""
-    return ClusteringService(graph=graph, storage=storage)
-
-
-def get_temporal_service(
-    graph: GraphPort = Depends(get_graph),
-    storage: StoragePort = Depends(get_storage),
-) -> TemporalService:
-    """Dependency that provides the temporal analysis service."""
-    return TemporalService(graph=graph, storage=storage)
-
-
-def get_anomaly_detection_service(
-    graph: GraphPort = Depends(get_graph),
-    storage: StoragePort = Depends(get_storage),
-) -> AnomalyDetectionService:
-    """Dependency that provides deterministic anomaly detection."""
-    return AnomalyDetectionService(graph=graph, storage=storage)
 
 
 class WindowedCount(BaseModel):

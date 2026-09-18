@@ -21,7 +21,7 @@ def api_client(test_db):
     """Provide a TestClient with storage, LLM, graph, and queue overridden to use test doubles."""
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_queue, get_storage
+    from src.composition import get_graph, get_llm, get_queue, get_storage
     from src.domain.models import SentimentAnalysis
     from src.ports.graph import GraphPort
     from src.ports.llm import EntityExtraction, LLMPort

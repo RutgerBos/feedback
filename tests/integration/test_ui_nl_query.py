@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 def nl_query_client():
     """TestClient with NLQueryService dependencies overridden."""
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
+    from src.composition import get_graph, get_llm, get_storage
     from src.domain.models import InsightOutput, QueryIntent, SentimentAnalysis
     from src.ports.graph import GraphPort
     from src.ports.llm import EntityExtraction, LLMPort
@@ -116,7 +116,7 @@ def nl_query_client_with_answer():
     from datetime import UTC, datetime
 
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
+    from src.composition import get_graph, get_llm, get_storage
     from src.domain.models import (
         InsightOutput,
         QueryIntent,
@@ -247,7 +247,7 @@ def test_ui_query_blank_question_returns_400(nl_query_client):
 def test_ui_query_untranslatable_question_returns_error_fragment():
     """POST /ui/query when LLM returns unknown intent returns an error fragment."""
     from src.api.main import app
-    from src.api.stories import get_graph, get_llm, get_storage
+    from src.composition import get_graph, get_llm, get_storage
     from src.domain.models import InsightOutput, QueryIntent, SentimentAnalysis
     from src.ports.graph import GraphPort
     from src.ports.llm import EntityExtraction, LLMPort
