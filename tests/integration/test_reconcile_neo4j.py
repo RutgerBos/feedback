@@ -60,8 +60,14 @@ def neo4j_driver():
 def clean_neo4j(neo4j_driver):
     """Remove any nodes written by reconcile tests before and after each test."""
     def _cleanup(s):
-        s.run(f"MATCH (s:Story) WHERE s.story_id STARTS WITH '{TEST_PREFIX}' DETACH DELETE s")
-        s.run(f"MATCH (e:Entity) WHERE e.name STARTS WITH '{TEST_PREFIX}' DETACH DELETE e")
+        s.run(
+            "MATCH (s:Story) WHERE s.story_id STARTS WITH $prefix DETACH DELETE s",
+            prefix=TEST_PREFIX,
+        )
+        s.run(
+            "MATCH (e:Entity) WHERE e.name STARTS WITH $prefix DETACH DELETE e",
+            prefix=TEST_PREFIX,
+        )
 
     with neo4j_driver.session() as s:
         _cleanup(s)
@@ -94,10 +100,6 @@ def test_reconcile_returns_correct_deleted_count(mongo_db, neo4j_driver):
     _mongo_story(live_id, mongo_db)
     _neo4j_story(live_id, neo4j_driver)
 
-    # Pre-clean any stale nodes left by other tests so the count is predictable.
-    reconcile(mongo_db, neo4j_driver, story_id_prefix=TEST_PREFIX)
-
-    # Now add exactly one orphan and verify the returned count matches.
     _neo4j_story(orphan_id, neo4j_driver)
     deleted, kept = reconcile(mongo_db, neo4j_driver, story_id_prefix=TEST_PREFIX)
 

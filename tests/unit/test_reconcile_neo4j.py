@@ -2,6 +2,7 @@
 
 import os
 import sys
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -57,3 +58,21 @@ def test_reconcile_rejects_empty_scope_prefix():
     """An empty prefix must not accidentally turn a scoped run into a global run."""
     with pytest.raises(ValueError, match="must not be empty"):
         reconcile(None, None, story_id_prefix="")
+
+
+def test_reconcile_without_prefix_queries_all_stories():
+    """The production default remains an unscoped comparison of both stores."""
+    mongo_db = MagicMock()
+    mongo_db.stories.find.return_value = [{"_id": "story-1"}]
+    session = MagicMock()
+    session.run.return_value = [{"story_id": "story-1"}]
+    neo4j_driver = MagicMock()
+    neo4j_driver.session.return_value.__enter__.return_value = session
+
+    deleted, kept = reconcile(mongo_db, neo4j_driver)
+
+    assert (deleted, kept) == (0, 1)
+    mongo_db.stories.find.assert_called_once_with({}, {"_id": 1})
+    query = session.run.call_args.args[0]
+    assert "WHERE" not in query
+    assert session.run.call_args.kwargs == {}
