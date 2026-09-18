@@ -7,12 +7,13 @@ from types import SimpleNamespace
 class FakeQueue:
     """Fake WorkerQueue: dequeue returns items from a pre-loaded list."""
 
-    def __init__(self, story_ids: list[str], fail_complete: bool = False):
+    def __init__(self, story_ids: list[str], fail_complete: bool = False, events=None):
         self._ids = list(story_ids)
         self.enqueued: list[str] = []
         self.completed: list[str] = []
         self.dequeue_timeouts: list[int] = []
         self._fail_complete = fail_complete
+        self._events = events
 
     def dequeue(self, timeout=5) -> str | None:
         self.dequeue_timeouts.append(timeout)
@@ -25,6 +26,8 @@ class FakeQueue:
         if self._fail_complete:
             raise ConnectionError("redis unavailable")
         self.completed.append(story_id)
+        if self._events is not None:
+            self._events.append("acknowledged")
 
 
 class FakeProcessingService:
@@ -49,10 +52,12 @@ class FakeProcessingService:
 class FakeSweepStorage:
     """Fake StoragePort subset: only find_story_ids_requiring_processing."""
 
-    def __init__(self, pending: list[str], attempts: dict[str, int] | None = None):
+    def __init__(self, pending: list[str], attempts: dict[str, int] | None = None, fail_update=False, events=None):
         self._pending = list(pending)
         self._attempts = attempts or {}
         self.processing_updates: list[dict[str, object]] = []
+        self._fail_update = fail_update
+        self._events = events
 
     def find_story_ids_requiring_processing(self) -> list[str]:
         return list(self._pending)
@@ -61,7 +66,11 @@ class FakeSweepStorage:
         return SimpleNamespace(processing_attempts=self._attempts.get(story_id, 0))
 
     def update_story_processing(self, story_id: str, **state: object) -> None:
+        if self._fail_update:
+            raise ConnectionError("mongodb unavailable")
         self.processing_updates.append({"story_id": story_id, **state})
+        if self._events is not None:
+            self._events.append("state persisted")
 
 
 # ── Tests ──────────────────────────────────────────────────────────────────────
@@ -231,3 +240,33 @@ def test_acknowledgement_failure_does_not_crash_worker():
     )
 
     worker.run_once()  # visibility timeout makes this recoverable; loop stays alive
+
+
+def test_acknowledges_only_after_processing_state_is_persisted():
+    from src.workers.story_worker import StoryWorker
+
+    events = []
+    worker = StoryWorker(
+        queue=FakeQueue(["story-abc"], events=events),
+        processing_service=FakeProcessingService(),
+        storage=FakeSweepStorage([], events=events),
+    )
+
+    worker.run_once()
+
+    assert events == ["state persisted", "acknowledged"]
+
+
+def test_does_not_acknowledge_when_processing_state_persistence_fails():
+    from src.workers.story_worker import StoryWorker
+
+    queue = FakeQueue(["story-abc"])
+    worker = StoryWorker(
+        queue=queue,
+        processing_service=FakeProcessingService(),
+        storage=FakeSweepStorage([], fail_update=True),
+    )
+
+    worker.run_once()
+
+    assert queue.completed == []
