@@ -458,7 +458,7 @@ def test_submit_story_enqueues_for_processing(api_client):
 def test_get_story_returns_422_for_v1_story(test_db, api_client):
     """GET /api/stories/{id} returns 422 for a V1 story (no signification)."""
     import uuid
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
 
     story_id = str(uuid.uuid4())
     test_db.stories.insert_one({
@@ -478,7 +478,7 @@ def test_get_story_returns_422_for_v1_story(test_db, api_client):
 def test_list_stories_excludes_v1_stories(test_db, api_client):
     """GET /api/stories filters out V1 stories (no signification)."""
     import uuid
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
 
     # Insert a V1 story directly
     v1_id = str(uuid.uuid4())

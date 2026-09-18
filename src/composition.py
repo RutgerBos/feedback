@@ -1,5 +1,6 @@
 """Application composition root for API and worker processes."""
 
+import logging
 from dataclasses import dataclass
 from typing import Any, Protocol, cast
 
@@ -33,7 +34,13 @@ from src.workers.worker_queue import WorkerQueue
 
 
 class LLMSettings(Protocol):
-    """Configuration required to select and configure an LLM adapter."""
+    """
+    Responsibilities:
+    - Expose the configuration required to select an LLM provider
+
+    Collaborators:
+    - None
+    """
 
     llm_provider: str
     llm_model: str
@@ -166,7 +173,14 @@ def get_dashboard_service(
 
 @dataclass
 class WorkerRuntime:
-    """Worker and process-scoped resources owned by the worker process."""
+    """
+    Responsibilities:
+    - Retain worker-process resources for orderly shutdown
+    - Release all process resources even when one cleanup fails
+
+    Collaborators:
+    - None
+    """
 
     worker: StoryWorker
     mongo_client: Any
@@ -175,8 +189,6 @@ class WorkerRuntime:
 
     def close(self) -> None:
         """Best-effort cleanup; one failed close must not skip the others."""
-        import logging
-
         logger = logging.getLogger(__name__)
         for name, client in (
             ("redis", self.redis_client),

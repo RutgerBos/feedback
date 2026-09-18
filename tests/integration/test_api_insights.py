@@ -490,7 +490,8 @@ def test_synthesize_returns_503_on_graph_error(test_db):
 
 def test_nl_query_returns_200_with_answer(test_db):
     """POST /api/insights/query returns 200 with synthesized answer."""
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
+
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
     from src.composition import get_graph, get_llm, get_storage

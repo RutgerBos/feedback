@@ -846,7 +846,8 @@ def test_get_temporal_returns_503_on_graph_error(test_db):
 
 def test_get_temporal_returns_theme_and_drift_data(test_db):
     """GET /api/patterns/temporal returns theme timelines and triad drift from storage."""
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
+
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
     from src.composition import get_graph, get_llm, get_storage
@@ -926,7 +927,8 @@ def test_get_temporal_returns_theme_and_drift_data(test_db):
 
 def test_get_temporal_department_filter_restricts_drift(test_db):
     """GET /api/patterns/temporal?department=... filters drift to matching stories."""
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
+
     from src.adapters.mongodb_storage import MongoDBStorageAdapter
     from src.api.main import app
     from src.composition import get_graph, get_llm, get_storage

@@ -9,7 +9,13 @@ from src.ports.storage import StoragePort
 
 
 class StoryQueue(Protocol):
-    """Queue operations required by StoryWorker."""
+    """
+    Responsibilities:
+    - Coordinate durable delivery and acknowledgement of story work
+
+    Collaborators:
+    - None
+    """
 
     def enqueue(self, story_id: str) -> None: ...
 
@@ -19,7 +25,13 @@ class StoryQueue(Protocol):
 
 
 class StoryProcessor(Protocol):
-    """Processing operation required by StoryWorker."""
+    """
+    Responsibilities:
+    - Enrich a story through the processing pipeline
+
+    Collaborators:
+    - None
+    """
 
     def process(self, story_id: str) -> bool | None: ...
 
