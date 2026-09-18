@@ -123,8 +123,7 @@ This project uses:
 - **Ports and Adapters** architecture (Hexagonal)
 - **Beads (bd)** for issue tracking
 
-See [CLAUDE.md](CLAUDE.md) for detailed development guidelines.
-See [AGENTS.md](AGENTS.md) for AI agent workflow instructions.
+See [AGENTS.md](AGENTS.md) for the full development guidelines and AI agent workflow instructions (`CLAUDE.md` is a symlink to the same file).
 
 ### Working on Issues
 
@@ -149,8 +148,7 @@ bd close feedback-5pi
 ## Documentation
 
 - [Project Specification](sensemaker-feedback-project.md) - Full project description and user stories
-- [Development Guidelines](CLAUDE.md) - TDD workflow, commit discipline, CRC cards
-- [Agent Instructions](AGENTS.md) - AI agent workflow with bd/beads
+- [Development Guidelines and Agent Instructions](AGENTS.md) - TDD workflow, commit discipline, CRC cards, bd/beads workflow (`CLAUDE.md` is a symlink to this file)
 
 ## License
 
