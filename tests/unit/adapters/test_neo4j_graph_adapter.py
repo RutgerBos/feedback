@@ -38,6 +38,7 @@ class FakeSession:
     def __init__(self, result: FakeResult | None = None):
         self.queries = []  # list of (query, params)
         self._result = result or FakeResult()
+        self.write_transactions = 0
 
     def run(self, query: str, **params) -> "FakeResult":
         self.queries.append((query, params))
@@ -45,6 +46,7 @@ class FakeSession:
 
     def execute_write(self, tx_func) -> None:
         """Run tx_func with self as the transaction object (records queries)."""
+        self.write_transactions += 1
         tx_func(self)
 
     def __enter__(self):
@@ -92,6 +94,22 @@ def test_save_story_node_creates_story_node():
     assert "Story" in query
     assert params.get("story_id") == STORY_ID
     assert params.get("timestamp") == TIMESTAMP
+
+
+def test_story_replay_merges_by_story_id_and_overwrites_mutable_timestamp():
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+
+    adapter.save_story_node(STORY_ID, TRIADS, TIMESTAMP)
+    adapter.save_story_node(STORY_ID, TRIADS, "2026-03-14T10:00:00Z")
+
+    assert len(driver.session_instance.queries) == 2
+    for query, params in driver.session_instance.queries:
+        assert "MERGE (s:Story {story_id: $story_id})" in query
+        assert "SET s.timestamp = $timestamp" in query
+        assert params["story_id"] == STORY_ID
 
 
 # ── Test 3: triads accepted by the method signature ───────────────────────────
@@ -142,6 +160,19 @@ def test_save_entity_nodes_creates_entity_nodes_and_relationships():
     assert len(entities_param) == 2
     assert entities_param[0]["name"] == "CI pipeline"
     assert entities_param[1]["name"] == "deployment"
+
+
+def test_entity_replay_uses_stable_node_and_relationship_identity():
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.save_entity_nodes(STORY_ID, ENTITIES)
+
+    query, _ = driver.session_instance.queries[0]
+    assert "MERGE (e:Entity {name: entity.name})" in query
+    assert "MATCH (s:Story {story_id: $story_id})" in query
+    assert "MERGE (s)-[:MENTIONS]->(e)" in query
 
 
 def test_save_entity_nodes_empty_list_is_noop():
@@ -209,6 +240,18 @@ def test_save_theme_nodes_creates_theme_nodes_and_relationships():
     assert params.get("story_id") == STORY_ID
     themes_param = params.get("themes")
     assert len(themes_param) == 3
+
+
+def test_theme_replay_uses_normalised_name_and_relationship_identity():
+    from src.adapters.neo4j_graph import Neo4jGraphAdapter
+
+    driver = FakeDriver()
+    adapter = Neo4jGraphAdapter(driver=driver)
+    adapter.save_theme_nodes(STORY_ID, THEMES)
+
+    query, _ = driver.session_instance.queries[0]
+    assert "MERGE (t:Theme {name: theme.name})" in query
+    assert "MERGE (s)-[:HAS_THEME]->(t)" in query
 
 
 def test_save_theme_nodes_normalises_text():
@@ -398,6 +441,9 @@ def test_save_proximity_relationships_deletes_existing_edges_first():
     first_query, first_params = driver.session_instance.queries[0]
     assert "DELETE" in first_query
     assert first_params.get("story_id") == "story-aaa"
+    assert driver.session_instance.write_transactions == 1
+    second_query, _ = driver.session_instance.queries[1]
+    assert "MERGE (a)-[r:NEAR_IN_SIGNIFIER_SPACE {triad_id: pair.triad_id}]->(b)" in second_query
 
 
 def test_save_proximity_relationships_raises_graph_error_on_failure():
