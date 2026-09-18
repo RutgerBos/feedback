@@ -1,18 +1,18 @@
 """Integration tests for scripts/reconcile_neo4j.py against real MongoDB and Neo4j."""
 
-import sys
 import os
-from datetime import datetime, UTC
+import sys
+from datetime import UTC, datetime
+from uuid import uuid4
 
 import pytest
-from pymongo import MongoClient
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
+from pymongo import MongoClient
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from scripts.reconcile_neo4j import reconcile
-
 
 MONGO_URL = "mongodb://admin:password@localhost:27017/"
 NEO4J_URL = "bolt://localhost:7687"
@@ -40,12 +40,12 @@ TEST_PREFIX = "test-reconcile-"
 
 @pytest.fixture
 def mongo_db():
-    """Use the production feedback database; clean up test-prefixed stories after each test."""
+    """Use a dedicated reconciliation-test database."""
     client = MongoClient(MONGO_URL)
-    db = client["feedback"]
-    db.stories.delete_many({"_id": {"$regex": f"^{TEST_PREFIX}"}})
+    db = client["test_reconcile"]
+    db.stories.delete_many({})
     yield db
-    db.stories.delete_many({"_id": {"$regex": f"^{TEST_PREFIX}"}})
+    client.drop_database("test_reconcile")
     client.close()
 
 
@@ -95,11 +95,11 @@ def test_reconcile_returns_correct_deleted_count(mongo_db, neo4j_driver):
     _neo4j_story(live_id, neo4j_driver)
 
     # Pre-clean any stale nodes left by other tests so the count is predictable.
-    reconcile(mongo_db, neo4j_driver)
+    reconcile(mongo_db, neo4j_driver, story_id_prefix=TEST_PREFIX)
 
     # Now add exactly one orphan and verify the returned count matches.
     _neo4j_story(orphan_id, neo4j_driver)
-    deleted, kept = reconcile(mongo_db, neo4j_driver)
+    deleted, kept = reconcile(mongo_db, neo4j_driver, story_id_prefix=TEST_PREFIX)
 
     assert deleted == 1
     assert kept == 1
@@ -114,7 +114,7 @@ def test_reconcile_deletes_orphan_nodes(mongo_db, neo4j_driver):
     _neo4j_story(live_id, neo4j_driver)
     _neo4j_story(orphan_id, neo4j_driver)
 
-    reconcile(mongo_db, neo4j_driver)
+    reconcile(mongo_db, neo4j_driver, story_id_prefix=TEST_PREFIX)
 
     with neo4j_driver.session() as s:
         remaining = [r["sid"] for r in s.run(
@@ -134,7 +134,12 @@ def test_reconcile_dry_run_does_not_delete(mongo_db, neo4j_driver):
     _neo4j_story(live_id, neo4j_driver)
     _neo4j_story(orphan_id, neo4j_driver)
 
-    deleted, kept = reconcile(mongo_db, neo4j_driver, dry_run=True)
+    deleted, kept = reconcile(
+        mongo_db,
+        neo4j_driver,
+        dry_run=True,
+        story_id_prefix=TEST_PREFIX,
+    )
 
     assert deleted == 1
     assert kept == 1
@@ -156,8 +161,8 @@ def test_reconcile_is_idempotent(mongo_db, neo4j_driver):
     _neo4j_story(live_id, neo4j_driver)
     _neo4j_story(orphan_id, neo4j_driver)
 
-    reconcile(mongo_db, neo4j_driver)
-    deleted, kept = reconcile(mongo_db, neo4j_driver)
+    reconcile(mongo_db, neo4j_driver, story_id_prefix=TEST_PREFIX)
+    deleted, kept = reconcile(mongo_db, neo4j_driver, story_id_prefix=TEST_PREFIX)
 
     assert deleted == 0
     assert kept == 1
@@ -176,7 +181,7 @@ def test_reconcile_detaches_relationships(mongo_db, neo4j_driver):
             sid=orphan_id,
         )
 
-    reconcile(mongo_db, neo4j_driver)
+    reconcile(mongo_db, neo4j_driver, story_id_prefix=TEST_PREFIX)
 
     with neo4j_driver.session() as s:
         story_count = s.run(
@@ -188,3 +193,31 @@ def test_reconcile_detaches_relationships(mongo_db, neo4j_driver):
 
     assert story_count == 0  # orphan deleted
     assert entity_count == 1  # shared entity untouched
+
+
+def test_reconcile_scope_does_not_touch_unrelated_story(mongo_db, neo4j_driver):
+    """Scoped reconciliation leaves Story nodes outside the test prefix untouched."""
+    unrelated_id = f"outside-reconcile-scope-{uuid4()}"
+    _neo4j_story(unrelated_id, neo4j_driver)
+
+    try:
+        deleted, kept = reconcile(
+            mongo_db,
+            neo4j_driver,
+            story_id_prefix=TEST_PREFIX,
+        )
+
+        assert deleted == 0
+        assert kept == 0
+        with neo4j_driver.session() as session:
+            count = session.run(
+                "MATCH (s:Story {story_id: $sid}) RETURN count(s) AS n",
+                sid=unrelated_id,
+            ).single()["n"]
+        assert count == 1
+    finally:
+        with neo4j_driver.session() as session:
+            session.run(
+                "MATCH (s:Story {story_id: $sid}) DETACH DELETE s",
+                sid=unrelated_id,
+            )

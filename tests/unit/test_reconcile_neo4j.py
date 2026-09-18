@@ -1,11 +1,13 @@
 """Unit tests for scripts/reconcile_neo4j.py compute_orphans."""
 
-import sys
 import os
+import sys
+
+import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from scripts.reconcile_neo4j import compute_orphans
+from scripts.reconcile_neo4j import compute_orphans, reconcile
 
 
 def test_compute_orphans_returns_ids_in_neo4j_not_in_mongo():
@@ -49,3 +51,9 @@ def test_compute_orphans_ignores_ids_in_mongo_but_not_neo4j():
     orphans = compute_orphans(mongo_ids, neo4j_ids)
 
     assert orphans == set()
+
+
+def test_reconcile_rejects_empty_scope_prefix():
+    """An empty prefix must not accidentally turn a scoped run into a global run."""
+    with pytest.raises(ValueError, match="must not be empty"):
+        reconcile(None, None, story_id_prefix="")

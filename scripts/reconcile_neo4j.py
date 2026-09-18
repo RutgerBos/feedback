@@ -9,9 +9,10 @@ This script is idempotent: re-running it after a clean state deletes 0 nodes.
 """
 
 import sys
+from re import escape
 
-from pymongo import MongoClient
 from neo4j import GraphDatabase
+from pymongo import MongoClient
 
 
 def compute_orphans(mongo_ids: set[str], neo4j_ids: set[str]) -> set[str]:
@@ -19,18 +20,45 @@ def compute_orphans(mongo_ids: set[str], neo4j_ids: set[str]) -> set[str]:
     return neo4j_ids - mongo_ids
 
 
-def reconcile(mongo_db, neo4j_driver, *, dry_run: bool = False) -> tuple[int, int]:
+def reconcile(
+    mongo_db,
+    neo4j_driver,
+    *,
+    dry_run: bool = False,
+    story_id_prefix: str | None = None,
+) -> tuple[int, int]:
     """
     Delete orphan Story nodes (and their relationships) from Neo4j.
 
+    When story_id_prefix is supplied, compare and mutate only stories whose
+    IDs start with that prefix. This provides an explicit isolation boundary
+    for tests and other scoped maintenance operations.
+
     Returns (deleted_count, kept_count).
     """
-    mongo_ids = {str(doc["_id"]) for doc in mongo_db.stories.find({}, {"_id": 1})}
+    if story_id_prefix == "":
+        raise ValueError("story_id_prefix must not be empty")
+
+    mongo_filter = (
+        {"_id": {"$regex": f"^{escape(story_id_prefix)}"}}
+        if story_id_prefix is not None
+        else {}
+    )
+    mongo_ids = {
+        str(doc["_id"])
+        for doc in mongo_db.stories.find(mongo_filter, {"_id": 1})
+    }
 
     with neo4j_driver.session() as session:
+        query = "MATCH (s:Story)"
+        parameters = {}
+        if story_id_prefix is not None:
+            query += " WHERE s.story_id STARTS WITH $story_id_prefix"
+            parameters["story_id_prefix"] = story_id_prefix
+        query += " RETURN s.story_id AS story_id"
         neo4j_ids = {
             row["story_id"]
-            for row in session.run("MATCH (s:Story) RETURN s.story_id AS story_id")
+            for row in session.run(query, **parameters)
             if row["story_id"] is not None
         }
 
