@@ -54,6 +54,15 @@ class StoryProcessingService:
             triads=triads,
             timestamp=story.timestamp.isoformat(),
         )
-        entities_processed = self.entity_service.extract_for_story(story_id)
-        sentiment_processed = self.sentiment_service.extract_for_story(story_id)
+        if story.entity_status == "processed":
+            entities_processed = True
+            if self.entity_service.graph_projection is not None:
+                self.entity_service.graph_projection.project_story(story_id)
+        else:
+            entities_processed = self.entity_service.extract_for_story(story_id)
+
+        if story.sentiment_status == "processed":
+            sentiment_processed = True
+        else:
+            sentiment_processed = self.sentiment_service.extract_for_story(story_id)
         return entities_processed is not False and sentiment_processed is not False
