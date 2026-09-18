@@ -15,11 +15,11 @@ if TYPE_CHECKING:
 
 class EntityExtraction:
     """
-    Responsibilities:
-    - Represent entities identified in one narrative-analysis pass
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Represent entities identified in one narrative-analysis pass
+    collaborators: []
+    </crc>
     """
 
     def __init__(self, entities: list[dict[str, Any]]):
@@ -28,13 +28,14 @@ class EntityExtraction:
 
 class LLMPort(ABC):
     """
-    Responsibilities:
-    - Define structured narrative enrichment and synthesis
-    - Define translation of natural-language questions into query intent
-
-    Collaborators:
-    - EntityExtraction
-    - SentimentAnalysis
+    <crc>
+    responsibilities:
+      - Define structured narrative enrichment and synthesis
+      - Define translation of natural-language questions into query intent
+    collaborators:
+      - EntityExtraction
+      - SentimentAnalysis
+    </crc>
     """
 
     @abstractmethod

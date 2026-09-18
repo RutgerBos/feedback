@@ -13,13 +13,14 @@ from src.domain.models import TriadPlacement, TriadProximity
 
 class GraphPort(ABC):
     """
-    Responsibilities:
-    - Define persistence of stories, concepts, and relationships in a knowledge graph
-    - Define graph-backed pattern, proximity, and temporal queries
-
-    Collaborators:
-    - TriadPlacement
-    - TriadProximity
+    <crc>
+    responsibilities:
+      - Define persistence of stories, concepts, and relationships in a knowledge graph
+      - Define graph-backed pattern, proximity, and temporal queries
+    collaborators:
+      - TriadPlacement
+      - TriadProximity
+    </crc>
     """
 
     @abstractmethod

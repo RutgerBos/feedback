@@ -12,11 +12,11 @@ from src.ports.storage import StoragePort
 @dataclass
 class Cluster:
     """
-    Responsibilities:
-    - Represent a story cluster and its distinguishing evidence
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Represent a story cluster and its distinguishing evidence
+    collaborators: []
+    </crc>
     """
 
     story_ids: list[str]
@@ -29,11 +29,12 @@ class Cluster:
 @dataclass
 class ClusterResult:
     """
-    Responsibilities:
-    - Represent the clusters identified for one triad
-
-    Collaborators:
-    - Cluster
+    <crc>
+    responsibilities:
+      - Represent the clusters identified for one triad
+    collaborators:
+      - Cluster
+    </crc>
     """
 
     clusters: list[Cluster] = field(default_factory=list)
@@ -41,13 +42,14 @@ class ClusterResult:
 
 class ClusteringService:
     """
-    Responsibilities:
-    - Identify communities of stories in triad signifier space
-    - Characterize each community by position, themes, and entities
-
-    Collaborators:
-    - GraphPort
-    - StoragePort
+    <crc>
+    responsibilities:
+      - Identify communities of stories in triad signifier space
+      - Characterize each community by position, themes, and entities
+    collaborators:
+      - GraphPort
+      - StoragePort
+    </crc>
     """
 
     def __init__(self, graph: GraphPort, storage: StoragePort) -> None:

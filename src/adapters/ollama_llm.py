@@ -13,13 +13,13 @@ from src.ports.llm import EntityExtraction, LLMPort
 
 class OllamaLLMAdapter(LLMPort):
     """
-    Responsibilities:
-    - Provide narrative analysis through the configured Ollama model
-    - Translate model responses into the application's domain results
-    - Report provider and response failures through the LLM error contract
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Provide narrative analysis through the configured Ollama model
+      - Translate model responses into the application's domain results
+      - Report provider and response failures through the LLM error contract
+    collaborators: []
+    </crc>
     """
 
     DEFAULT_BASE_URL = "http://localhost:11434"

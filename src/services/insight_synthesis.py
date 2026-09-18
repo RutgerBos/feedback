@@ -22,12 +22,13 @@ _EXCERPT_LEN = 300
 @dataclass
 class InsightResponse:
     """
-    Responsibilities:
-    - Represent a synthesized narrative with its evidence and caveats
-
-    Collaborators:
-    - StoryExcerpt
-    - SentimentSummary
+    <crc>
+    responsibilities:
+      - Represent a synthesized narrative with its evidence and caveats
+    collaborators:
+      - StoryExcerpt
+      - SentimentSummary
+    </crc>
     """
 
     narrative: str
@@ -40,14 +41,15 @@ class InsightResponse:
 
 class InsightSynthesisService:
     """
-    Responsibilities:
-    - Synthesize narrative insight for stories associated with an entity
-    - Ground synthesized insight in bounded story, theme, and sentiment evidence
-
-    Collaborators:
-    - GraphPort
-    - StoragePort
-    - LLMPort
+    <crc>
+    responsibilities:
+      - Synthesize narrative insight for stories associated with an entity
+      - Ground synthesized insight in bounded story, theme, and sentiment evidence
+    collaborators:
+      - GraphPort
+      - StoragePort
+      - LLMPort
+    </crc>
     """
 
     def __init__(

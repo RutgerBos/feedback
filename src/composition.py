@@ -35,11 +35,11 @@ from src.workers.worker_queue import WorkerQueue
 
 class LLMSettings(Protocol):
     """
-    Responsibilities:
-    - Expose the configuration required to select an LLM provider
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Expose the configuration required to select an LLM provider
+    collaborators: []
+    </crc>
     """
 
     llm_provider: str
@@ -174,13 +174,13 @@ def get_dashboard_service(
 @dataclass
 class ApiRuntime:
     """
-    Responsibilities:
-    - Retain API-process resources for request handling and orderly shutdown
-    - Publish process-scoped dependencies to the application
-    - Release all process resources even when one cleanup fails
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Retain API-process resources for request handling and orderly shutdown
+      - Publish process-scoped dependencies to the application
+      - Release all process resources even when one cleanup fails
+    collaborators: []
+    </crc>
     """
 
     llm: LLMPort
@@ -209,12 +209,12 @@ class ApiRuntime:
 @dataclass
 class WorkerRuntime:
     """
-    Responsibilities:
-    - Retain worker-process resources for orderly shutdown
-    - Release all process resources even when one cleanup fails
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Retain worker-process resources for orderly shutdown
+      - Release all process resources even when one cleanup fails
+    collaborators: []
+    </crc>
     """
 
     worker: StoryWorker

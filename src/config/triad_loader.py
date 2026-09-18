@@ -12,11 +12,11 @@ from pydantic import BaseModel, Field, field_validator
 
 class TriadVertex(BaseModel):
     """
-    Responsibilities:
-    - Represent a validated vertex in a triad definition
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Represent a validated vertex in a triad definition
+    collaborators: []
+    </crc>
     """
 
     id: str = Field(..., min_length=1)
@@ -26,12 +26,13 @@ class TriadVertex(BaseModel):
 
 class TriadDefinition(BaseModel):
     """
-    Responsibilities:
-    - Represent a valid three-vertex triad definition
-    - Preserve unique vertex identities within the triad
-
-    Collaborators:
-    - TriadVertex
+    <crc>
+    responsibilities:
+      - Represent a valid three-vertex triad definition
+      - Preserve unique vertex identities within the triad
+    collaborators:
+      - TriadVertex
+    </crc>
     """
 
     id: str = Field(..., min_length=1)
@@ -51,12 +52,13 @@ class TriadDefinition(BaseModel):
 
 class TriadConfig(BaseModel):
     """
-    Responsibilities:
-    - Represent the application's validated triad catalogue
-    - Preserve unique triad identities across the catalogue
-
-    Collaborators:
-    - TriadDefinition
+    <crc>
+    responsibilities:
+      - Represent the application's validated triad catalogue
+      - Preserve unique triad identities across the catalogue
+    collaborators:
+      - TriadDefinition
+    </crc>
     """
 
     version: str = Field(..., min_length=1)

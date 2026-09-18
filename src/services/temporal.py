@@ -12,11 +12,11 @@ from src.ports.storage import StoragePort
 @dataclass
 class WindowedCount:
     """
-    Responsibilities:
-    - Represent an observation count for one time window
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Represent an observation count for one time window
+    collaborators: []
+    </crc>
     """
 
     window: str
@@ -26,11 +26,12 @@ class WindowedCount:
 @dataclass
 class ThemeTimeline:
     """
-    Responsibilities:
-    - Represent a theme's frequency over time
-
-    Collaborators:
-    - WindowedCount
+    <crc>
+    responsibilities:
+      - Represent a theme's frequency over time
+    collaborators:
+      - WindowedCount
+    </crc>
     """
 
     theme: str
@@ -40,11 +41,12 @@ class ThemeTimeline:
 @dataclass
 class EntityTimeline:
     """
-    Responsibilities:
-    - Represent an entity's frequency over time
-
-    Collaborators:
-    - WindowedCount
+    <crc>
+    responsibilities:
+      - Represent an entity's frequency over time
+    collaborators:
+      - WindowedCount
+    </crc>
     """
 
     entity: str
@@ -54,11 +56,11 @@ class EntityTimeline:
 @dataclass
 class WindowedCentroid:
     """
-    Responsibilities:
-    - Represent the centroid of triad responses in one time window
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Represent the centroid of triad responses in one time window
+    collaborators: []
+    </crc>
     """
 
     window: str
@@ -70,11 +72,12 @@ class WindowedCentroid:
 @dataclass
 class TriadDrift:
     """
-    Responsibilities:
-    - Represent movement through one triad's signifier space over time
-
-    Collaborators:
-    - WindowedCentroid
+    <crc>
+    responsibilities:
+      - Represent movement through one triad's signifier space over time
+    collaborators:
+      - WindowedCentroid
+    </crc>
     """
 
     triad_id: str
@@ -84,13 +87,14 @@ class TriadDrift:
 @dataclass
 class TemporalResult:
     """
-    Responsibilities:
-    - Represent frequency and signifier movement across a temporal query
-
-    Collaborators:
-    - ThemeTimeline
-    - EntityTimeline
-    - TriadDrift
+    <crc>
+    responsibilities:
+      - Represent frequency and signifier movement across a temporal query
+    collaborators:
+      - ThemeTimeline
+      - EntityTimeline
+      - TriadDrift
+    </crc>
     """
 
     windows: list[str] = field(default_factory=list)
@@ -158,14 +162,15 @@ def _filter_by_metadata(stories, department: str | None, role: str | None):
 
 class TemporalService:
     """
-    Responsibilities:
-    - Analyze theme and entity frequency over time
-    - Analyze movement through triad signifier space over time
-    - Apply a consistent evidence scope across temporal results
-
-    Collaborators:
-    - GraphPort
-    - StoragePort
+    <crc>
+    responsibilities:
+      - Analyze theme and entity frequency over time
+      - Analyze movement through triad signifier space over time
+      - Apply a consistent evidence scope across temporal results
+    collaborators:
+      - GraphPort
+      - StoragePort
+    </crc>
     """
 
     def __init__(self, graph: GraphPort, storage: StoragePort) -> None:

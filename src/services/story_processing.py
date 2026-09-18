@@ -11,14 +11,15 @@ from src.services.sentiment_extraction import SentimentExtractionService
 
 class StoryProcessingService:
     """
-    Responsibilities:
-    - Coordinate graph projection and narrative enrichment for a story
-
-    Collaborators:
-    - StoragePort
-    - GraphPort
-    - EntityExtractionService
-    - SentimentExtractionService
+    <crc>
+    responsibilities:
+      - Coordinate graph projection and narrative enrichment for a story
+    collaborators:
+      - StoragePort
+      - GraphPort
+      - EntityExtractionService
+      - SentimentExtractionService
+    </crc>
     """
 
     def __init__(

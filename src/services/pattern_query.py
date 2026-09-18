@@ -12,11 +12,12 @@ from src.ports.storage import StoragePort
 @dataclass
 class EntityQueryResult:
     """
-    Responsibilities:
-    - Represent a paginated set of stories associated with an entity
-
-    Collaborators:
-    - Story
+    <crc>
+    responsibilities:
+      - Represent a paginated set of stories associated with an entity
+    collaborators:
+      - Story
+    </crc>
     """
 
     stories: list[Story]
@@ -26,11 +27,11 @@ class EntityQueryResult:
 @dataclass
 class CorrelationPair:
     """
-    Responsibilities:
-    - Represent the observed association between two entities
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Represent the observed association between two entities
+    collaborators: []
+    </crc>
     """
 
     entity_a: str
@@ -43,11 +44,12 @@ class CorrelationPair:
 @dataclass
 class CorrelationQueryResult:
     """
-    Responsibilities:
-    - Represent ranked entity-pair correlations
-
-    Collaborators:
-    - CorrelationPair
+    <crc>
+    responsibilities:
+      - Represent ranked entity-pair correlations
+    collaborators:
+      - CorrelationPair
+    </crc>
     """
 
     pairs: list[CorrelationPair] = field(default_factory=list)
@@ -56,11 +58,11 @@ class CorrelationQueryResult:
 @dataclass
 class ThemeQueryResult:
     """
-    Responsibilities:
-    - Represent ranked themes with supporting story samples
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Represent ranked themes with supporting story samples
+    collaborators: []
+    </crc>
     """
 
     themes: list[dict] = field(default_factory=list)
@@ -68,13 +70,14 @@ class ThemeQueryResult:
 
 class PatternQueryService:
     """
-    Responsibilities:
-    - Provide ranked theme and entity-correlation evidence
-    - Retrieve paginated stories associated with an entity
-
-    Collaborators:
-    - GraphPort
-    - StoragePort
+    <crc>
+    responsibilities:
+      - Provide ranked theme and entity-correlation evidence
+      - Retrieve paginated stories associated with an entity
+    collaborators:
+      - GraphPort
+      - StoragePort
+    </crc>
     """
 
     def __init__(self, graph: GraphPort, storage: StoragePort) -> None:

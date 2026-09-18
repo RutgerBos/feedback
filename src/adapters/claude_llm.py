@@ -13,13 +13,13 @@ from src.ports.llm import EntityExtraction, LLMPort
 
 class ClaudeLLMAdapter(LLMPort):
     """
-    Responsibilities:
-    - Provide narrative analysis through the configured Claude model
-    - Translate model responses into the application's domain results
-    - Report provider and response failures through the LLM error contract
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Provide narrative analysis through the configured Claude model
+      - Translate model responses into the application's domain results
+      - Report provider and response failures through the LLM error contract
+    collaborators: []
+    </crc>
     """
 
     MODEL = "claude-haiku-4-5-20251001"

@@ -10,15 +10,16 @@ from src.ports.storage import StoragePort
 
 class GraphProjectionService:
     """
-    Responsibilities:
-    - Project processed story concepts into the knowledge graph
-    - Coordinate proximity relationships for projected stories
-    - Keep enrichment processing available when graph projection fails
-
-    Collaborators:
-    - StoragePort
-    - GraphPort
-    - ProximityCalculationService
+    <crc>
+    responsibilities:
+      - Project processed story concepts into the knowledge graph
+      - Coordinate proximity relationships for projected stories
+      - Keep enrichment processing available when graph projection fails
+    collaborators:
+      - StoragePort
+      - GraphPort
+      - ProximityCalculationService
+    </crc>
     """
 
     def __init__(

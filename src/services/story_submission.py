@@ -87,13 +87,14 @@ class ParticipantRequest(BaseModel):
 
 class StorySubmissionRequest(BaseModel):
     """
-    Responsibilities:
-    - Represent a valid story-submission request
-
-    Collaborators:
-    - SignificationRequest
-    - ContextRequest
-    - ParticipantRequest
+    <crc>
+    responsibilities:
+      - Represent a valid story-submission request
+    collaborators:
+      - SignificationRequest
+      - ContextRequest
+      - ParticipantRequest
+    </crc>
     """
 
     story_text: str = Field(..., min_length=50, max_length=2000)
@@ -116,11 +117,11 @@ class StorySubmissionRequest(BaseModel):
 
 class StorySubmissionResult(BaseModel):
     """
-    Responsibilities:
-    - Represent successful story submission
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Represent successful story submission
+    collaborators: []
+    </crc>
     """
 
     story_id: str
@@ -129,13 +130,14 @@ class StorySubmissionResult(BaseModel):
 
 class StorySubmissionService:
     """
-    Responsibilities:
-    - Accept valid participant stories into the system
-    - Translate submission data into the story domain model
-
-    Collaborators:
-    - StoragePort
-    - Story
+    <crc>
+    responsibilities:
+      - Accept valid participant stories into the system
+      - Translate submission data into the story domain model
+    collaborators:
+      - StoragePort
+      - Story
+    </crc>
     """
 
     def __init__(self, storage: StoragePort, valid_triad_ids: set[str] | None = None):

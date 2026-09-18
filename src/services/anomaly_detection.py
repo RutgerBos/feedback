@@ -14,11 +14,11 @@ _PROFILE_MISMATCH_THRESHOLD = 0.75
 @dataclass(frozen=True)
 class AnomalyReason:
     """
-    Responsibilities:
-    - Represent one explainable signal that makes a story unusual
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Represent one explainable signal that makes a story unusual
+    collaborators: []
+    </crc>
     """
 
     kind: str
@@ -29,11 +29,12 @@ class AnomalyReason:
 @dataclass(frozen=True)
 class StoryAnomaly:
     """
-    Responsibilities:
-    - Represent a story's combined anomaly score and evidence
-
-    Collaborators:
-    - AnomalyReason
+    <crc>
+    responsibilities:
+      - Represent a story's combined anomaly score and evidence
+    collaborators:
+      - AnomalyReason
+    </crc>
     """
 
     story_id: str
@@ -44,11 +45,12 @@ class StoryAnomaly:
 @dataclass(frozen=True)
 class AnomalyResult:
     """
-    Responsibilities:
-    - Represent a ranked set of story anomalies
-
-    Collaborators:
-    - StoryAnomaly
+    <crc>
+    responsibilities:
+      - Represent a ranked set of story anomalies
+    collaborators:
+      - StoryAnomaly
+    </crc>
     """
 
     anomalies: list[StoryAnomaly] = field(default_factory=list)
@@ -56,13 +58,14 @@ class AnomalyResult:
 
 class AnomalyDetectionService:
     """
-    Responsibilities:
-    - Identify unusual processed stories from structural and signifier evidence
-    - Rank anomalies with deterministic, explainable reasons
-
-    Collaborators:
-    - GraphPort
-    - StoragePort
+    <crc>
+    responsibilities:
+      - Identify unusual processed stories from structural and signifier evidence
+      - Rank anomalies with deterministic, explainable reasons
+    collaborators:
+      - GraphPort
+      - StoragePort
+    </crc>
     """
 
     def __init__(self, graph: GraphPort, storage: StoragePort) -> None:

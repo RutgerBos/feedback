@@ -11,13 +11,14 @@ _PAGE_SIZE = 100
 
 class ProximityCalculationService:
     """
-    Responsibilities:
-    - Identify nearby processed stories in shared triad signifier spaces
-    - Keep graph proximity relationships consistent with current positions
-
-    Collaborators:
-    - StoragePort
-    - GraphPort
+    <crc>
+    responsibilities:
+      - Identify nearby processed stories in shared triad signifier spaces
+      - Keep graph proximity relationships consistent with current positions
+    collaborators:
+      - StoragePort
+      - GraphPort
+    </crc>
     """
 
     def __init__(

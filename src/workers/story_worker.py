@@ -10,11 +10,11 @@ from src.ports.storage import StoragePort
 
 class StoryQueue(Protocol):
     """
-    Responsibilities:
-    - Coordinate durable delivery and acknowledgement of story work
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Coordinate durable delivery and acknowledgement of story work
+    collaborators: []
+    </crc>
     """
 
     def enqueue(self, story_id: str) -> None: ...
@@ -26,11 +26,11 @@ class StoryQueue(Protocol):
 
 class StoryProcessor(Protocol):
     """
-    Responsibilities:
-    - Enrich a story through the processing pipeline
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Enrich a story through the processing pipeline
+    collaborators: []
+    </crc>
     """
 
     def process(self, story_id: str) -> bool | None: ...
@@ -40,15 +40,16 @@ logger = logging.getLogger(__name__)
 
 class StoryWorker:
     """
-    Responsibilities:
-    - Consume and coordinate queued story-processing work
-    - Recover unqueued stories that still require processing
-    - Keep processing available when individual work items fail
-
-    Collaborators:
-    - StoryQueue
-    - StoryProcessor
-    - StoragePort
+    <crc>
+    responsibilities:
+      - Consume and coordinate queued story-processing work
+      - Recover unqueued stories that still require processing
+      - Keep processing available when individual work items fail
+    collaborators:
+      - StoryQueue
+      - StoryProcessor
+      - StoragePort
+    </crc>
     """
 
     def __init__(

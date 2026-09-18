@@ -17,15 +17,16 @@ logger = logging.getLogger(__name__)
 
 class EntityExtractionService:
     """
-    Responsibilities:
-    - Enrich stories with extracted entities and themes
-    - Preserve a consistent processing outcome when enrichment fails
-    - Coordinate graph projection after successful enrichment
-
-    Collaborators:
-    - StoragePort
-    - LLMPort
-    - GraphProjectionService
+    <crc>
+    responsibilities:
+      - Enrich stories with extracted entities and themes
+      - Preserve a consistent processing outcome when enrichment fails
+      - Coordinate graph projection after successful enrichment
+    collaborators:
+      - StoragePort
+      - LLMPort
+      - GraphProjectionService
+    </crc>
     """
 
     def __init__(

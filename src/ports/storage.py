@@ -14,12 +14,13 @@ from src.domain.models import SentimentAnalysis, Story
 
 class StoragePort(ABC):
     """
-    Responsibilities:
-    - Define durable storage and retrieval of stories
-    - Define story selection and enrichment updates
-
-    Collaborators:
-    - Story
+    <crc>
+    responsibilities:
+      - Define durable storage and retrieval of stories
+      - Define story selection and enrichment updates
+    collaborators:
+      - Story
+    </crc>
     """
 
     @abstractmethod

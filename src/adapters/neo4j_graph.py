@@ -12,12 +12,12 @@ from src.ports.graph import GraphPort
 
 class Neo4jGraphAdapter(GraphPort):
     """
-    Responsibilities:
-    - Persist the feedback knowledge graph
-    - Answer graph-backed pattern and relationship queries
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Persist the feedback knowledge graph
+      - Answer graph-backed pattern and relationship queries
+    collaborators: []
+    </crc>
     """
 
     def __init__(self, driver: Any) -> None:

@@ -16,11 +16,11 @@ _TOP_N = 10        # max items in top_themes / top_entities
 @dataclass
 class DashboardData:
     """
-    Responsibilities:
-    - Represent aggregate dashboard evidence and sampling limits
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Represent aggregate dashboard evidence and sampling limits
+    collaborators: []
+    </crc>
     """
 
     total_stories: int
@@ -35,12 +35,13 @@ class DashboardData:
 
 class DashboardService:
     """
-    Responsibilities:
-    - Summarize story, theme, and entity evidence for the dashboard
-    - Scope dashboard evidence to a requested date range
-
-    Collaborators:
-    - StoragePort
+    <crc>
+    responsibilities:
+      - Summarize story, theme, and entity evidence for the dashboard
+      - Scope dashboard evidence to a requested date range
+    collaborators:
+      - StoragePort
+    </crc>
     """
 
     def __init__(self, storage: StoragePort) -> None:

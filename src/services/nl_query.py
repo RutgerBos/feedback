@@ -17,11 +17,11 @@ _EXCERPT_LEN = 300
 @dataclass
 class NLQueryResult:
     """
-    Responsibilities:
-    - Represent a synthesized answer with its supporting evidence
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Represent a synthesized answer with its supporting evidence
+    collaborators: []
+    </crc>
     """
 
     answer: str
@@ -31,14 +31,15 @@ class NLQueryResult:
 
 class NLQueryService:
     """
-    Responsibilities:
-    - Answer natural-language questions about feedback evidence
-    - Ground answers in graph-selected stories and bounded synthesis context
-
-    Collaborators:
-    - LLMPort
-    - GraphPort
-    - StoragePort
+    <crc>
+    responsibilities:
+      - Answer natural-language questions about feedback evidence
+      - Ground answers in graph-selected stories and bounded synthesis context
+    collaborators:
+      - LLMPort
+      - GraphPort
+      - StoragePort
+    </crc>
     """
 
     def __init__(self, graph: GraphPort, storage: StoragePort, llm: LLMPort) -> None:

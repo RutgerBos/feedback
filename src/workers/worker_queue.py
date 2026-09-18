@@ -5,12 +5,12 @@ from typing import Any
 
 class WorkerQueue:
     """
-    Responsibilities:
-    - Coordinate reliable delivery of story-processing work
-    - Track outstanding work through completion
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Coordinate reliable delivery of story-processing work
+      - Track outstanding work through completion
+    collaborators: []
+    </crc>
     """
 
     def __init__(self, redis: Any, queue_key: str, visibility_timeout: int = 3600) -> None:

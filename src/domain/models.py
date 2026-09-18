@@ -39,12 +39,12 @@ def _normalise_sentiment(value: str) -> str:
 
 class TriadCoordinates(BaseModel):
     """
-    Responsibilities:
-    - Represent a valid position in triad signifier space
-    - Measure distance to another triad position
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Represent a valid position in triad signifier space
+      - Measure distance to another triad position
+    collaborators: []
+    </crc>
     """
 
     x: float = Field(..., ge=0.0, le=1.0)
@@ -59,11 +59,12 @@ class TriadCoordinates(BaseModel):
 
 class TriadPlacement(BaseModel):
     """
-    Responsibilities:
-    - Associate a triad signifier with a participant's position
-
-    Collaborators:
-    - TriadCoordinates
+    <crc>
+    responsibilities:
+      - Associate a triad signifier with a participant's position
+    collaborators:
+      - TriadCoordinates
+    </crc>
     """
 
     triad_id: str = Field(..., min_length=1)
@@ -77,12 +78,12 @@ _SQRT2 = math.sqrt(2)
 
 class TriadProximity(BaseModel):
     """
-    Responsibilities:
-    - Represent a unique proximity relationship between two stories
-    - Express proximity distance as graph weight
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Represent a unique proximity relationship between two stories
+      - Express proximity distance as graph weight
+    collaborators: []
+    </crc>
     """
 
     story_id_a: str
@@ -109,11 +110,11 @@ class TriadProximity(BaseModel):
 
 class StoryExcerpt(BaseModel):
     """
-    Responsibilities:
-    - Represent bounded story evidence for insight synthesis
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Represent bounded story evidence for insight synthesis
+    collaborators: []
+    </crc>
     """
 
     story_id: str
@@ -125,11 +126,11 @@ class StoryExcerpt(BaseModel):
 
 class SentimentSummary(BaseModel):
     """
-    Responsibilities:
-    - Represent aggregate process and outcome sentiment evidence
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Represent aggregate process and outcome sentiment evidence
+    collaborators: []
+    </crc>
     """
 
     positive_process: int = 0
@@ -144,12 +145,13 @@ class SentimentSummary(BaseModel):
 
 class InsightContext(BaseModel):
     """
-    Responsibilities:
-    - Provide bounded, structured evidence for insight synthesis
-
-    Collaborators:
-    - StoryExcerpt
-    - SentimentSummary
+    <crc>
+    responsibilities:
+      - Provide bounded, structured evidence for insight synthesis
+    collaborators:
+      - StoryExcerpt
+      - SentimentSummary
+    </crc>
     """
 
     query: str
@@ -164,11 +166,11 @@ class InsightContext(BaseModel):
 
 class InsightOutput(BaseModel):
     """
-    Responsibilities:
-    - Represent a synthesized insight and its qualifications
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Represent a synthesized insight and its qualifications
+    collaborators: []
+    </crc>
     """
 
     narrative: str
@@ -179,11 +181,11 @@ class InsightOutput(BaseModel):
 
 class QueryIntent(BaseModel):
     """
-    Responsibilities:
-    - Represent an interpreted natural-language query for graph dispatch
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Represent an interpreted natural-language query for graph dispatch
+    collaborators: []
+    </crc>
     """
 
     operation: str
@@ -196,11 +198,11 @@ class QueryIntent(BaseModel):
 
 class StoryMetadata(BaseModel):
     """
-    Responsibilities:
-    - Represent legacy contextual and pseudonymous story metadata
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Represent legacy contextual and pseudonymous story metadata
+    collaborators: []
+    </crc>
     """
 
     user_pseudonym: str | None = None
@@ -213,11 +215,11 @@ class StoryMetadata(BaseModel):
 
 class ContextMetadata(BaseModel):
     """
-    Responsibilities:
-    - Represent organisational context used to segment stories
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Represent organisational context used to segment stories
+    collaborators: []
+    </crc>
     """
 
     department: str | None = None
@@ -229,11 +231,11 @@ class ContextMetadata(BaseModel):
 
 class ParticipantMetadata(BaseModel):
     """
-    Responsibilities:
-    - Represent pseudonymous participant identity separately from story context
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Represent pseudonymous participant identity separately from story context
+    collaborators: []
+    </crc>
     """
 
     user_pseudonym: str | None = None
@@ -243,11 +245,12 @@ class ParticipantMetadata(BaseModel):
 
 class TriadResponseItem(BaseModel):
     """
-    Responsibilities:
-    - Represent a participant's response to one triad signifier
-
-    Collaborators:
-    - TriadCoordinates
+    <crc>
+    responsibilities:
+      - Represent a participant's response to one triad signifier
+    collaborators:
+      - TriadCoordinates
+    </crc>
     """
 
     kind: Literal["triad"] = "triad"
@@ -264,12 +267,13 @@ SignifierResponse = TriadResponseItem
 
 class StorySignification(BaseModel):
     """
-    Responsibilities:
-    - Represent a participant's self-signification of a story
-    - Preserve the participant's headline and signifier responses
-
-    Collaborators:
-    - SignifierResponse
+    <crc>
+    responsibilities:
+      - Represent a participant's self-signification of a story
+      - Preserve the participant's headline and signifier responses
+    collaborators:
+      - SignifierResponse
+    </crc>
     """
 
     headline: str | None = None
@@ -280,12 +284,12 @@ class StorySignification(BaseModel):
 
 class SentimentAnalysis(BaseModel):
     """
-    Responsibilities:
-    - Represent normalized process and outcome sentiment for a story
-    - Preserve the emotional evidence supporting that sentiment
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Represent normalized process and outcome sentiment for a story
+      - Preserve the emotional evidence supporting that sentiment
+    collaborators: []
+    </crc>
     """
 
     emotion_markers: list[str] = Field(default_factory=list)
@@ -304,16 +308,17 @@ class SentimentAnalysis(BaseModel):
 
 class Story(BaseModel):
     """
-    Responsibilities:
-    - Represent a valid participant story and its self-signification
-    - Preserve enrichment and processing state across the story lifecycle
-
-    Collaborators:
-    - TriadPlacement
-    - StoryMetadata
-    - StorySignification
-    - ContextMetadata
-    - ParticipantMetadata
+    <crc>
+    responsibilities:
+      - Represent a valid participant story and its self-signification
+      - Preserve enrichment and processing state across the story lifecycle
+    collaborators:
+      - TriadPlacement
+      - StoryMetadata
+      - StorySignification
+      - ContextMetadata
+      - ParticipantMetadata
+    </crc>
     """
 
     id: str = Field(..., min_length=1)

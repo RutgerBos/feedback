@@ -13,13 +13,14 @@ logger = logging.getLogger(__name__)
 
 class SentimentExtractionService:
     """
-    Responsibilities:
-    - Enrich stories with process, outcome, and emotional sentiment
-    - Preserve a consistent processing outcome when enrichment fails
-
-    Collaborators:
-    - StoragePort
-    - LLMPort
+    <crc>
+    responsibilities:
+      - Enrich stories with process, outcome, and emotional sentiment
+      - Preserve a consistent processing outcome when enrichment fails
+    collaborators:
+      - StoragePort
+      - LLMPort
+    </crc>
     """
 
     def __init__(self, storage: StoragePort, llm: LLMPort) -> None:

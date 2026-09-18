@@ -8,11 +8,11 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     """
-    Responsibilities:
-    - Provide validated runtime configuration to the application
-
-    Collaborators:
-    - None
+    <crc>
+    responsibilities:
+      - Provide validated runtime configuration to the application
+    collaborators: []
+    </crc>
     """
 
     mongodb_url: str = "mongodb://admin:password@mongodb:27017/"

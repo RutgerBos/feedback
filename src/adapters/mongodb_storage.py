@@ -26,12 +26,13 @@ from src.ports.storage import StoragePort
 
 class MongoDBStorageAdapter(StoragePort):
     """
-    Responsibilities:
-    - Persist and retrieve stories in document storage
-    - Preserve domain story data across the storage boundary
-
-    Collaborators:
-    - Story
+    <crc>
+    responsibilities:
+      - Persist and retrieve stories in document storage
+      - Preserve domain story data across the storage boundary
+    collaborators:
+      - Story
+    </crc>
     """
 
     def __init__(self, database: Database):
