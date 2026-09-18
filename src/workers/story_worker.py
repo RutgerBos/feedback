@@ -46,8 +46,8 @@ class StoryWorker:
     - Keep processing available when individual work items fail
 
     Collaborators:
-    - WorkerQueue
-    - StoryProcessingService
+    - StoryQueue
+    - StoryProcessor
     - StoragePort
     """
 

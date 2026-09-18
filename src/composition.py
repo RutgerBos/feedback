@@ -6,7 +6,7 @@ from typing import Any, Protocol, cast
 
 import neo4j
 import redis as redis_lib
-from fastapi import Depends, Request
+from fastapi import Depends, FastAPI, Request
 from pymongo import MongoClient
 
 from src.adapters.llm_factory import create_llm_provider
@@ -172,6 +172,41 @@ def get_dashboard_service(
 
 
 @dataclass
+class ApiRuntime:
+    """
+    Responsibilities:
+    - Retain API-process resources for request handling and orderly shutdown
+    - Publish process-scoped dependencies to the application
+    - Release all process resources even when one cleanup fails
+
+    Collaborators:
+    - None
+    """
+
+    llm: LLMPort
+    mongo_client: Any
+    neo4j_driver: Any
+    redis_client: Any
+    worker_queue: WorkerQueue
+
+    def install(self, app: FastAPI, settings: Settings) -> None:
+        """Publish process-scoped resources for FastAPI dependencies."""
+        app.state.settings = settings
+        app.state.llm = self.llm
+        app.state.mongo_client = self.mongo_client
+        app.state.neo4j_driver = self.neo4j_driver
+        app.state.worker_queue = self.worker_queue
+
+    def close(self) -> None:
+        """Release every owned client even when an earlier close fails."""
+        _close_resources(
+            ("redis", self.redis_client),
+            ("neo4j", self.neo4j_driver),
+            ("mongodb", self.mongo_client),
+        )
+
+
+@dataclass
 class WorkerRuntime:
     """
     Responsibilities:
@@ -189,16 +224,44 @@ class WorkerRuntime:
 
     def close(self) -> None:
         """Best-effort cleanup; one failed close must not skip the others."""
-        logger = logging.getLogger(__name__)
-        for name, client in (
+        _close_resources(
             ("redis", self.redis_client),
             ("neo4j", self.neo4j_driver),
             ("mongodb", self.mongo_client),
-        ):
-            try:
-                client.close()
-            except Exception:
-                logger.exception("Failed to close %s client", name)
+        )
+
+
+def _close_resources(*resources: tuple[str, Any]) -> None:
+    """Best-effort close of independently owned process resources."""
+    logger = logging.getLogger(__name__)
+    for name, client in resources:
+        try:
+            client.close()
+        except Exception:
+            logger.exception("Failed to close %s client", name)
+
+
+def build_api_runtime(settings: Settings) -> ApiRuntime:
+    """Construct all process-scoped resources used by the API."""
+    llm = create_configured_llm(settings)
+    mongo_client: MongoClient[dict[str, Any]] = MongoClient(settings.mongodb_url)
+    neo4j_driver = neo4j.GraphDatabase.driver(
+        settings.neo4j_url,
+        auth=(settings.neo4j_user, settings.neo4j_password),
+    )
+    redis_client = redis_lib.from_url(settings.redis_url)
+    worker_queue = WorkerQueue(
+        redis=redis_client,
+        queue_key=settings.worker_queue_key,
+        visibility_timeout=settings.worker_visibility_timeout,
+    )
+    return ApiRuntime(
+        llm=llm,
+        mongo_client=mongo_client,
+        neo4j_driver=neo4j_driver,
+        redis_client=redis_client,
+        worker_queue=worker_queue,
+    )
 
 
 def build_worker_runtime(settings: Settings) -> WorkerRuntime:

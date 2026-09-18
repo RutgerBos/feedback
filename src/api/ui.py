@@ -15,10 +15,10 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
 from src.composition import (
+    get_dashboard_service,
     get_insight_synthesis_service,
     get_nl_query_service,
     get_queue,
-    get_storage,
     get_submission_service,
 )
 from src.ports.errors import (
@@ -28,7 +28,6 @@ from src.ports.errors import (
     QueryTranslationError,
     StorageError,
 )
-from src.ports.storage import StoragePort
 from src.services.dashboard import DashboardService
 from src.services.insight_synthesis import InsightSynthesisService
 from src.services.nl_query import NLQueryService
@@ -41,12 +40,6 @@ logger = logging.getLogger(__name__)
 _templates = Jinja2Templates(
     directory=str(Path(__file__).parent.parent.parent / "templates")
 )
-
-
-def _get_dashboard_service(
-    storage: StoragePort = Depends(get_storage),
-) -> DashboardService:
-    return DashboardService(storage=storage)
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
@@ -62,7 +55,7 @@ async def dashboard(request: Request) -> HTMLResponse:
 @router.get("/dashboard/data", response_class=HTMLResponse)
 async def dashboard_data(
     request: Request,
-    service: DashboardService = Depends(_get_dashboard_service),
+    service: DashboardService = Depends(get_dashboard_service),
 ) -> HTMLResponse:
     """HTML fragment: aggregated stats for HTMX to swap into the dashboard."""
     from_date_str = request.query_params.get("from_date")

@@ -23,12 +23,9 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-import neo4j
-import redis as redis_lib
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pymongo import MongoClient
 
 from src.api.dashboard import router as dashboard_router
 from src.api.insights import router as insights_router
@@ -36,10 +33,9 @@ from src.api.patterns import router as patterns_router
 from src.api.signifiers import router as signifiers_router
 from src.api.stories import router as stories_router
 from src.api.ui import router as ui_router
-from src.composition import create_configured_llm
+from src.composition import build_api_runtime
 from src.config.settings import Settings
 from src.config.triad_loader import load_triad_config
-from src.workers.worker_queue import WorkerQueue
 
 
 @asynccontextmanager
@@ -64,27 +60,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     config_path = Path("config/triads.yaml")
     app.state.triad_config = load_triad_config(config_path)
 
-    # Reuse the module-level settings (same instance used for CORS wiring)
-    app.state.settings = _settings
-    app.state.llm = create_configured_llm(_settings)
-    app.state.mongo_client = MongoClient(_settings.mongodb_url)
-    app.state.neo4j_driver = neo4j.GraphDatabase.driver(
-        _settings.neo4j_url,
-        auth=(_settings.neo4j_user, _settings.neo4j_password),
-    )
-    redis_client = redis_lib.from_url(_settings.redis_url)
-    app.state.worker_queue = WorkerQueue(
-        redis=redis_client,
-        queue_key=_settings.worker_queue_key,
-        visibility_timeout=_settings.worker_visibility_timeout,
-    )
+    runtime = build_api_runtime(_settings)
+    runtime.install(app, _settings)
 
-    yield
-
-    # Shutdown: close connection pools
-    app.state.mongo_client.close()
-    app.state.neo4j_driver.close()
-    redis_client.close()
+    try:
+        yield
+    finally:
+        runtime.close()
 
 
 _settings = Settings()

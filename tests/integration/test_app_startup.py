@@ -82,10 +82,11 @@ def test_app_creates_mongo_client_singleton_on_startup():
 def test_app_creates_one_process_scoped_llm(monkeypatch):
     """Application composition creates and reuses one LLM provider per process."""
     import src.api.main as main_module
+    import src.composition as composition
 
     provider = Mock()
     factory = Mock(return_value=provider)
-    monkeypatch.setattr(main_module, "create_configured_llm", factory)
+    monkeypatch.setattr(composition, "create_configured_llm", factory)
 
     with TestClient(main_module.app) as client:
         client.get("/health")
