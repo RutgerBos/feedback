@@ -44,6 +44,7 @@ class StoryWorker:
         story_id = self._queue.dequeue(timeout=self._dequeue_timeout)
         if story_id is None:
             return
+        state_persisted = False
         try:
             story = self._storage.get_story(story_id)
             attempt = story.processing_attempts + 1
@@ -51,29 +52,29 @@ class StoryWorker:
                 completed = self._service.process(story_id)
                 if completed is False:
                     raise RuntimeError("Story enrichment did not complete")
-                self._storage.update_story_processing(
-                    story_id,
-                    processing_status="processed",
-                    processing_attempts=attempt,
-                    next_processing_at=None,
-                    processing_error=None,
-                )
+                state = {
+                    "processing_status": "processed",
+                    "processing_attempts": attempt,
+                    "next_processing_at": None,
+                    "processing_error": None,
+                }
             except Exception as error:
                 logger.exception("Failed to process story %s", story_id)
                 terminal = attempt >= self._max_attempts
                 delay = self._retry_base_delay * (2 ** (attempt - 1))
-                self._storage.update_story_processing(
-                    story_id,
-                    processing_status="failed" if terminal else "retrying",
-                    processing_attempts=attempt,
-                    next_processing_at=(
+                state = {
+                    "processing_status": "failed" if terminal else "retrying",
+                    "processing_attempts": attempt,
+                    "next_processing_at": (
                         None if terminal else self._clock() + timedelta(seconds=delay)
                     ),
-                    processing_error=str(error),
-                )
+                    "processing_error": str(error),
+                }
+            self._storage.update_story_processing(story_id, **state)
+            state_persisted = True
         except Exception:
             logger.exception("Failed to persist processing state for story %s", story_id)
-        finally:
+        if state_persisted:
             try:
                 self._queue.complete(story_id)
             except Exception:
