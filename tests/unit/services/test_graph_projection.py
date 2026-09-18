@@ -189,8 +189,8 @@ def test_save_entities_for_story_skips_unprocessed_stories():
 
 # ── Test 4: handles GraphError gracefully ─────────────────────────────────────
 
-def test_save_entities_for_story_handles_graph_error_gracefully():
-    """GraphError from the graph adapter is caught and does not propagate."""
+def test_save_entities_for_story_propagates_graph_error():
+    """A required entity projection failure makes the processing attempt fail."""
     from src.services.graph_projection import GraphProjectionService
 
     story = make_story()
@@ -198,7 +198,8 @@ def test_save_entities_for_story_handles_graph_error_gracefully():
 
     service = GraphProjectionService(storage=storage, graph=FailingGraph())
 
-    service.save_entities_for_story(story.id)  # must not raise
+    with pytest.raises(GraphError, match="Neo4j unavailable"):
+        service.save_entities_for_story(story.id)
 
 
 # ── Test 5: propagates NotFoundError ──────────────────────────────────────────
@@ -249,8 +250,8 @@ def test_save_themes_for_story_skips_unprocessed_stories():
         assert graph.saved_theme_calls == [], f"Expected no calls for status={status!r}"
 
 
-def test_save_themes_for_story_handles_graph_error_gracefully():
-    """GraphError from the graph adapter is caught and does not propagate."""
+def test_save_themes_for_story_propagates_graph_error():
+    """A required theme projection failure makes the processing attempt fail."""
     from src.services.graph_projection import GraphProjectionService
 
     story = make_story()
@@ -259,7 +260,8 @@ def test_save_themes_for_story_handles_graph_error_gracefully():
 
     service = GraphProjectionService(storage=storage, graph=FailingGraph())
 
-    service.save_themes_for_story(story.id)  # must not raise
+    with pytest.raises(GraphError, match="Neo4j unavailable"):
+        service.save_themes_for_story(story.id)
 
 
 # ── Tests for project_story ───────────────────────────────────────────────────
@@ -280,8 +282,8 @@ def test_project_story_calls_both_entity_and_theme_projection():
     assert len(graph.saved_theme_calls) == 1
 
 
-def test_project_story_continues_themes_after_entity_graph_error():
-    """A GraphError in entity projection does not block theme projection."""
+def test_project_story_propagates_entity_graph_error():
+    """A GraphError in entity projection prevents successful finalization."""
     from src.services.graph_projection import GraphProjectionService
 
     class EntityFailingGraph(GraphPort):
@@ -335,10 +337,10 @@ def test_project_story_continues_themes_after_entity_graph_error():
     graph = EntityFailingGraph()
 
     service = GraphProjectionService(storage=storage, graph=graph)
-    service.project_story(story.id)  # must not raise
+    with pytest.raises(GraphError, match="entity failure"):
+        service.project_story(story.id)
 
-    # Theme projection ran despite entity failure
-    assert len(graph.saved_theme_calls) == 1
+    assert graph.saved_theme_calls == []
 
 
 # ── Story 3.4: proximity wiring ───────────────────────────────────────────────
@@ -367,8 +369,8 @@ def test_project_story_calls_proximity_calculation():
     assert proximity_calls == [story.id]
 
 
-def test_project_story_swallows_proximity_graph_error():
-    """A GraphError from proximity calculation does not propagate."""
+def test_project_story_propagates_proximity_graph_error():
+    """A proximity projection failure prevents successful finalization."""
     from src.services.graph_projection import GraphProjectionService
 
     class FailingProximity:
@@ -384,4 +386,5 @@ def test_project_story_swallows_proximity_graph_error():
         graph=graph,
         proximity=FailingProximity(),
     )
-    service.project_story(story.id)  # must not raise
+    with pytest.raises(GraphError, match="proximity failure"):
+        service.project_story(story.id)
